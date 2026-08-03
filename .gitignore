@@ -1,0 +1,27 @@
+# Dependencies
+/vendor/
+
+# Environment (never commit secrets)
+.env
+
+# Database files
+/storage/*.sqlite
+/database/*.db
+/database/*.sqlite
+
+# Storage contents (keep the folders, ignore files)
+/storage/cache/*
+!/storage/cache/.gitkeep
+/storage/logs/*
+!/storage/logs/.gitkeep
+/storage/uploads/*
+!/storage/uploads/.gitkeep
+
+# Logs
+*.log
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

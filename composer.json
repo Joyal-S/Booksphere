@@ -1,0 +1,24 @@
+{
+    "name": "booksphere/booksphere",
+    "description": "BookSphere - Intelligent Book Discovery & Recommendation System",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "BookSphere\\App\\": "app/"
+        },
+        "files": [
+            "app/Helpers/helpers.php"
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true,
+        "platform-check": false
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
