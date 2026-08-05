@@ -211,9 +211,24 @@ $libraryController = new LibraryController(
     $recommendationService,
 );
 
-// Home: the logged-in user's dashboard (the root of the app).
-// The route is protected so the greeting can use the session user.
-$router->get('/', [$dashboardController, 'index'], [$secure, new AuthMiddleware($auth)]);
+// Home. The root of the app serves two audiences:
+//     - guests      -> the public cover page (pages.landing inside the
+//                      bare layouts.landing shell) - the project's
+//                      marketing front door, with Log in / Get started
+//     - signed-in   -> the personal dashboard (the long-standing home)
+// The guest branch is decided here (not by AuthMiddleware) so the
+// cover page is public while everything else keeps its protection.
+$router->get('/', function (Request $request, array $params = []) use ($dashboardController): void {
+    if (!auth_check()) {
+        Response::view('pages.landing', [
+            'title' => 'BookSphere — Discover, Review, Recommend',
+        ], 200, 'layouts.landing');
+
+        return;
+    }
+
+    $dashboardController->index($request);
+}, [$secure]);
 
 // Parameterized demo route: try /hello/Alice in your browser.
 // The {name} placeholder captures whatever single segment appears
