@@ -93,9 +93,19 @@ final class DashboardController extends Controller
         // hybrid shelf ("Recommended for you"), the library-derived
         // "Because you read" shelf and the community trending shelf.
         // Each degrades to an empty shelf when the engine is not
-        // wired (tests / standalone controller). The personalized
-        // shelf is logged as served (the dashboard's signal in
-        // recommendation_logs).
+        // wired (tests / standalone controller).
+        //
+        // The personalized shelf is logged as 'dashboard_recommended'
+        // ONLY when it was freshly GENERATED (a cache hit skips the
+        // log - the rows were already recorded at generation time).
+        // 'because_you_read' is logged by libraryRecommendations()
+        // itself on generation, so it is not re-logged here - repeated
+        // dashboard renders must never inflate recommendation_logs
+        // (the profile's Recommendation Accuracy reads one log row per
+        // real generation).
+        $recommendedWasCached = $userId !== null && $this->recommendations !== null
+            ? $this->recommendations->personalizedShelfIsCached((int) $userId)
+            : true;
         $recommendedForYou = $userId !== null && $this->recommendations !== null
             ? $this->recommendations->getPersonalizedRecommendations((int) $userId, 5)->items
             : [];
@@ -106,8 +116,9 @@ final class DashboardController extends Controller
             ? $this->recommendations->getTrendingBooks(5)->items
             : [];
 
-        $this->recommendations?->logRecommendations((int) $userId, $recommendedForYou, 'dashboard_recommended');
-        $this->recommendations?->logRecommendations((int) $userId, $becauseYouRead, 'because_you_read');
+        if ($userId !== null && $this->recommendations !== null && !$recommendedWasCached) {
+            $this->recommendations->logRecommendations((int) $userId, $recommendedForYou, 'dashboard_recommended');
+        }
 
         $this->view('dashboard.index', [
             'title'                => 'Dashboard',

@@ -1,4 +1,4 @@
-# Manual Test Checklist – Book Module (Phase 5.6, extended through Phase 8.5)
+# Manual Test Checklist – Book Module (Phase 5.6, extended through Phase 8.6)
 
 Run the automated suite first (`php tests/BrowseTest.php`), then walk
 through this checklist in the browser. Two accounts exist in the seed
@@ -727,3 +727,47 @@ page (`/books/{id}`), on `/books/{id}/reviews` and on
       page load rebuilds everything.
 - [ ] `php tests/RecommendationLibraryIntegrationTest.php` prints 147
       checks, 0 failed; all nine suites stay green (1233 total).
+
+## 22. Library audit & QA (Phase 8.6)
+
+- [ ] Dashboard log hygiene: sign in as Riya, open `/dashboard`, then
+      inspect `recommendation_logs` — refreshing the page adds NO
+      `dashboard_recommended` rows (the shelf logs once per
+      generation); flush the cache from `/admin/recommendations`, then
+      one refresh re-logs it exactly once.
+- [ ] Progress confirm: drag a book's slider to 100 → the "Mark this
+      book as Finished?" dialog appears; Cancel snaps the slider back
+      to its committed value; Save auto-finishes.
+- [ ] No-JS remove: disable JavaScript, hover a card → Remove posts
+      directly to `/library/{id}/delete` and flashes; the book panel's
+      Remove and the row Remove do the same (no modal needed).
+- [ ] No-JS bulk: with JS off, the bulk bar is visible immediately;
+      checkboxes appear on hover; Move To / Favourite / Remove all
+      submit natively (Remove sends `action=delete`) with flash
+      feedback; the view toggle still links to the grid.
+- [ ] Bulk modal: with JS on, select ≥1 book → Remove opens the
+      confirmation modal; its list counts only the checked ids.
+- [ ] Book panel single confirm: open a book page with JS on, Remove →
+      exactly ONE confirm dialog appears (the inline one is gone).
+- [ ] Skeleton recovery: search while the network is offline → the
+      grid restores, no skeleton stays; after a failed statistics
+      refresh the stat cells recover their numbers from the page.
+- [ ] Streak chip: save progress on a new day → the streak chip in the
+      library header updates in place (no reload).
+- [ ] Quick menu sync: Move To "Finished" via the card's menu → the
+      card's own status select follows the repaint.
+- [ ] Chip split: narrow the window — the header stat chips keep their
+      layout while the active-filter chips stay pill-shaped.
+- [ ] A11y: tab through the library — the view toggle announces
+      `aria-current` on the active link; the checkbox title reads
+      "Select {title}" for every card; the profile favourite icon has
+      no redundant aria-label.
+- [ ] Preference audit: change sort / view twice →
+      `recommendation_logs` holds two `library.preference_changed`
+      entries (user id + new values); junk actions log nothing.
+- [ ] Dead session: with a logged-in session whose user row is gone,
+      `/profile` answers 404 "Profile not found." instead of crashing.
+- [ ] `php tests/LibraryTest.php` prints 278 checks, 0 failed;
+      `php tests/ReviewTest.php` prints 371; `php
+      tests/RecommendationOptimizationTest.php` prints 57; all nine
+      suites stay green (**1243 total**).

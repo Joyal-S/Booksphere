@@ -31,9 +31,8 @@
  *                      /library/filter (/library/sort for the sort)
  *                      and swaps the grid fragment in place
  *   8. stats refresh  - after a write the statistics cards are
- *                      skeleton-filled and rebuilt (Phase 8.3
- *                      skeleton-stat), the tab counters / header
- *                      chips / intro line follow, and the Continue
+ *                      skeleton-filled and rebuilt, the tab counters /
+ *                      header chips / intro line follow, and the Continue
  *                      Reading shelf refreshes its fragment. Phase
  *                      8.4: the Smart Collections rail rebuilds its
  *                      occupancy numbers from the same payload
@@ -170,7 +169,9 @@
     };
 
     // Repaint every status badge that describes the card / panel that
-    // just changed (there is one per card, one in the panel head).
+    // just changed (there is one per card, one in the panel head) and
+    // keep the card's own status select in step (the quick-menu "Move
+    // to" path writes the status without touching the select).
     const repaintStatus = (container, status) => {
         container.querySelectorAll('.status-badge').forEach((badge) => {
             [...badge.classList].forEach((cl) => {
@@ -178,6 +179,9 @@
             });
             badge.classList.add('status-' + status);
             badge.textContent = statusLabel(null, status);
+        });
+        container.querySelectorAll('select[data-library-status-select]').forEach((select) => {
+            select.value = status;
         });
     };
 
@@ -260,12 +264,13 @@
     // Reaching 100 must be an explicit, confirmed decision: the brief
     // says ask "Mark this book as Finished?" - we never flip the
     // status silently. The server only proceeds once the user confirms.
-    const confirmAtHundred = (input, form) => {
-        const value = Number(input.value);
-        const previous = Number(input.dataset.previous || value);
-
-        if (value !== 100) return true;
-        if (previous === 100) return true; // already finished-looking
+    // The previous value comes from the CALLER (the value committed
+    // before this change) - this helper must never read dataset.previous
+    // itself, because the caller stores the NEW value there for the
+    // error-restore path before submitting.
+    const confirmAtHundred = (input, previous, next) => {
+        if (Number(next) !== 100) return true;
+        if (Number(previous) === 100) return true; // already finished-looking
 
         const confirmed = window.confirm('Mark this book as Finished?');
         if (!confirmed) {
@@ -276,6 +281,33 @@
     };
 
     /* ---------- 5. Delete modal + in-place removal ------------------ */
+
+    // The remove itself for ANY CSRF form that posts to
+    // /library/{id}/delete (the shared modal or the card's inline
+    // fallback): a fetch delete, then an in-place card fade-out.
+    // The no-JS path posts the same endpoint natively and the page
+    // reloads with the flash - the two never drift.
+    const performRemove = async (removeForm) => {
+        const recordId = (removeForm.action.match(/\/library\/(\d+)\/delete/) || [])[1];
+        const card = root.querySelector(`[data-library-card][data-record-id="${recordId}"]`);
+
+        try {
+            await toPayload(await fetchForm(removeForm));
+
+            if (card) {
+                if (!reduceMotion && window.gsap) {
+                    window.gsap.to(card, { opacity: 0, scale: 0.96, y: -6, duration: 0.3, onComplete: () => card.remove() });
+                } else {
+                    card.remove();
+                }
+            }
+
+            announce('Book removed from your library.');
+            refreshCounters();
+        } catch (error) {
+            announce(error.message, true);
+        }
+    };
 
     // The shared Remove modal of the library page posts to
     // /library/{id}/delete. Its buttons carry data-delete-url and
@@ -296,36 +328,50 @@
             }
         });
 
-        // Upgrade the submit to fetch: remove the card in place with a
-        // fade-out, then refresh the counters. If anything fails, the
-        // native POST still works (its action was set by the modal).
+        // Upgrade the modal submit to fetch: remove the card in place
+        // with a fade-out, then refresh the counters. If anything
+        // fails, the native POST still works (its action was set by
+        // the modal).
         form?.addEventListener('submit', async (event) => {
             event.preventDefault();
 
-            const recordId = (form.action.match(/\/library\/(\d+)\/delete/) || [])[1];
-            const card = root.querySelector(`[data-library-card][data-record-id="${recordId}"]`);
-
             try {
-                await toPayload(await fetchForm(form));
-
                 if (window.bootstrap) {
-                    const modal = window.bootstrap.Modal.getOrCreateInstance(modalEl);
-                    modal.hide();
+                    window.bootstrap.Modal.getOrCreateInstance(modalEl).hide();
                 }
-
-                if (card) {
-                    if (!reduceMotion && window.gsap) {
-                        window.gsap.to(card, { opacity: 0, scale: 0.96, y: -6, duration: 0.3, onComplete: () => card.remove() });
-                    } else {
-                        card.remove();
-                    }
-                }
-
-                announce('Book removed from your library.');
-                refreshCounters();
-            } catch (error) {
-                announce(error.message, true);
+            } catch (_) {
+                /* the modal may already be closed between rerenders */
             }
+
+            await performRemove(form);
+        });
+    };
+
+    // The card / row inline remove forms ([data-library-delete-form]):
+    // with Bootstrap present they open the shared confirmation modal;
+    // without it (or on failure) they fetch-delete in place - the
+    // native POST is the no-JS path and never touches JavaScript.
+    const bindInlineDeleteForms = () => {
+        document.addEventListener('submit', (event) => {
+            const deleteForm = event.target.closest('[data-library-delete-form]');
+            if (!deleteForm) return;
+
+            event.preventDefault();
+
+            const button = deleteForm.querySelector('[data-delete-url]');
+            const modalEl = root.querySelector('#libraryDeleteModal');
+
+            if (modalEl && window.bootstrap) {
+                window.bootstrap.Modal.getOrCreateInstance(modalEl).show(button || deleteForm);
+                return;
+            }
+
+            // No modal available: the same fetch-remove without the
+            // confirmation (the native POST remains for no-JS).
+            deleteForm.closest('.library-card, .library-row')?.classList.add('is-saving');
+            performRemove(deleteForm).finally(() => {
+                deleteForm.closest('.library-card, .library-row')?.classList.remove('is-saving');
+            });
         });
     };
 
@@ -440,6 +486,10 @@
 
         let inFlight = null;
         let debounceTimer = null;
+        // The last grid the user actually saw (the server-rendered
+        // page at bind time, then every successful response) - restored
+        // when a request fails, so the region never stays skeleton-filled.
+        let lastGoodHtml = region ? region.innerHTML : null;
 
         const run = async (endpoint) => {
             const params = collectFilterParams(form);
@@ -456,10 +506,16 @@
                     headers: { 'X-Requested-With': 'fetch' },
                 });
 
-                if (!response.ok) return;
+                if (!response.ok) {
+                    if (lastGoodHtml !== null) region.innerHTML = lastGoodHtml;
+                    return;
+                }
 
                 const data = await response.json();
-                if (region) region.innerHTML = data.html;
+                if (region && data.html) {
+                    region.innerHTML = data.html;
+                    lastGoodHtml = data.html;
+                }
                 if (liveStatus) {
                     liveStatus.textContent = `${data.total} book${data.total === 1 ? '' : 's'}`;
                 }
@@ -468,6 +524,7 @@
                 refreshCounters();
             } catch (error) {
                 if (error?.name === 'AbortError') return;
+                if (lastGoodHtml !== null) region.innerHTML = lastGoodHtml;
             } finally {
                 setPending(false);
             }
@@ -500,7 +557,11 @@
                 form.querySelectorAll('[data-library-view]').forEach((btn) => {
                     const active = btn.getAttribute('data-library-view') === view;
                     btn.classList.toggle('is-active', active);
-                    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+                    if (active) {
+                        btn.setAttribute('aria-current', 'true');
+                    } else {
+                        btn.removeAttribute('aria-current');
+                    }
                 });
                 run(filterEndpoint);
             });
@@ -512,10 +573,9 @@
     // After any write the whole overview refreshes from
     // /library/statistics - the same aggregate the statistics page
     // shows, so the two can never disagree. While the numbers are in
-    // flight the stat cells are skeleton-filled (the Phase 8.3
-    // skeleton-stat component), then rebuilt from their data
-    // attributes with the fresh values; the header chips, the tab
-    // counters and the intro line follow.
+    // flight the stat cells are skeleton-filled, then rebuilt from
+    // their data attributes with the fresh values; the header chips,
+    // the tab counters and the intro line follow.
     const refreshCounters = () => {
         const statsSection = document.querySelector('[data-library-stats]');
         const endpoint = statsSection?.getAttribute('data-library-stats-endpoint') || '/library/statistics';
@@ -542,6 +602,13 @@
                 </div>`;
         };
 
+        // Rebuild a cell from its server-rendered data attributes - the
+        // recovery path when the statistics fetch fails (the value the
+        // page rendered with is still on the element).
+        const restoreCell = (cell) => {
+            rebuildStat(cell, cell.getAttribute('data-stat-value') ?? 0);
+        };
+
         // Skeleton-fill the cells while the numbers are in flight.
         cells.forEach((cell) => { cell.innerHTML = skeletonStatHtml(); });
 
@@ -550,9 +617,10 @@
             .then((payload) => {
                 const stats = payload?.statistics;
                 if (!stats) {
-                    // No payload (e.g. the statistics page): leave the
-                    // skeletons out of sight - nothing to rebuild.
-                    cells.forEach((cell) => { cell.innerHTML = ''; });
+                    // No payload (e.g. the statistics page): rebuild
+                    // the cells from their data attributes - nothing
+                    // to do on pages without the fetch refresh.
+                    cells.forEach(restoreCell);
                     return;
                 }
 
@@ -595,6 +663,14 @@
                 const chipProgress = root.querySelector('[data-chip-progress-value]');
                 if (chipProgress) chipProgress.textContent = Math.round(Number(stats.average_progress || 0)) + '%';
 
+                // The streak chip: a write counts as an activity day,
+                // so the current streak may have moved with it.
+                const chipStreak = root.querySelector('[data-chip-streak-value]');
+                if (chipStreak && payload.streak) {
+                    const streakDays = Number(payload.streak.current || 0);
+                    chipStreak.textContent = streakDays + ' day' + (streakDays === 1 ? '' : 's');
+                }
+
                 const totalEl = root.querySelector('[data-library-total]');
                 if (totalEl) {
                     const bookWord = stats.total === 1 ? 'book' : 'books';
@@ -611,7 +687,7 @@
                 // updated) from the same statistics payload.
                 refreshCollections(payload.collections);
             })
-            .catch(() => { /* cosmetics; ignore */ });
+            .catch(() => { cells.forEach(restoreCell); });
     };
 
     // Rebuild the Smart Collections rail from the collectionStatistics()
@@ -755,6 +831,17 @@
             if (!action) return;
             if (ids.length === 0) {
                 announce('Select at least one book.', true);
+                return;
+            }
+
+            // The destructive action never posts directly: it opens
+            // the confirmation modal, whose own form carries the
+            // submit (action=delete) through the same fetch pipeline.
+            if (action === 'delete') {
+                const modalEl = root.querySelector('#libraryBulkModal');
+                if (modalEl && window.bootstrap) {
+                    window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+                }
                 return;
             }
 
@@ -960,10 +1047,12 @@
     /* ---------- Wiring ---------------------------------------------- */
 
     bindDeleteModal();
+    bindInlineDeleteForms();
     bindFilterForm();
     bindCardTilt();
     bindBulkForm();
     bindBulkDeleteModal();
+    updateBulkBar();
 
     // Favourite / status / progress are delegated so cards re-injected
     // by the live search behave exactly like the server-rendered ones.
@@ -981,8 +1070,10 @@
             event.preventDefault();
             const input = progressForm.querySelector('[data-library-progress-input], [data-library-panel-progress-input]');
             const container = progressForm.closest('[data-library-card], [data-library-panel]');
-            if (input) input.dataset.previous = String(input.value);
-            if (!confirmAtHundred(input, progressForm)) return;
+            if (!input) return;
+            const previous = Number(input.dataset.previous ?? input.defaultValue);
+            if (!confirmAtHundred(input, previous, input.value)) return;
+            input.dataset.previous = String(input.value);
             handleProgress(progressForm, container);
             return;
         }
@@ -1017,11 +1108,14 @@
         }
 
         // Dragging a page slider releases as a change -> submit it (the
-        // Save button remains as the keyboard / no-JS path).
+        // Save button remains as the keyboard / no-JS path). The
+        // previous (committed) value is captured BEFORE the new one is
+        // stored, so the 100%-confirm sees the real change.
         const range = event.target.closest('[data-library-progress-input], [data-library-panel-progress-input]');
         if (range) {
-            range.dataset.previous = String(range.value);
-            if (confirmAtHundred(range, range.form)) {
+            const previous = Number(range.dataset.previous ?? range.defaultValue);
+            if (confirmAtHundred(range, previous, range.value)) {
+                range.dataset.previous = String(range.value);
                 range.form?.requestSubmit();
             }
         }

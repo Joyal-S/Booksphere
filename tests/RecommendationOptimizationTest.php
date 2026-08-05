@@ -364,6 +364,23 @@ $degraded = $cachedService->getPersonalizedRecommendations(3, 5);
 check('A corrupted cache file is a miss, not a crash', $degraded instanceof \BookSphere\App\DTO\RecommendationResult);
 check('The corrupted file was replaced by a healthy run', (json_decode((string) file_get_contents($cacheDir . '/user_3.json'), true) ?: []) !== []);
 
+// Phase 8.6 regression: the cache stores the shelf under the FIRST
+// caller's limit - a later caller with a SMALLER limit must get its
+// own limit re-applied (and the total recounted), not the full
+// cached shelf. Before the fix the second read silently grew.
+$cachedService->invalidatePersonalization(2);
+$cachedService->getPersonalizedRecommendations(2, 5);
+$smallerHit = $cachedService->getPersonalizedRecommendations(2, 3);
+check('A cache hit re-applies the caller limit (cached 5, asked 3)', count($smallerHit->items) === 3 && $smallerHit->total === 3);
+
+// The Phase 8.6 dashboard gate: personalizedShelfIsCached() must
+// report true on a hit (nothing to log) and false on a miss (the
+// generation gets logged).
+check('personalizedShelfIsCached() reports the hit', $cachedService->personalizedShelfIsCached(2) === true);
+$cachedService->invalidatePersonalization(2);
+check('personalizedShelfIsCached() reports the miss after invalidate', $cachedService->personalizedShelfIsCached(2) === false);
+check('personalizedShelfIsCached() never caches guests', $cachedService->personalizedShelfIsCached(0) === false);
+
 // ---------------------------------------------------------------------
 // 5. Rate limiting: window, limit, reset
 // ---------------------------------------------------------------------

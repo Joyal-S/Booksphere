@@ -537,6 +537,7 @@ $check('currentlyReading() answers the reading shelf', $payload['items'] === [])
 
 $payload = $respond(fn () => $controller->statistics(new Request()));
 $check('statistics() answers the overview', $payload['statistics']['total'] === 4);
+$check('statistics() ships the streak for the header chip', isset($payload['streak']['current'], $payload['streak']['longest']) && (int) $payload['streak']['current'] >= 0);
 
 $_POST = ['book_id' => (string) $bHabits, 'status' => 'finished'];
 $payload = $respond(fn () => $controller->store(new Request()));
@@ -826,6 +827,12 @@ $prefs = $service->viewPreference($riyaId, 'highest_rated', 'grid');
 $check('viewPreference() stores the next valid pair', $prefs === ['sort' => 'highest_rated', 'view' => 'grid']);
 $check('savePreferences() left exactly one preferences row', (int) db()->query('SELECT COUNT(*) AS count FROM user_preferences WHERE user_id = ?', [$riyaId])[0]['count'] === 1);
 
+// Phase 8.6: a preference change is audit-logged (and an ignored
+// junk pair is NOT - the two real changes above are the only ones).
+$prefLog = is_file($logFile) ? (string) file_get_contents($logFile) : '';
+$check('A preference change leaves an audit entry', substr_count($prefLog, 'library.preference_changed') === 2);
+$check('The preference log carries the user and the new pair', str_contains($prefLog, (string) $riyaId) && str_contains($prefLog, 'highest_rated') && str_contains($prefLog, '"sort"'));
+
 $repoSummary = $service->readingSummary($riyaId);
 $repoStreak   = $service->readingStreak($riyaId);
 $dashboard    = $service->libraryDashboard($riyaId);
@@ -997,6 +1004,39 @@ $check('The profile renders the My Library section', str_contains($profileHtml, 
 $check('The profile lists the favourite books', str_contains($profileHtml, 'Favourite books'));
 $check('The profile lists the recently added books', str_contains($profileHtml, 'Recently added'));
 $check('The profile lists the recently finished books', str_contains($profileHtml, 'Recently finished'));
+
+// Phase 8.6: a session that outlived its user row must answer a safe
+// 404 instead of indexing a missing profile. The probe runs in a
+// subprocess because Response::error() exits the process.
+$probeRoot = root_path();
+$probePath = sys_get_temp_dir() . '/booksphere_profile_404_probe.php';
+$probeCode = '<?php' . PHP_EOL
+    . 'declare(strict_types=1);' . PHP_EOL . PHP_EOL
+    . 'require ' . var_export($probeRoot . '/bootstrap/constants.php', true) . ';' . PHP_EOL
+    . 'require ' . var_export($probeRoot . '/vendor/autoload.php', true) . ';' . PHP_EOL . PHP_EOL
+    . 'use BookSphere\\App\\Core\\Database;' . PHP_EOL
+    . 'use BookSphere\\App\\Core\\Environment;' . PHP_EOL
+    . 'use BookSphere\\App\\Core\\Request;' . PHP_EOL
+    . 'use BookSphere\\App\\Core\\Session;' . PHP_EOL
+    . 'use BookSphere\\App\\Models\\User;' . PHP_EOL
+    . 'use BookSphere\\App\\Controllers\\UserController;' . PHP_EOL
+    . 'use BookSphere\\App\\Services\\AuthService;' . PHP_EOL . PHP_EOL
+    . '(new Environment(root_path(\'.env\')))->load();' . PHP_EOL
+    . 'Database::instance(root_path(\'database/library_test.db\'));' . PHP_EOL
+    . '$session = new Session(\'library_test_404_probe\');' . PHP_EOL
+    . '$session->start();' . PHP_EOL
+    . '$auth = new AuthService($session, new User());' . PHP_EOL
+    . 'AuthService::setInstance($auth);' . PHP_EOL
+    . '$missingUserId = (int) ($argv[1] ?? \'0\');' . PHP_EOL
+    . '$session->put(\'auth_user_id\', $missingUserId);' . PHP_EOL
+    . '$session->put(\'auth_user\', [\'id\' => $missingUserId, \'full_name\' => \'Ghost\', \'email\' => \'ghost@test.dev\', \'role\' => \'user\']);' . PHP_EOL
+    . '(new UserController($auth, new User()))->show(new Request());' . PHP_EOL;
+file_put_contents($probePath, $probeCode);
+
+$missingUserId = ((int) db()->query('SELECT MAX(id) AS max_id FROM users')[0]['max_id']) + 1;
+$probeOutput = (string) shell_exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($probePath) . ' ' . $missingUserId . ' 2>&1');
+$check('A session without a user row answers 404, not a crash', trim($probeOutput) === 'Profile not found.');
+unlink($probePath);
 
 $_GET = [];
 

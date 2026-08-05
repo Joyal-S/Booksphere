@@ -23,9 +23,15 @@ declare(strict_types=1);
  * Progressive enhancement: every non-destructive button is a native
  * submit (name="action" value=...), so with JavaScript disabled the
  * form posts to /library/bulk with the CSRF token and the checked
- * ids[] - the controller answers with a redirect + flash. library.js
- * intercepts the submits, fetches the endpoint and repaints the
- * grid, the counters and the collections in place.
+ * ids[] - the controller answers with a redirect + flash. The bar is
+ * always visible without JavaScript (the grid checkboxes reveal on
+ * hover / focus); with JavaScript it collapses to nothing until a
+ * book is selected (library.js toggles the .is-empty state).
+ *
+ * The destructive Remove is a proper submit (action=delete) too, so
+ * a script-less browser posts it straight through the same endpoint;
+ * library.js intercepts it and routes it through the #libraryBulkModal
+ * confirmation instead.
  *
  * Included from a view that sets $statusLabels (status key -> label)
  * and $csrfToken (the CSRF token; a session()-backed token or the
@@ -35,7 +41,7 @@ declare(strict_types=1);
 $statusLabels = $statusLabels ?? [];
 
 ?>
-<form id="library-bulk-form" class="library-bulk-bar is-empty" method="post" action="/library/bulk"
+<form id="library-bulk-form" class="library-bulk-bar" method="post" action="/library/bulk"
       data-library-bulk-form aria-label="Bulk actions for the selected books">
     <input type="hidden" name="_token" value="<?= e(csrf_token()) ?>">
 
@@ -64,7 +70,8 @@ $statusLabels = $statusLabels ?? [];
         <button type="submit" class="btn btn-sm btn-outline-secondary" name="action" value="unfavorite" data-bulk-action="unfavorite">
             <i class="fa-regular fa-heart me-1" aria-hidden="true"></i>Un-favourite
         </button>
-        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#libraryBulkModal">
+        <button type="submit" name="action" value="delete" class="btn btn-sm btn-outline-danger"
+            data-bulk-action="delete">
             <i class="fa-solid fa-trash me-1" aria-hidden="true"></i>Remove
         </button>
     </div>

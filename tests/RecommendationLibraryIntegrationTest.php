@@ -333,7 +333,7 @@ foreach ($fks as $fk) {
 }
 $check('user_id cascades with the user', ($fkMap['user_id']['table'] ?? '') === 'users' && ($fkMap['user_id']['on_delete'] ?? '') === 'CASCADE');
 $check('book_id cascades with the book', ($fkMap['book_id']['table'] ?? '') === 'books' && ($fkMap['book_id']['on_delete'] ?? '') === 'CASCADE');
-$check('The generated_at default is a UTC timestamp', str_contains((string) $fkMap['id']['name'] ?? '', 'generated_at') || in_array('generated_at', $columns, true));
+$check('The generated_at column exists', in_array('generated_at', $columns, true));
 
 $defaults = [];
 foreach (db()->query('PRAGMA table_info(recommendation_logs)') as $row) {

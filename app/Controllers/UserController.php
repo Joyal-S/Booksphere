@@ -48,11 +48,18 @@ final class UserController extends Controller
     public function show(Request $request, array $params = []): void
     {
         $userId = (int) $this->auth->id();
+        $user   = $this->users->findById($userId);
+
+        // A session that outlived its user row (deleted account) must
+        // never index a missing profile - answer a safe 404 instead.
+        if ($user === null) {
+            Response::error(404, 'Profile not found.');
+        }
 
         $this->view('profile.show', [
             'title'       => 'My profile',
             'active'      => 'profile',
-            'user'        => $this->users->findById($userId),
+            'user'        => $user,
             'ratingStats' => $this->reviews?->profileStats($userId) ?? [],
             // Phase 7.4: the profile's "Recent Reviews" block, fed
             // by the same Reviews module the dashboard uses.

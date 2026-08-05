@@ -308,6 +308,9 @@ final class LibraryController extends Controller
                 // Phase 8.4: the collection occupancy numbers, so the
                 // collections rail repaints in place after a write.
                 'collections' => $this->service->collectionStatistics($userId),
+                // Phase 8.6: the reading streak - a write counts as an
+                // activity day, so the header chip refreshes too.
+                'streak'      => $this->service->readingStreak($userId),
             ]);
 
             return;

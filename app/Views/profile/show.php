@@ -465,7 +465,7 @@ $insightInfluencing     = $recommendationInsights['influencing'] ?? [];
                             <span class="small">
                                 <?= e((string) ($record['title'] ?? '')) ?>
                                 <?php if ((int) ($record['is_favorite'] ?? 0) === 1): ?>
-                                    <i class="fa-solid fa-heart text-danger" title="Favourite" aria-label="Favourite"></i>
+                                    <i class="fa-solid fa-heart text-danger" title="Favourite" aria-hidden="true"></i>
                                 <?php endif; ?>
                             </span>
                         </a>

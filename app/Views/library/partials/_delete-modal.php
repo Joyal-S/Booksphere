@@ -6,15 +6,20 @@ declare(strict_types=1);
  * library/partials/_delete-modal.php
  *
  * The REMOVE-FROM-LIBRARY confirmation modal (Phase 8.2). One shared
- * Bootstrap modal serves every Remove button of the library page:
- * when it opens, the clicked button (relatedTarget) supplies the
+ * Bootstrap modal serves every Remove control of the library page:
+ * when it opens, the clicked control (relatedTarget) supplies the
  * form target and the book title, so the modal always posts to the
  * right record and never removes something else. It is wired by the
- * shared bindDeleteModal helper in app.js (no per-page script).
+ * bindDeleteModal helper in library.js.
  *
  * The remove is a plain CSRF-protected POST (/library/{id}/delete);
- * the no-JS path already works because the buttons use the native
- * Bootstrap data attributes.
+ * the library.js show.bs.modal handler rewrites the form action from
+ * the clicked control's data-delete-url before it is ever submitted.
+ * The default action below is a placeholder - the modal can only open
+ * via Bootstrap (JavaScript), and every open rewrites it. The TRUE
+ * no-JS path is the card / row's inline remove form
+ * ([data-library-delete-form]), a plain POST to the same endpoint
+ * that works with scripts disabled.
  */
 
 ?>

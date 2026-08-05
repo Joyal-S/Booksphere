@@ -668,7 +668,10 @@
     flex-wrap: wrap;
 }
 
-.library-chip {
+/* The three header stat chips (streak / total / progress). Named
+   .library-stat-chip so they never collide with the active-filter
+   .library-chip of the grid (both existed under one name in 8.3). */
+.library-stat-chip {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -680,7 +683,7 @@
     box-shadow: var(--shadow-sm);
 }
 
-.library-chip-icon {
+.library-stat-chip-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -693,18 +696,18 @@
     flex: 0 0 auto;
 }
 
-.library-chip--streak .library-chip-icon {
+.library-stat-chip--streak .library-stat-chip-icon {
     background: color-mix(in srgb, var(--danger) 14%, transparent);
     color: var(--danger);
 }
 
-.library-chip strong {
+.library-stat-chip strong {
     display: block;
     font-size: 0.95rem;
     line-height: 1.1;
 }
 
-.library-chip span {
+.library-stat-chip span {
     display: block;
     color: var(--muted);
     font-size: 0.72rem;
@@ -1234,7 +1237,7 @@
         width: 100%;
     }
 
-    .library-chip {
+    .library-stat-chip {
         flex: 1 1 100%;
     }
 

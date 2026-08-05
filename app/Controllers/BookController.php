@@ -184,7 +184,10 @@ final class BookController extends Controller
             // detail page.
             $summary   = $this->reviews->ratingSummary($bookId);
             $stats     = ['average' => $summary['average'], 'count' => $summary['count']];
-            $breakdown = $this->reviews->ratingBreakdown($bookId);
+            // The breakdown reuses the summary's distribution - the
+            // GROUP BY runs once per book page (the contract
+            // ReviewService::ratingSummary() documents).
+            $breakdown = $this->reviews->ratingBreakdown($bookId, $summary['distribution']);
 
             if (($userId = auth()?->id()) !== null) {
                 $mine = $this->reviews->userReview($userId, $bookId);

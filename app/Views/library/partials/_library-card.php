@@ -78,8 +78,7 @@ $statusIcons = [
 
 ?>
 <div class="library-card" data-library-card data-record-id="<?= $recordId ?>">
-    <label class="library-select-label" data-library-select-label
-           title="<?= $favorite ? 'In your favourites' : 'Select ' . e($title) ?>">
+    <label class="library-select-label" data-library-select-label title="Select <?= e($title) ?>">
         <input type="checkbox" class="form-check-input library-select-input" form="library-bulk-form"
                name="ids[]" value="<?= $recordId ?>" data-library-select-input
                aria-label="Select <?= e($title) ?>">
@@ -234,13 +233,18 @@ $statusIcons = [
             <a class="btn btn-sm btn-outline-secondary" href="/books/<?= $bookId ?>">
                 <i class="fa-solid fa-eye me-1" aria-hidden="true"></i>Details
             </a>
-            <button class="btn btn-sm btn-outline-danger" type="button"
-                    data-bs-toggle="modal" data-bs-target="#libraryDeleteModal"
-                    data-delete-url="/library/<?= $recordId ?>/delete"
-                    data-delete-title="<?= e($title) ?>">
-                <i class="fa-solid fa-trash" aria-hidden="true"></i>
-                <span class="visually-hidden">Remove <?= e($title) ?> from your library</span>
-            </button>
+            <!-- A real CSRF-protected form, so the removal works with
+                 JavaScript disabled (native POST + flash redirect).
+                 library.js opens the shared confirmation modal from it
+                 when scripts are running (bindInlineDeleteForms) -->
+            <form method="post" action="/library/<?= $recordId ?>/delete" data-library-delete-form>
+                <input type="hidden" name="_token" value="<?= e(csrf_token()) ?>">
+                <button type="submit" class="btn btn-sm btn-outline-danger"
+                        data-delete-url="/library/<?= $recordId ?>/delete" data-delete-title="<?= e($title) ?>">
+                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                    <span class="visually-hidden">Remove <?= e($title) ?> from your library</span>
+                </button>
+            </form>
         </div>
     </div>
 </div>

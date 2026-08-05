@@ -368,7 +368,24 @@ The architecture was prepared for the next phases:
    and every library-derived shelf is explainable, cached per user per
    section and logged to `recommendation_logs` (migration 0019) for
    the profile's Recommendation Accuracy figure.
-   See `docs/PHASE_8_5_LIBRARY_RECOMMENDATIONS.md`.
+   See `docs/PHASE_8_5_LIBRARY_RECOMMENDATIONS.md`. **Phase 8.6**
+   audited the module end to end and hardened it: the personalized
+   shelf cache re-applies the caller's limit on hits (and the
+   dashboard logs `dashboard_recommended` once per generation, gated
+   by `personalizedShelfIsCached()`), the own-library exclusion set is
+   loaded once per page (`LIBRARY_EXCLUSION_LIMIT`), the book-page
+   same-author loop is one batched IN-query, `ratingBreakdown()`
+   reuses the summary's distribution instead of re-aggregating,
+   preference changes log `library.preference_changed`, a dead
+   session answers 404 on `/profile`, the statistics payload carries
+   the streak, the frontend recovers its grid / stat cells / streak
+   chip after failed fetches and the 100% progress confirm actually
+   fires, Remove controls are real CSRF forms (no-JS native POST,
+   JS routed through the shared modal), the bulk bar works without
+   JS, header chips were renamed `.library-chip` → `.library-stat-chip`
+   (ending the CSS collision with the active-filter chips), and the
+   dead `skeleton-stat.php` component was deleted. 1243/1243 checks
+   across the nine suites, see `docs/PHASE_8_6_LIBRARY_QA.md`.
 - **Category / author browse pages** – DONE in Phase 7.6: the browse
   query still supports `category_id` / `author_id` filters, and the
   dedicated `/authors` + `/categories` pages (directory + detail)

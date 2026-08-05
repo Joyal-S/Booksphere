@@ -742,6 +742,14 @@ $check('The percentages sum to ~100', $percentSum >= 90 && $percentSum <= 100);
 $emptyBreakdown = $service->ratingBreakdown((int) $emptyBookId);
 $check('An unrated book yields a zeroed breakdown', array_sum(array_column($emptyBreakdown, 'percent')) === 0 && array_sum(array_column($emptyBreakdown, 'count')) === 0);
 
+// Phase 8.6: the controllers hand the ratingSummary distribution in
+// so the GROUP BY runs once per book page - the breakdown must honour
+// the PASSED distribution instead of re-querying.
+$precomputed = $service->ratingBreakdown($phase73BookId, $service->ratingDistribution($phase73BookId));
+$check('ratingBreakdown() honours a precomputed distribution', $precomputed === $breakdown73);
+$synthetic = $service->ratingBreakdown($phase73BookId, [5 => 4, 4 => 3, 3 => 0, 2 => 0, 1 => 0]);
+$check('The passed distribution drives the rows (not a re-query)', array_column($synthetic, 'count') === [4, 3, 0, 0, 0] && (int) $synthetic[0]['total'] === 7);
+
 // --- 11d. The analytics aggregations.
 
 $highest = $service->highestRatedBooks(5);

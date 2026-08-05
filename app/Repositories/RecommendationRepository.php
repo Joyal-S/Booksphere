@@ -87,6 +87,15 @@ final class RecommendationRepository
     /** Wishlist-save count of one book inside the trending window. */
     private const RECENT_WISHLIST_COUNT_SQL = '(SELECT COUNT(*) FROM wishlist w WHERE w.book_id = b.id AND w.created_at >= ?)';
 
+    /**
+     * The per-call INSERT cap of logRecommendations(): a shelf is
+     * bounded by its section limit anyway, this is the safety valve
+     * that keeps one (tampered) call from flooding the table. The
+     * per-user RETENTION is a separate rule - the config's
+     * retention_per_user, applied by pruneRecommendationLogs().
+     */
+    private const MAX_LOG_BATCH = 100;
+
     public function __construct(
         /**
          * The Book module's repository, injected for reuse: book
@@ -1277,7 +1286,7 @@ final class RecommendationRepository
             return;
         }
 
-        $rows = array_slice($entries, 0, 100);
+        $rows = array_slice($entries, 0, self::MAX_LOG_BATCH);
 
         $sql = 'INSERT INTO recommendation_logs (user_id, book_id, reason, score, signal)
                 VALUES ';

@@ -521,12 +521,18 @@ final class ReviewService
      * with the review count and the percentage, so the view only
      * prints what it receives.
      *
+     * A caller that already fetched the star distribution (the book
+     * detail page gets it inside ratingSummary()) hands it in via
+     * $distribution - otherwise the GROUP BY runs here. Reusing it
+     * keeps the aggregation at ONE query per book page.
+     *
+     * @param array<int, int>|null $distribution Star -> review count
      * @return array<int, array<string, mixed>> Rows with stars,
      *                                          count, percent
      */
-    public function ratingBreakdown(int $bookId): array
+    public function ratingBreakdown(int $bookId, ?array $distribution = null): array
     {
-        $distribution = $this->ratingDistribution($bookId);
+        $distribution = $distribution ?? $this->ratingDistribution($bookId);
         $total        = (int) array_sum($distribution);
         $percentages  = $this->percentageMap($distribution);
 

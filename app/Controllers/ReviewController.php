@@ -408,7 +408,8 @@ final class ReviewController extends Controller
             'active'     => 'books',
             'book'       => $book,
             'stats'      => ['average' => $summary['average'], 'count' => $summary['count']],
-            'breakdown'  => $this->service->ratingBreakdown($bookId),
+            // Reuse the summary's distribution - one GROUP BY per page.
+            'breakdown'  => $this->service->ratingBreakdown($bookId, $summary['distribution']),
             'reviews'    => $items,
             'myReview'   => $myReview,
             'canManage'  => $myReview !== null || auth_is_admin(),

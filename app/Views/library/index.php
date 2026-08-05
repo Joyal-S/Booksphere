@@ -126,22 +126,22 @@ $summaryCards = [
         </a>
     </div>
     <div class="library-hero-chips">
-        <div class="library-chip library-chip--streak" data-chip-streak title="Consecutive days with library activity">
-            <span class="library-chip-icon"><i class="fa-solid fa-fire" aria-hidden="true"></i></span>
+        <div class="library-stat-chip library-stat-chip--streak" data-chip-streak title="Consecutive days with library activity">
+            <span class="library-stat-chip-icon"><i class="fa-solid fa-fire" aria-hidden="true"></i></span>
             <div>
                 <strong data-chip-streak-value><?= $streakCurrent ?> day<?= $streakCurrent === 1 ? '' : 's' ?></strong>
                 <span>reading streak</span>
             </div>
         </div>
-        <div class="library-chip" data-chip-total title="Books in your library">
-            <span class="library-chip-icon"><i class="fa-solid fa-book" aria-hidden="true"></i></span>
+        <div class="library-stat-chip" data-chip-total title="Books in your library">
+            <span class="library-stat-chip-icon"><i class="fa-solid fa-book" aria-hidden="true"></i></span>
             <div>
                 <strong data-chip-total-value><?= $totalBooks ?></strong>
                 <span>books in library</span>
             </div>
         </div>
-        <div class="library-chip" data-chip-progress title="Average reading progress">
-            <span class="library-chip-icon"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i></span>
+        <div class="library-stat-chip" data-chip-progress title="Average reading progress">
+            <span class="library-stat-chip-icon"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i></span>
             <div>
                 <strong data-chip-progress-value><?= $progressAvg ?>%</strong>
                 <span>reading progress</span>

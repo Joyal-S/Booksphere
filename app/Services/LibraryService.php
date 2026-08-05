@@ -624,6 +624,15 @@ final class LibraryService
 
         if ($changes !== []) {
             $this->library->savePreferences($userId, $changes);
+
+            // The one library write outside the record CRUD family:
+            // keep the same audit trail (user + what changed), so a
+            // preference change is traceable like any other write.
+            $this->logger->info('library.preference_changed', [
+                'user_id' => $userId,
+                'sort'    => $sort,
+                'view'    => (string) $view,
+            ]);
         }
 
         return ['sort' => $sort, 'view' => $view];

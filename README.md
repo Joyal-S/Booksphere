@@ -6,8 +6,7 @@ A PHP MVC web application that helps readers discover books and get
 personalised recommendations. The codebase is intentionally simple and
 well-commented so it is easy to follow for an MCA student.
 
-> **Current phase: 8.5 – The Personal Library inside the Recommendation
-> Engine.**
+> **Current phase: 8.6 – the Personal Library audit & QA pass.**
 > The Book module is feature complete (CRUD, cover
 > upload, search, filters, sorting, pagination, grid/table view).
 > Phases 6.1–6.5 delivered the Recommendation Engine: six explainable
@@ -123,6 +122,29 @@ well-commented so it is easy to follow for an MCA student.
 > deduplicated "You may also like" sections, the library page's five
 > personal sections, and the profile's Reading Preferences & Insights
 > block – 147 new integration checks (1233 total).
+> **Phase 8.6** is the Personal Library audit & QA pass: the whole
+> module was re-audited end-to-end (backend, frontend, performance,
+> security, logging, accessibility, no-JS) and hardened WITHOUT new
+> features or redesigns. Backend: the personalized-shelf cache now
+> re-applies each caller's limit (a shelf cached under one size no
+> longer bleeds into another caller's), the dashboard logs the
+> `dashboard_recommended` signal only on fresh generation (the
+> because-you-read duplicate log removed), every library page runs the
+> exclusion set ONCE (own-library threading) instead of ~6 N+1 reads,
+> same-author suggestions batch into one query, book pages reuse the
+> rating-summary distribution (one GROUP BY instead of two), user
+> preference changes leave an audit entry, and a session whose user
+> row is gone answers a safe 404. Frontend: the 100%-finish confirm
+> now actually prompts (it was silently inert), failed filter /
+> statistics fetches restore the previous grid instead of leaving
+> skeletons forever, the streak chip refreshes after a write, remove /
+> bulk-remove are real CSRF forms that work with JavaScript OFF, the
+> `.library-chip` CSS collision was split into stat vs filter chips,
+> and a batch of accessibility fixes (aria-current on the view toggle,
+> live-link aria-disabled removed, decorative-icon aria, truthful
+> checkbox titles). Dead code removed; `skeleton-stat.php` deleted
+> (its markup was inlined in library.js). – 1243 automated checks
+> (10 new regression checks).
 
 ---
 
@@ -181,7 +203,16 @@ well-commented so it is easy to follow for an MCA student.
   Reviewed / Most Recommended sorts, the bulk move / favourite /
   delete actions, the per-card quick action menu, real review counts
   on the cards, and the dashboard + profile "My Library" blocks fed
-  by the shared LibraryService)
+  by the shared LibraryService),
+  Phase 8.5 (the library inside the recommendation engine: the
+  weighted library signal, explainable shelves, per-section caching,
+  the recommendation_logs audit table, the dashboard / book / library /
+  profile recommendation surfaces),
+  Phase 8.6 (the Personal Library audit & QA pass: cache-limit
+  correctness, N+1 elimination, one-time recommendation logging,
+  distribution reuse, preference + streak + 404 hardening, no-JS
+  remove/bulk forms, skeleton recovery, the .library-chip split, and
+  the accessibility fixes – 1243 checks)
 
 ## Folder structure
 
@@ -248,10 +279,11 @@ php tests/BrowseTest.php                       # Book module (69 checks)
 php tests/RecommendationArchitectureTest.php   # Recommendations (86 checks)
 php tests/PersonalizationTest.php              # Personal shelf (62 checks)
 php tests/RecommendationDashboardTest.php      # Dashboard UI (64 checks)
-php tests/RecommendationOptimizationTest.php   # Phase 6.5 (53 checks)
-php tests/ReviewTest.php                       # Reviews & Ratings (369 checks)
+php tests/RecommendationOptimizationTest.php   # Phase 6.5 + cache-limit (57 checks)
+php tests/RecommendationLibraryIntegrationTest.php  # Library x Engine (147 checks)
+php tests/ReviewTest.php                       # Reviews & Ratings (371 checks)
 php tests/ReviewIntegrationTest.php            # Reviews across pages (109 checks)
-php tests/LibraryTest.php                      # Personal Library (274 checks)
+php tests/LibraryTest.php                      # Personal Library (278 checks)
 ```
 
 The Browse suite covers search, filters, sorting, pagination, injection
@@ -335,7 +367,14 @@ page / profile with the accuracy figure), the guest and no-library
 behaviour, the retention pruning, the per-section cache and the
 rendered dashboard / book / library / profile blocks — and caught
 three real bugs (an un-applied section limit, a guest-logging crash,
-cross-section duplicates). **1233 checks total.** See
+cross-section duplicates). The Phase 8.6 suite additions close out
+the audit: the cache-hit limit-restore regression (a shelf cached
+under one caller's size now re-applies each caller's limit),
+`personalizedShelfIsCached()` as the dashboard's log-once gate, the
+precomputed-distribution reuse in `ratingBreakdown()`, the
+`library.preference_changed` audit entry, the streak in the
+statistics payload and the 404 subprocess probe for a session whose
+user row is gone. **1243 checks total.** See
 `docs/MANUAL_TEST_CHECKLIST.md` for the manual test plan.
 
 ## Documentation

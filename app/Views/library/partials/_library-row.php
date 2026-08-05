@@ -123,13 +123,17 @@ $statusIcons = [
         <a class="btn btn-sm btn-outline-secondary" href="/books/<?= $bookId ?>">
             <i class="fa-solid fa-eye me-1" aria-hidden="true"></i>Details
         </a>
-        <button class="btn btn-sm btn-outline-danger" type="button"
-                data-bs-toggle="modal" data-bs-target="#libraryDeleteModal"
-                data-delete-url="/library/<?= $recordId ?>/delete"
-                data-delete-title="<?= e($title) ?>">
-            <i class="fa-solid fa-trash" aria-hidden="true"></i>
-            <span class="visually-hidden">Remove <?= e($title) ?> from your library</span>
-        </button>
+        <!-- A real CSRF-protected form (the removal works without
+             JavaScript); library.js opens the confirmation modal from
+             it when scripts are running -->
+        <form method="post" action="/library/<?= $recordId ?>/delete" data-library-delete-form>
+            <input type="hidden" name="_token" value="<?= e(csrf_token()) ?>">
+            <button type="submit" class="btn btn-sm btn-outline-danger"
+                    data-delete-url="/library/<?= $recordId ?>/delete" data-delete-title="<?= e($title) ?>">
+                <i class="fa-solid fa-trash" aria-hidden="true"></i>
+                <span class="visually-hidden">Remove <?= e($title) ?> from your library</span>
+            </button>
+        </form>
 
         <!-- The Phase 8.4 quick action menu -->
         <div class="dropdown library-quick">

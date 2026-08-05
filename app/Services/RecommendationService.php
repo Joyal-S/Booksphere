@@ -378,6 +378,15 @@ final class RecommendationService
         $cached = $this->cacheRead($userId);
 
         if ($cached !== null) {
+            // A cached shelf was stored under the limit of the FIRST
+            // caller - re-apply THIS caller's limit (and recount the
+            // total) so a shelf cached with 5 items can still serve
+            // the book page's 6-item section, exactly like the
+            // library-section restore path does.
+            $items = $this->limitRecommendations((array) ($cached['items'] ?? []), $limit);
+            $cached['items'] = $items;
+            $cached['total'] = count($items);
+
             return $this->restoreResult($cached);
         }
 
@@ -1233,6 +1242,13 @@ final class RecommendationService
     ];
 
     /**
+     * How many of a user's library records the engine loads as the
+     * "never recommend my own books" exclusion set. Bounded: a huge
+     * library still yields a bounded IN-list for the filter.
+     */
+    private const LIBRARY_EXCLUSION_LIMIT = 200;
+
+    /**
      * The section catalogue, for the views and the tests.
      *
      * @return array<string, string>
@@ -1275,7 +1291,7 @@ final class RecommendationService
      *
      * @throws RecommendationException When the section key is unknown
      */
-    public function libraryRecommendations(int $userId, string $section = 'because_library', ?int $limit = null): RecommendationResult
+    public function libraryRecommendations(int $userId, string $section = 'because_library', ?int $limit = null, array $ownLibrary = []): RecommendationResult
     {
         $limit = $limit ?? RecommendationConfig::sectionLimit('dashboard');
 
@@ -1321,8 +1337,11 @@ final class RecommendationService
 
         $items = $this->scoreLibraryShelf($userId, $section);
 
+        // A caller that already fetched the user's library ids (one
+        // library page composes five shelves) hands them in here so
+        // this shelf does not re-read the table.
         $exclude = [
-            ...$this->repository->libraryBookIds($userId, 200),
+            ...($ownLibrary !== [] ? $ownLibrary : $this->repository->libraryBookIds($userId, self::LIBRARY_EXCLUSION_LIMIT)),
             ...$this->repository->wishlistBookIds($userId),
         ];
 
@@ -1409,15 +1428,17 @@ final class RecommendationService
             $limit,
         ));
 
-        // Same author: merge every author's shelf, dedupe later.
-        $merged = [];
+        // Same author: one batched read across every author of the
+        // anchor (a multi-author book used to run one query per
+        // author) - the service dedupes and limits after.
+        $authorIds = array_map(
+            fn (array $author): int => (int) $author['id'],
+            $this->repository->authorsForBook($bookId),
+        );
 
-        foreach ($this->repository->authorsForBook($bookId) as $author) {
-            $merged = array_merge($merged, $this->repository->booksByAuthor((int) $author['id'], $limit, $bookId));
-        }
-
+        $rows = $this->repository->booksInAuthors($authorIds, $limit * 3, $bookId);
         $sections['same_author'] = $serve($this->limitRecommendations(
-            $this->filterRecommendations($this->decorateCommunityItems($merged, 'By the same author as this book.'), [$bookId]),
+            $this->filterRecommendations($this->decorateCommunityItems($rows, 'By the same author as this book.'), [$bookId]),
             $limit,
         ));
 
@@ -1478,14 +1499,20 @@ final class RecommendationService
     {
         $limit = $limit ?? RecommendationConfig::sectionLimit('library');
 
-        // A user without a library gets honest empty sections - the
-        // page renders its empty states instead of fabricated
-        // shelves. (libraryRecommendations() alone cold-starts with
-        // the popularity fallback; the library page does not want
-        // "Because this is in your library" filled with popular
-        // books that have nothing to do with a library that does
-        // not exist.)
-        if ($this->repository->libraryBookIds($userId, 1) === []) {
+        // A user without a library gets honest empty sections: the
+        // page renders its empty states instead of fabricated shelves
+        // (libraryRecommendations() alone cold-starts with the
+        // popularity fallback, which nothing on this page would want
+        // for a library that does not exist).
+        //
+        // The exclusion set doubles as the "has a library" probe and
+        // is then loaded ONCE for the whole page ("never recommend my
+        // own books"): every shelf filters through the same ids, so
+        // one library page costs one library read instead of one per
+        // section.
+        $ownLibrary = $this->repository->libraryBookIds($userId, self::LIBRARY_EXCLUSION_LIMIT);
+
+        if ($ownLibrary === []) {
             return [
                 'because_in_library'  => [],
                 'people_also_saved'   => [],
@@ -1499,7 +1526,7 @@ final class RecommendationService
 
         // Because this is in your library (logged by
         // libraryRecommendations() itself - not re-logged here).
-        $sections['because_in_library'] = $this->libraryRecommendations($userId, 'because_library', $limit)->items;
+        $sections['because_in_library'] = $this->libraryRecommendations($userId, 'because_library', $limit, $ownLibrary)->items;
 
         // People who saved this also liked: one collaborative query
         // over the user's whole library.
@@ -1507,7 +1534,7 @@ final class RecommendationService
         $sections['people_also_saved'] = $this->excludeOwnLibrary($userId, $this->limitRecommendations(
             $this->decorateCommunityItems($rows, 'People who saved books from your library also liked this.'),
             $limit,
-        ));
+        ), $ownLibrary);
 
         // Favourite category / author shelves: the user's top
         // category and author (by books kept), minus their library.
@@ -1519,7 +1546,7 @@ final class RecommendationService
             $sections['favourite_category'] = $this->excludeOwnLibrary($userId, $this->limitRecommendations(
                 $this->decorateCommunityItems($rows, "Because you keep {$name} in your library."),
                 $limit,
-            ));
+            ), $ownLibrary);
         } else {
             $sections['favourite_category'] = [];
         }
@@ -1532,7 +1559,7 @@ final class RecommendationService
             $sections['favourite_author'] = $this->excludeOwnLibrary($userId, $this->limitRecommendations(
                 $this->decorateCommunityItems($rows, "Because you keep books by {$name} in your library."),
                 $limit,
-            ));
+            ), $ownLibrary);
         } else {
             $sections['favourite_author'] = [];
         }
@@ -1544,7 +1571,7 @@ final class RecommendationService
         $sections['recently_discovered'] = $this->excludeOwnLibrary($userId, $this->limitRecommendations(
             $this->decorateCommunityItems($rows, 'Recently discovered by other readers.'),
             $limit,
-        ));
+        ), $ownLibrary);
 
         $this->logSections($userId, $sections, ['because_in_library']);
 
@@ -1620,6 +1647,29 @@ final class RecommendationService
      * degrades to a warning - the shelf itself is never lost.
      *
      * @param array<int, array<string, mixed>> $items
+     */
+    /**
+     * Whether the user's personalized shelf is currently served from
+     * the cache - i.e. a call to getPersonalizedRecommendations()
+     * would NOT recompute it.
+     *
+     * Callers that log the shelf as "served" ask this BEFORE their
+     * read: on a cache hit nothing is logged (the rows were already
+     * logged when they were first generated), so the recommendation
+     * audit trail records every GENERATION once and repeated page
+     * renders never inflate it (the dashboard's
+     * 'dashboard_recommended' signal uses this gate).
+     */
+    public function personalizedShelfIsCached(int $userId): bool
+    {
+        return $userId > 0 && $this->cacheRead($userId) !== null;
+    }
+
+    /**
+     * Append one recommendation log entry per served book.
+     *
+     * @param array<int, array<string, mixed>> $items The served items
+     * @param string                           $signal The section key
      */
     public function logRecommendations(int $userId, array $items, string $signal): void
     {
@@ -2031,12 +2081,24 @@ final class RecommendationService
      * Drop every item whose book is already in the user's library
      * ("never recommend a book the user already keeps").
      *
+     * A caller that already fetched the user's library book ids
+     * (e.g. libraryPageRecommendations() composes several shelves
+     * per request) passes them in $ownLibrary - otherwise the set
+     * is fetched here. Sharing the set keeps one library page at
+     * ONE libraryBookIds() query instead of one per shelf.
+     *
      * @param array<int, array<string, mixed>> $items
+     * @param array<int, int>                  $ownLibrary Pre-fetched
+     *                                                    exclusion ids
      * @return array<int, array<string, mixed>>
      */
-    private function excludeOwnLibrary(int $userId, array $items): array
+    private function excludeOwnLibrary(int $userId, array $items, array $ownLibrary = []): array
     {
-        return $this->filterRecommendations($items, $this->repository->libraryBookIds($userId, 200));
+        $exclude = $ownLibrary !== []
+            ? $ownLibrary
+            : $this->repository->libraryBookIds($userId, self::LIBRARY_EXCLUSION_LIMIT);
+
+        return $this->filterRecommendations($items, $exclude);
     }
 
     /**

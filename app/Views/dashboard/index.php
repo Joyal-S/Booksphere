@@ -66,8 +66,11 @@ $collections   = $collections ?? [];
 // Phase 8.4: the Library Overview stats row is now the user's OWN
 // library numbers (read through the shared LibraryService). When the
 // module is not wired (standalone tests / controller without the
-// service) the previous placeholder row renders, so the page never
-// breaks.
+// service) the row is EMPTY and the section below renders nothing -
+// the section is skipped entirely, so the page never shows a fake
+// zeroed overview and never trips an undefined variable.
+$libraryStats = [];
+
 if ($libraryCounts !== []) {
     $libraryStats = [
         ['icon' => 'fa-book',             'label' => 'Total Books',        'value' => (int) ($libraryCounts['total'] ?? 0), 'tone' => 'primary'],
@@ -459,7 +462,9 @@ if ($libraryCounts !== []) {
 <!-- Section 10: Library Overview (Phase 8.4: the user's OWN library
      numbers when the library module is wired - the shared LibraryService
      is the source, never placeholder data). The collections quick
-     access strip below jumps straight to each Smart Collection. -->
+     access strip below jumps straight to each Smart Collection. The
+     whole section renders only when the library module is wired. -->
+<?php if ($libraryStats !== []): ?>
 <section class="dash-section" data-animate>
     <?php $section = ['eyebrow' => 'At a glance', 'title' => 'Library Overview', 'icon' => 'fa-chart-column']; ?>
     <?php require root_path('app/Views/components/section-header.php'); ?>
@@ -497,3 +502,4 @@ if ($libraryCounts !== []) {
         <?php endforeach; ?>
     </div>
 </section>
+<?php endif; ?>

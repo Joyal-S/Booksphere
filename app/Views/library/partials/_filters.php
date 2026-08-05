@@ -51,7 +51,7 @@ $viewQuery = static function (string $view, array $filters, array $prefs): array
 ?>
 <form class="card-base library-filter-bar" method="get" action="/library" role="search"
       data-library-filter-form data-filter-endpoint="/library/filter" data-sort-endpoint="/library/sort"
-      data-view-endpoint="/library/view-mode" data-view-mode="<?= e($prefs['view'] ?? 'grid') ?>">
+      data-view-mode="<?= e($prefs['view'] ?? 'grid') ?>">
 
     <div class="library-filter-search">
         <label class="visually-hidden" for="library-filter-q">Search your library</label>
@@ -136,7 +136,7 @@ $viewQuery = static function (string $view, array $filters, array $prefs): array
                 <a class="library-view-btn<?= ($prefs['view'] ?? 'grid') === $viewKey ? ' is-active' : '' ?>"
                    href="/library?<?= e(http_build_query($viewQuery($viewKey, $filters, $prefs))) ?>"
                    data-library-view="<?= e($viewKey) ?>"
-                   aria-pressed="<?= ($prefs['view'] ?? 'grid') === $viewKey ? 'true' : 'false' ?>"
+                   <?php if (($prefs['view'] ?? 'grid') === $viewKey): ?>aria-current="true"<?php endif; ?>
                    title="<?= ucfirst($viewKey) ?> view">
                     <i class="fa-solid <?= e($icon) ?>" aria-hidden="true"></i>
                     <span class="visually-hidden"><?= ucfirst($viewKey) ?> view</span>

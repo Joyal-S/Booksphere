@@ -51,8 +51,7 @@ $collectionMeta = [
         <?php $updated = (string) ($data['last_updated'] ?? ''); ?>
         <?php $updatedOn = $updated !== '' ? gmdate('M j', max(0, (int) strtotime($updated))) : ''; ?>
         <a class="library-collection library-collection--<?= e($key) ?><?= $activeShelf === $key ? ' is-active' : '' ?>"
-           href="<?= e($meta['url']) ?>" data-library-tab="<?= e($key) ?>"
-           <?php if ($count === 0): ?>aria-disabled="true" tabindex="0"<?php endif; ?>>
+           href="<?= e($meta['url']) ?>" data-library-tab="<?= e($key) ?>">
             <span class="library-collection-icon" aria-hidden="true"><i class="fa-solid <?= e($meta['icon']) ?>"></i></span>
             <span class="library-collection-body">
                 <strong class="library-collection-name"><?= e($meta['label']) ?></strong>

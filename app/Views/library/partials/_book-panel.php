@@ -123,8 +123,10 @@ $bookId           = (int) ($book['id'] ?? 0);
                     <?php endforeach; ?>
                 </select>
             </form>
-            <form method="post" action="/library/<?= $recordId ?>/delete" data-library-panel-remove
-                  onsubmit="return confirm('Remove this book from your library?');">
+            <!-- The JS handler (library.js handlePanelRemove) asks the
+                 one confirmation; the no-JS path is the plain POST +
+                 flash redirect used by every other library control -->
+            <form method="post" action="/library/<?= $recordId ?>/delete" data-library-panel-remove>
                 <input type="hidden" name="_token" value="<?= e(csrf_token()) ?>">
                 <button type="submit" class="btn btn-sm btn-outline-danger">
                     <i class="fa-solid fa-trash me-1" aria-hidden="true"></i>Remove from Library
