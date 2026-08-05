@@ -59,23 +59,31 @@ $projectFacts = [
 $targetAudience = ['Readers', 'Students', 'Researchers', 'Book Enthusiasts'];
 
 ?>
-<!-- ── HERO ── -->
 <section class="landing-hero">
+
+    <!-- Full-width header: its inner content reuses the exact same centred
+         container as the hero grid below, so the logo and the auth actions
+         land precisely on the hero content edges. -->
+    <header class="landing-header">
+        <div class="container">
+            <nav class="landing-navbar" aria-label="Primary">
+                <a class="landing-logo" href="/login">
+                    <span class="landing-logo-icon" aria-hidden="true">📖</span>
+                    <span class="landing-logo-name">BookSphere</span>
+                </a>
+                <div class="landing-auth">
+                    <a class="btn btn-sm landing-btn landing-btn--ghost rounded-pill" href="/login">Log in</a>
+                    <a class="btn btn-sm landing-btn landing-btn--solid rounded-pill" href="/register">Get started</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
     <div class="container">
         <div class="landing-hero-grid">
 
             <!-- Left: text -->
             <div>
-                <nav class="landing-navbar" aria-label="Primary">
-                    <a class="landing-logo" href="/login">
-                        <span class="landing-logo-icon" aria-hidden="true">📖</span>
-                        <span class="landing-logo-name">BookSphere</span>
-                    </a>
-                    <div class="landing-auth">
-                        <a class="btn btn-sm landing-btn landing-btn--ghost rounded-pill" href="/login">Log in</a>
-                        <a class="btn btn-sm landing-btn landing-btn--solid rounded-pill" href="/register">Get started</a>
-                    </div>
-                </nav>
 
                 <span class="landing-eyebrow">Intelligent Platform</span>
                 <h1 class="landing-title">

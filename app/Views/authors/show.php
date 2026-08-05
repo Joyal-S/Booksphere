@@ -34,10 +34,27 @@ $recent    = $stats['recentReviews'] ?? [];
 $reviewers = $stats['topReviewers'] ?? [];
 
 ?>
-<div class="page-intro">
-    <p class="eyebrow">Author page</p>
-    <h1><?= e($author['name']) ?></h1>
-    <p class="lead">How the community rated the books of this author.</p>
+<div class="page-intro d-flex flex-wrap align-items-end justify-content-between gap-3">
+    <div>
+        <p class="eyebrow">Author page</p>
+        <h1><?= e($author['name']) ?></h1>
+        <p class="lead">How the community rated the books of this author.</p>
+    </div>
+
+    <?php
+    // Phase 9.2: the Follow / Following control - the button state
+    // comes from the controller (the session user's row) and the
+    // follower count from the shared FollowService, so this control
+    // and the /authors/{id}/followers page always agree. The lead
+    // above stays short; the count lives inside the control itself.
+    $follow = [
+        'author_id' => (int) $author['id'],
+        'author'    => (string) $author['name'],
+        'followed'  => (bool) ($followed ?? false),
+        'followers' => (int) ($followers ?? 0),
+    ];
+    ?>
+    <?php require root_path('app/Views/components/follow-button.php'); ?>
 </div>
 
 <?php if ($reviews === 0): ?>

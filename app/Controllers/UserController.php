@@ -9,7 +9,9 @@ use BookSphere\App\Core\Request;
 use BookSphere\App\Core\Response;
 use BookSphere\App\Core\Validator;
 use BookSphere\App\Models\User;
+use BookSphere\App\Policies\FollowPolicy;
 use BookSphere\App\Services\AuthService;
+use BookSphere\App\Services\FollowService;
 use BookSphere\App\Services\LibraryService;
 use BookSphere\App\Services\RecommendationService;
 use BookSphere\App\Services\ReviewService;
@@ -43,6 +45,11 @@ final class UserController extends Controller
         // Recommendation Accuracy figure and the books influencing
         // the shelves) comes from the SHARED RecommendationService.
         private readonly ?RecommendationService $recommendations = null,
+        // Phase 9.2: the Follow Authors module - the following list
+        // reads through the SAME shared FollowService, and the fine
+        // owner-or-admin gate through FollowPolicy.
+        private readonly ?FollowService $follows = null,
+        private readonly ?FollowPolicy $followPolicy = null,
     ) {}
 
     public function show(Request $request, array $params = []): void
@@ -206,5 +213,34 @@ final class UserController extends Controller
 
         session()->flash('success', 'Your password has been changed.');
         Response::redirect('/profile');
+    }
+
+    /**
+     * "My Followed Authors" (GET /profile/following, Phase 9.2):
+     * the signed-in user's followed authors, newest first, rendered
+     * from the SHARED FollowService (the same instance the author
+     * page uses, so the list and the follow buttons can never
+     * disagree).
+     *
+     * The list is always the session user's own (the user id comes
+     * from the session, never the URL); the fine owner-or-admin gate
+     * runs here through FollowPolicy as defence in depth.
+     */
+    public function following(Request $request, array $params = []): void
+    {
+        $userId = (int) $this->auth->id();
+
+        if ($this->followPolicy !== null && !$this->followPolicy->canViewList($userId, $userId)) {
+            Response::error(403, 'You are not allowed to view this list.');
+        }
+
+        $this->view('profile.following', [
+            'title'    => 'Authors I follow',
+            'active'   => 'profile',
+            'authors'  => $this->follows?->followingList($userId) ?? [],
+            // The per-row follow button state (the whole list belongs
+            // to the session user, so every row is "following").
+            'followed' => true,
+        ]);
     }
 }

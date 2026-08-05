@@ -27,7 +27,7 @@ final class User
     public function findById(int $id): ?array
     {
         $rows = db()->query(
-            'SELECT id, full_name, email, role, created_at, updated_at
+            'SELECT id, full_name, email, role, remember_token, created_at, updated_at
              FROM users
              WHERE id = ?',
             [$id],
@@ -97,6 +97,21 @@ final class User
              SET password = ?, updated_at = ?
              WHERE id = ?',
             [$passwordHash, $this->now(), $id],
+        ) > 0;
+    }
+
+    /**
+     * Store (or clear) the hash of the user's "remember me" token.
+     *
+     * NULL revokes every remember cookie this account has issued.
+     */
+    public function setRememberToken(int $id, ?string $tokenHash): bool
+    {
+        return db()->execute(
+            'UPDATE users
+             SET remember_token = ?, updated_at = ?
+             WHERE id = ?',
+            [$tokenHash, $this->now(), $id],
         ) > 0;
     }
 

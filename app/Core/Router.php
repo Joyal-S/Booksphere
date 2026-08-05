@@ -73,6 +73,36 @@ final class Router
     }
 
     /**
+     * Register a PATCH route (Phase 9.2: partial state changes like
+     * marking a notification read). Mirrors post() exactly; plain
+     * HTML forms reach it through the _method override of
+     * Request::method(), which rewrites POST + _method=PATCH.
+     *
+     * @param string          $path       URL path, e.g. "/notifications/{id}"
+     * @param callable|array  $action     Controller callable
+     * @param array           $middleware Middleware instances that run before the action
+     */
+    public function patch(string $path, callable|array $action, array $middleware = []): void
+    {
+        $this->register('PATCH', $path, $action, $middleware);
+    }
+
+    /**
+     * Register a DELETE route (Phase 9.2: removal actions like
+     * unfollowing an author). Mirrors post() exactly; plain HTML
+     * forms reach it through the _method override of
+     * Request::method(), which rewrites POST + _method=DELETE.
+     *
+     * @param string          $path       URL path, e.g. "/authors/{id}/follow"
+     * @param callable|array  $action     Controller callable
+     * @param array           $middleware Middleware instances that run before the action
+     */
+    public function delete(string $path, callable|array $action, array $middleware = []): void
+    {
+        $this->register('DELETE', $path, $action, $middleware);
+    }
+
+    /**
      * Dispatch the current request to its controller action.
      *
      * Resolution order:

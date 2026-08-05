@@ -1,0 +1,212 @@
+/**
+ * follow.css
+ *
+ * The Follow Authors module surface (Phase 9.2): the Follow /
+ * Following toggle, the follower count link and the two list pages
+ * (the author's followers and the user's "Authors I follow").
+ *
+ * Every colour, radius and shadow comes from the design-system
+ * tokens in app.css - the module never hardcodes a value, so the
+ * dark-mode flips of [data-bs-theme="dark"] apply automatically.
+ *
+ * Layout:
+ *     1. The follow control (button + count link)
+ *     2. The followers list page (people rows)
+ *     3. Motion & accessibility
+ */
+
+/* =========================================================
+   1. The follow control
+   ========================================================= */
+
+.follow-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.625rem;
+    flex-shrink: 0;
+}
+
+/* The toggle itself is a real button inside a small CSRF form;
+   follow.js swaps the state classes, the label and the icon on the
+   JSON answer. */
+.follow-form {
+    margin: 0;
+}
+
+.follow-form .btn {
+    min-height: 44px;               /* touch target >= 44px */
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-full);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background-color 0.2s ease, border-color 0.2s ease,
+                color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Not following: the solid primary button. */
+.btn-follow {
+    background: var(--primary);
+    border: 1px solid var(--primary);
+    color: var(--primary-contrast);
+}
+
+.btn-follow:hover:not(:disabled) {
+    background: var(--primary-strong);
+    border-color: var(--primary-strong);
+    color: var(--primary-contrast);
+    box-shadow: var(--shadow-primary);
+}
+
+.btn-follow:focus-visible {
+    outline: 3px solid var(--bs-focus-ring-color);
+    outline-offset: 2px;
+}
+
+/* Already following: the soft "Following" state with a check. */
+.btn-following {
+    background: var(--primary-soft);
+    border: 1px solid var(--primary-soft);
+    color: var(--primary-strong);
+}
+
+.btn-following:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--primary-soft) 82%, var(--primary));
+    border-color: var(--primary-soft);
+    color: var(--primary-strong);
+}
+
+.btn-following:focus-visible {
+    outline: 3px solid var(--bs-focus-ring-color);
+    outline-offset: 2px;
+}
+
+/* The busy state while the fetch is in flight: the icon spins, the
+   control stays the same size so the layout never jumps. */
+.follow-form.is-busy .btn {
+    pointer-events: none;
+    opacity: 0.75;
+}
+
+.follow-form.is-busy [data-follow-icon] {
+    animation: follow-spin 0.8s linear infinite;
+}
+
+@keyframes follow-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* The follower count link next to the button. */
+.follow-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: var(--radius-full);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.follow-count:hover {
+    color: var(--primary);
+    border-color: var(--border-strong);
+}
+
+.follow-count:focus-visible {
+    outline: 3px solid var(--bs-focus-ring-color);
+    outline-offset: 2px;
+}
+
+/* The compact variant for card rows: no label, no count link. */
+.follow-control--compact .follow-form .btn {
+    min-height: 36px;
+    padding: 0.375rem 0.875rem;
+}
+
+/* =========================================================
+   2. The list pages
+   ========================================================= */
+
+/* Followers list rows. */
+.follow-people {
+    display: flex;
+    flex-direction: column;
+}
+
+.follow-person {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.follow-person:last-child {
+    border-bottom: 0;
+}
+
+.follow-person-avatar {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-full);
+    background: var(--primary-soft);
+    color: var(--primary-strong);
+    font-weight: 700;
+    font-size: 1.125rem;
+}
+
+.follow-person-link {
+    color: var(--muted);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 0.2s ease;
+}
+
+.follow-person-link:hover {
+    color: var(--primary);
+}
+
+.follow-person-link:focus-visible {
+    outline: 3px solid var(--bs-focus-ring-color);
+    outline-offset: 2px;
+}
+
+/* =========================================================
+   3. Motion & accessibility
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+    .follow-form.is-busy [data-follow-icon] {
+        animation: none;
+    }
+
+    .follow-form .btn,
+    .follow-count,
+    .follow-person-link {
+        transition: none;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .follow-person-link {
+        display: none;              /* the name stays the link */
+    }
+
+    .follow-person {
+        padding: 1rem;
+    }
+}

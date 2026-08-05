@@ -252,9 +252,12 @@ $mostHelpful     = $reputation['mostHelpful'] ?? null;
     <?php endif; ?>
 </div>
 
-<div class="d-flex gap-2 mt-4" style="max-width: 640px;">
+<div class="d-flex gap-2 mt-4 flex-wrap" style="max-width: 640px;">
     <a class="btn btn-primary" href="/profile/edit"><i class="fa-solid fa-pen me-1" aria-hidden="true"></i> Edit profile</a>
     <a class="btn btn-outline-secondary" href="/change-password"><i class="fa-solid fa-key me-1" aria-hidden="true"></i> Change password</a>
+    <?php // Phase 9.2: the Follow Authors module - the discoverable
+          // door to the user's "Authors I follow" list. ?>
+    <a class="btn btn-outline-secondary" href="/profile/following"><i class="fa-solid fa-users me-1" aria-hidden="true"></i> Authors I follow</a>
 </div>
 
 <?php

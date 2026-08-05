@@ -1,0 +1,1077 @@
+/**
+ * auth.css
+ *
+ * The stylesheet of the standalone authentication pages
+ * (layouts/auth.php). The palette mirrors the application's design
+ * tokens (public/assets/css/app.css) - violet brand, Inter UI font,
+ * Fraunces display serif - so the sign-in screens feel like the same
+ * product as the dashboard, not a detached mockup. The layout
+ * structure (split brand panel + form card) follows the approved
+ * auth design reference.
+ *
+ * Theme handling: [data-bs-theme="dark"] on <html> (set by
+ * auth-head.php before paint from the shared "booksphere-theme"
+ * preference) drives every dark-mode override in this file.
+ */
+
+/* =========================================================
+   1. Design tokens
+   ========================================================= */
+:root {
+    --au-primary:        #5b4bdb;
+    --au-primary-strong: #4536c4;
+    --au-primary-soft:   #eeecff;
+    --au-accent:         #8b80ff;
+    --au-accent-soft:    #b8adff;
+
+    --au-canvas:         #f6f7fb;
+    --au-surface:        #ffffff;
+    --au-surface-2:      #f3f5fa;
+    --au-text:           #172033;
+    --au-muted:          #5c6b84;
+    --au-faint:          #8b96ab;
+    --au-border:         #e5e9f2;
+    --au-border-strong:  #d5dbe8;
+
+    --au-success:        #16803c;
+    --au-success-soft:   #e4f5ea;
+    --au-danger:         #c43131;
+    --au-danger-soft:    #fae7e7;
+    --au-warning:        #a55c00;
+    --au-warning-soft:   #fbf0de;
+
+    --au-brand-from:     #17103d;
+    --au-brand-mid:      #2c2270;
+    --au-brand-to:       #4536c4;
+    --au-brand-line:     rgba(255, 255, 255, 0.06);
+    --au-brand-glow:     rgba(139, 128, 255, 0.22);
+
+    --au-radius-sm: 8px;
+    --au-radius:    13px;
+    --au-radius-lg: 20px;
+    --au-radius-xl: 24px;
+
+    --au-shadow-sm: 0 1px 3px rgb(23 32 51 / 0.05);
+    --au-shadow:    0 8px 24px rgb(23 32 51 / 0.07);
+    --au-shadow-lg: 0 32px 80px rgb(23 32 51 / 0.14);
+    --au-shadow-primary: 0 14px 36px rgb(91 75 219 / 0.28);
+
+    color-scheme: light;
+}
+
+[data-bs-theme="dark"] {
+    --au-primary:        #8b80ff;
+    --au-primary-strong: #b0a6ff;
+    --au-primary-soft:   #29245c;
+    --au-accent:         #a89dff;
+    --au-accent-soft:    #7c6ff0;
+
+    --au-canvas:         #0c1424;
+    --au-surface:        #152036;
+    --au-surface-2:      #1b2942;
+    --au-text:           #e6edf7;
+    --au-muted:          #a7b2c4;
+    --au-faint:          #75839a;
+    --au-border:         #26354e;
+    --au-border-strong:  #35486a;
+
+    --au-success:        #4ade80;
+    --au-success-soft:   #16301f;
+    --au-danger:         #f87171;
+    --au-danger-soft:    #331616;
+    --au-warning:        #fbbf24;
+    --au-warning-soft:   #33260e;
+
+    --au-shadow-sm: 0 1px 3px rgb(0 0 0 / 0.35);
+    --au-shadow:    0 8px 24px rgb(0 0 0 / 0.4);
+    --au-shadow-lg: 0 32px 80px rgb(0 0 0 / 0.55);
+    --au-shadow-primary: 0 14px 36px rgb(139 128 255 / 0.22);
+
+    color-scheme: dark;
+}
+
+/* =========================================================
+   2. Base
+   ========================================================= */
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body.auth-page {
+    margin: 0;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--au-text);
+    background: var(--au-canvas);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+.auth-page a {
+    color: var(--au-primary);
+    text-decoration: none;
+}
+
+.auth-page a:hover {
+    text-decoration: none;
+}
+
+.auth-page :focus-visible {
+    outline: 2px solid var(--au-primary);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+.auth-hidden {
+    display: none !important;
+}
+
+.auth-skip {
+    position: absolute;
+    top: -60px;
+    left: 16px;
+    z-index: 200;
+    padding: 10px 16px;
+    border-radius: var(--au-radius-sm);
+    background: var(--au-primary);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    transition: top 0.2s ease;
+}
+
+.auth-skip:focus {
+    top: 12px;
+}
+
+/* =========================================================
+   3. Shell: split brand panel + form column
+   ========================================================= */
+.auth-shell {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+}
+
+/* --- Left: brand panel ----------------------------------- */
+.auth-brand {
+    position: relative;
+    flex: 0 0 40%;
+    max-width: 40%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 56px 60px 52px;
+    overflow: hidden;
+    background: linear-gradient(158deg, var(--au-brand-from) 0%, var(--au-brand-mid) 45%, var(--au-brand-to) 130%);
+    color: #fff;
+}
+
+.auth-brand-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(var(--au-brand-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--au-brand-line) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+}
+
+.auth-brand-glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 95% 70% at 50% 45%, var(--au-brand-glow) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+/* Logo */
+.auth-brand-top {
+    position: relative;
+    z-index: 1;
+}
+
+.auth-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 13px;
+    color: inherit;
+}
+
+.auth-logo-mark {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--au-primary) 0%, var(--au-accent) 100%);
+    box-shadow: 0 6px 18px rgb(91 75 219 / 0.45);
+}
+
+.auth-logo-name {
+    display: block;
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    font-size: 19px;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    color: #fff;
+}
+
+.auth-logo-tagline {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--au-accent-soft);
+    margin-top: 4px;
+    opacity: 0.9;
+}
+
+/* Illustration */
+.auth-brand-middle {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px 0;
+}
+
+.auth-illustration {
+    width: 100%;
+    max-width: 340px;
+    animation: authFloatSlow 6s ease-in-out infinite;
+}
+
+.auth-illustration svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.auth-float {
+    animation: authFloat 4s ease-in-out infinite;
+}
+
+.auth-float-slow {
+    animation: authFloatSlow 5s ease-in-out infinite;
+}
+
+/* Brand copy + stats */
+.auth-brand-bottom {
+    position: relative;
+    z-index: 1;
+}
+
+.auth-brand-headline {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 300;
+    font-size: 23px;
+    line-height: 1.45;
+    color: rgb(255 255 255 / 0.94);
+    margin: 0 0 12px;
+}
+
+.auth-brand-headline em {
+    font-style: italic;
+    font-weight: 400;
+    color: #fff;
+}
+
+.auth-brand-sub {
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: rgb(255 255 255 / 0.5);
+    margin: 0 0 28px;
+}
+
+.auth-brand-stats {
+    display: flex;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    border-radius: var(--au-radius-lg);
+    overflow: hidden;
+    background: rgb(255 255 255 / 0.05);
+    backdrop-filter: blur(4px);
+}
+
+.auth-brand-stat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 8px;
+    border-right: 1px solid rgb(255 255 255 / 0.1);
+}
+
+.auth-brand-stat:last-child {
+    border-right: none;
+}
+
+.auth-brand-stat-value {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 700;
+    font-size: 19px;
+    letter-spacing: -0.02em;
+    color: var(--au-accent-soft);
+}
+
+.auth-brand-stat-label {
+    font-size: 11.5px;
+    font-weight: 500;
+    color: rgb(255 255 255 / 0.52);
+    margin-top: 4px;
+}
+
+/* --- Right: form column ----------------------------------- */
+.auth-main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 56px 80px;
+}
+
+.auth-column {
+    width: 100%;
+    max-width: 484px;
+    display: flex;
+    flex-direction: column;
+}
+
+.auth-mobile-brand {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 32px;
+}
+
+.auth-mobile-mark {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--au-primary), var(--au-accent));
+}
+
+.auth-mobile-name {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+/* =========================================================
+   4. Flash alerts
+   ========================================================= */
+.auth-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    border-radius: var(--au-radius);
+    padding: 13px 16px;
+    margin-bottom: 20px;
+    font-size: 13.5px;
+    line-height: 1.55;
+}
+
+.auth-alert svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.auth-alert p {
+    margin: 0;
+}
+
+.auth-alert--success {
+    background: var(--au-success-soft);
+    border: 1px solid rgb(22 128 60 / 0.25);
+    color: var(--au-success);
+}
+
+.auth-alert--danger {
+    background: var(--au-danger-soft);
+    border: 1px solid rgb(196 49 49 / 0.25);
+    color: var(--au-danger);
+}
+
+/* =========================================================
+   5. Card + tabs
+   ========================================================= */
+.auth-card {
+    width: 100%;
+    background: var(--au-surface);
+    border-radius: var(--au-radius-xl);
+    padding: 44px 48px 36px;
+    box-shadow:
+        0 0 0 1px rgb(23 32 51 / 0.04),
+        0 2px 6px rgb(23 32 51 / 0.04),
+        0 8px 24px rgb(23 32 51 / 0.06),
+        var(--au-shadow-lg);
+    transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.auth-tabs {
+    display: inline-flex;
+    gap: 4px;
+    background: var(--au-surface-2);
+    border-radius: 13px;
+    padding: 5px;
+    margin-bottom: 36px;
+}
+
+.auth-tab {
+    padding: 9px 22px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--au-muted);
+    transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-tab:hover {
+    color: var(--au-text);
+}
+
+.auth-tab--active {
+    background: var(--au-surface);
+    color: var(--au-text);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgb(23 32 51 / 0.08), 0 2px 8px rgb(23 32 51 / 0.06);
+}
+
+[data-bs-theme="dark"] .auth-tab--active {
+    background: rgb(255 255 255 / 0.1);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+}
+
+/* =========================================================
+   6. Screen header
+   ========================================================= */
+.auth-screen-header {
+    margin-bottom: 30px;
+}
+
+.auth-screen-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 13px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--au-primary);
+    background: var(--au-primary-soft);
+    border: 1px solid rgb(91 75 219 / 0.2);
+}
+
+.auth-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    font-size: 30px;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: var(--au-text);
+    margin: 0 0 10px;
+}
+
+.auth-sub {
+    font-size: 14.5px;
+    line-height: 1.65;
+    color: var(--au-muted);
+    margin: 0;
+}
+
+/* =========================================================
+   7. Back link
+   ========================================================= */
+.auth-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--au-muted);
+    margin-bottom: 28px;
+    transition: opacity 0.18s ease;
+}
+
+.auth-back:hover {
+    opacity: 0.65;
+    color: var(--au-muted);
+}
+
+.auth-back--center {
+    justify-content: center;
+    margin: 20px 0 0;
+}
+
+/* =========================================================
+   8. Form fields
+   ========================================================= */
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.auth-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.auth-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.auth-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--au-muted);
+    margin-bottom: 8px;
+}
+
+.auth-input-wrap {
+    display: flex;
+    align-items: center;
+    height: 52px;
+    border-radius: var(--au-radius);
+    border: 1.5px solid var(--au-border-strong);
+    background: var(--au-surface);
+    transition: border-color 0.22s ease, box-shadow 0.25s ease, background 0.2s ease;
+}
+
+[data-bs-theme="dark"] .auth-input-wrap {
+    background: rgb(255 255 255 / 0.05);
+}
+
+.auth-input-wrap:focus-within {
+    border-color: var(--au-primary);
+    box-shadow: 0 0 0 4px rgb(91 75 219 / 0.15);
+}
+
+.auth-field--error .auth-input-wrap {
+    border-color: var(--au-danger);
+    box-shadow: 0 0 0 4px rgb(196 49 49 / 0.12);
+}
+
+.auth-input-icon {
+    padding-left: 15px;
+    color: var(--au-faint);
+    display: flex;
+    flex-shrink: 0;
+    transition: color 0.22s ease;
+}
+
+.auth-input-wrap:focus-within .auth-input-icon {
+    color: var(--au-primary);
+}
+
+.auth-input {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14.5px;
+    color: var(--au-text);
+    caret-color: var(--au-primary);
+    padding: 0 14px;
+    line-height: 1.5;
+}
+
+/* Neutralise the browser's autofill highlight (Chrome/Edge/Safari
+   light blue, Firefox beige) so idle fields always show the same
+   surface background as the card. The inset shadow paints the input
+   with the wrap colour; instead of leaving it as the UA font colour,
+   text keeps --au-text. The eons-long background transition stops the
+   colour from animating in and out while a value is being filled. */
+.auth-input:autofill,
+.auth-input:-webkit-autofill,
+.auth-input:-webkit-autofill:hover,
+.auth-input:-webkit-autofill:focus,
+.auth-input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 100px var(--au-surface) inset;
+    box-shadow: 0 0 0 100px var(--au-surface) inset;
+    -webkit-text-fill-color: var(--au-text);
+    caret-color: var(--au-primary);
+    transition: background-color 999999s ease-out 0s;
+}
+
+[data-bs-theme="dark"] .auth-input:autofill,
+[data-bs-theme="dark"] .auth-input:-webkit-autofill,
+[data-bs-theme="dark"] .auth-input:-webkit-autofill:hover,
+[data-bs-theme="dark"] .auth-input:-webkit-autofill:focus,
+[data-bs-theme="dark"] .auth-input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 100px rgb(255 255 255 / 0.05) inset;
+    box-shadow: 0 0 0 100px rgb(255 255 255 / 0.05) inset;
+}
+
+.auth-input::placeholder {
+    color: var(--au-faint);
+    opacity: 1;
+}
+
+.auth-eye {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    margin-right: 6px;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    color: var(--au-faint);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: color 0.18s ease, background 0.18s ease;
+}
+
+.auth-eye:hover {
+    color: var(--au-primary);
+    background: var(--au-primary-soft);
+}
+
+.auth-field-error {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--au-danger);
+    margin: 7px 0 0;
+}
+
+.auth-field-error svg {
+    flex-shrink: 0;
+}
+
+.auth-field-hint {
+    font-size: 12px;
+    color: var(--au-faint);
+    margin: 7px 0 0;
+}
+
+/* =========================================================
+   9. Password strength meter
+   ========================================================= */
+.auth-strength {
+    margin-top: -6px;
+}
+
+.auth-strength-bars {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+
+.auth-strength-bar {
+    flex: 1;
+    height: 3px;
+    border-radius: 99px;
+    background: var(--au-border);
+    transition: background 0.3s ease;
+}
+
+.auth-strength-label {
+    font-size: 11px;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* =========================================================
+   10. Checkbox
+   ========================================================= */
+.auth-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.auth-check-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    margin: 0;
+}
+
+.auth-check-box {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    border-radius: 5px;
+    border: 1.5px solid var(--au-border-strong);
+    background: var(--au-surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.auth-check-box svg {
+    display: none;
+}
+
+.auth-check-input:checked ~ .auth-check-box {
+    background: var(--au-primary);
+    border-color: var(--au-primary);
+    box-shadow: 0 1px 5px rgb(91 75 219 / 0.32);
+}
+
+.auth-check-input:checked ~ .auth-check-box svg {
+    display: block;
+}
+
+.auth-check-input:focus-visible ~ .auth-check-box {
+    outline: 2px solid var(--au-primary);
+    outline-offset: 2px;
+}
+
+.auth-check-label {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--au-muted);
+}
+
+.auth-check-label strong {
+    color: var(--au-primary);
+    font-weight: 600;
+}
+
+.auth-check--error .auth-check-box {
+    border-color: var(--au-danger);
+}
+
+.auth-row {
+    display: flex;
+    align-items: center;
+}
+
+.auth-row--between {
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.auth-link {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--au-primary);
+    transition: opacity 0.18s ease;
+    white-space: nowrap;
+}
+
+.auth-link:hover {
+    opacity: 0.72;
+    color: var(--au-primary);
+}
+
+/* =========================================================
+   11. Buttons
+   ========================================================= */
+.auth-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    cursor: pointer;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    padding: 15px 22px;
+    border-radius: var(--au-radius);
+    transition: box-shadow 0.22s ease, transform 0.18s ease, background 0.2s ease;
+}
+
+.auth-btn--primary {
+    color: #fff;
+    background: linear-gradient(135deg, var(--au-primary-strong) 0%, var(--au-primary) 45%, var(--au-accent) 100%);
+    box-shadow: var(--au-shadow-primary);
+}
+
+.auth-btn--primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 44px rgb(91 75 219 / 0.36);
+    color: #fff;
+}
+
+.auth-btn--primary:active:not(:disabled) {
+    transform: translateY(0) scale(0.99);
+}
+
+.auth-btn--primary:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.auth-btn--block {
+    width: 100%;
+}
+
+.auth-spin {
+    display: inline-block;
+    animation: authSpin 0.9s linear infinite;
+}
+
+/* =========================================================
+   12. Switch link under the card
+   ========================================================= */
+.auth-switch {
+    text-align: center;
+    font-size: 13.5px;
+    color: var(--au-muted);
+    margin: 26px 0 0;
+}
+
+.auth-switch .auth-link {
+    font-size: 13.5px;
+}
+
+/* =========================================================
+   13. Success state + demo note
+   ========================================================= */
+.auth-success {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 10px 0 4px;
+}
+
+.auth-success-badge {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    margin-bottom: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    background: linear-gradient(135deg, var(--au-primary), var(--au-accent));
+    box-shadow: var(--au-shadow-primary);
+}
+
+.auth-success-badge--muted {
+    background: var(--au-surface-2);
+    color: var(--au-faint);
+    box-shadow: none;
+    border: 1px solid var(--au-border);
+}
+
+.auth-success-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    font-size: 23px;
+    letter-spacing: -0.01em;
+    color: var(--au-text);
+    margin: 0 0 10px;
+}
+
+.auth-success-text {
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--au-muted);
+    margin: 0 0 28px;
+}
+
+.auth-demo-note {
+    width: 100%;
+    text-align: left;
+    background: var(--au-warning-soft);
+    border: 1px solid rgb(165 92 0 / 0.25);
+    border-radius: var(--au-radius);
+    padding: 14px 16px;
+    margin-bottom: 24px;
+}
+
+.auth-demo-note p {
+    font-size: 12.5px;
+    color: var(--au-warning);
+    margin: 0 0 6px;
+}
+
+.auth-demo-note a {
+    font-size: 13px;
+    font-weight: 600;
+    word-break: break-all;
+}
+
+/* =========================================================
+   14. Page footer
+   ========================================================= */
+.auth-footer {
+    margin-top: 36px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.auth-footer-links {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.auth-footer-links a {
+    font-size: 12px;
+    color: var(--au-faint);
+    transition: opacity 0.15s ease;
+}
+
+.auth-footer-links a:hover {
+    opacity: 0.65;
+    color: var(--au-faint);
+}
+
+.auth-footer-dot {
+    color: var(--au-border-strong);
+}
+
+.auth-copyright {
+    font-size: 11px;
+    color: var(--au-faint);
+    margin: 0;
+    opacity: 0.85;
+}
+
+/* =========================================================
+   15. Theme toggle
+   ========================================================= */
+#auth-theme-toggle {
+    position: fixed;
+    top: 20px;
+    right: 24px;
+    z-index: 100;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--au-border);
+    background: var(--au-surface);
+    color: var(--au-muted);
+    cursor: pointer;
+    box-shadow: var(--au-shadow-sm);
+    transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+
+#auth-theme-toggle:hover {
+    transform: scale(1.08);
+    color: var(--au-primary);
+}
+
+/* =========================================================
+   16. Animations
+   ========================================================= */
+@keyframes authFloat {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-8px); }
+}
+
+@keyframes authFloatSlow {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-10px); }
+}
+
+@keyframes authSpin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    .auth-illustration,
+    .auth-float,
+    .auth-float-slow {
+        animation: none;
+    }
+
+    .auth-btn,
+    #auth-theme-toggle {
+        transition: none;
+    }
+}
+
+/* =========================================================
+   17. Responsive
+   ========================================================= */
+@media (max-width: 1100px) {
+    .auth-main {
+        padding: 48px;
+    }
+}
+
+@media (max-width: 900px) {
+    .auth-brand {
+        display: none;
+    }
+
+    .auth-main {
+        padding: 48px 24px;
+    }
+
+    .auth-mobile-brand {
+        display: flex;
+    }
+
+    .auth-card {
+        padding: 36px 32px 28px;
+        border-radius: var(--au-radius-lg);
+    }
+}
+
+@media (max-width: 640px) {
+    .auth-main {
+        padding: 40px 16px;
+    }
+
+    .auth-card {
+        padding: 28px 20px 24px;
+    }
+
+    .auth-grid-2 {
+        grid-template-columns: 1fr;
+    }
+
+    .auth-row--between {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .auth-brand-stats {
+        display: none;
+    }
+}

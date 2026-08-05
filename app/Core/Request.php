@@ -19,10 +19,28 @@ final class Request
 {
     /**
      * Return the current HTTP method (e.g. "GET", "POST").
+     *
+     * Phase 9.2: the _method override - a plain HTML form can only
+     * submit GET or POST, so a hidden "_method" field with the value
+     * PATCH or DELETE rewrites a POST into that verb here. This lets
+     * every state-changing action (unfollow, mark-read) run with its
+     * true HTTP semantics while the no-JavaScript fallback keeps
+     * posting the form. The value is checked against the closed
+     * allowlist, so a tampered field can never produce another verb.
      */
     public function method(): string
     {
-        return strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+        $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+
+        if ($method === 'POST') {
+            $override = strtoupper((string) ($_POST['_method'] ?? ''));
+
+            if (in_array($override, ['PATCH', 'DELETE'], true)) {
+                return $override;
+            }
+        }
+
+        return $method;
     }
 
     /**

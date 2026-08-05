@@ -32,6 +32,7 @@ use BookSphere\App\Controllers\BookController;
 use BookSphere\App\Controllers\CategoryController;
 use BookSphere\App\Controllers\DashboardController;
 use BookSphere\App\Controllers\LibraryController;
+use BookSphere\App\Controllers\NotificationController;
 use BookSphere\App\Controllers\PageController;
 use BookSphere\App\Controllers\RecommendationController;
 use BookSphere\App\Controllers\ReviewController;
@@ -46,11 +47,15 @@ use BookSphere\App\Middleware\CsrfMiddleware;
 use BookSphere\App\Middleware\GuestMiddleware;
 use BookSphere\App\Middleware\SecureHeadersMiddleware;
 use BookSphere\App\Models\Author;
+use BookSphere\App\Models\AuthorFollow;
 use BookSphere\App\Models\Book;
 use BookSphere\App\Models\Category;
+use BookSphere\App\Models\Notification;
 use BookSphere\App\Models\Review;
 use BookSphere\App\Models\User;
 use BookSphere\App\Models\UserLibrary;
+use BookSphere\App\Models\PasswordResetToken;
+use BookSphere\App\Policies\FollowPolicy;
 use BookSphere\App\Policies\LibraryPolicy;
 use BookSphere\App\Policies\RecommendationPolicy;
 use BookSphere\App\Policies\ReviewPolicy;
@@ -60,7 +65,11 @@ use BookSphere\App\Repositories\BookRepository;
 use BookSphere\App\Repositories\RecommendationRepository;
 use BookSphere\App\Services\AuthService;
 use BookSphere\App\Services\BookService;
+use BookSphere\App\Services\FollowService;
 use BookSphere\App\Services\LibraryService;
+use BookSphere\App\Services\NotificationDispatcher;
+use BookSphere\App\Services\NotificationFormatter;
+use BookSphere\App\Services\NotificationService;
 use BookSphere\App\Services\PersonalizationCache;
 use BookSphere\App\Services\RecommendationFactory;
 use BookSphere\App\Services\RecommendationMetrics;
@@ -85,8 +94,20 @@ $secure = new SecureHeadersMiddleware();
 
 // --- Pages -----------------------------------------------------------
 
-$authController = new AuthController($auth, $users);
+$authController = new AuthController($auth, $users, new PasswordResetToken());
 $pageController = new PageController();
+
+// --- Notifications (Phase 9.2 infrastructure + Phase 9.3 API) ----------
+// The dispatcher is the module's single creation door (its formatter
+// is the single source of the message templates). It is built HERE,
+// before the services, because the follow, review, library and
+// recommendation services all share the SAME instance for their event
+// pings - an event can never notify twice because of duplicate
+// dispatcher wiring.
+$notificationFormatter = new NotificationFormatter();
+$notificationDispatcher = new NotificationDispatcher(new Notification(), $notificationFormatter);
+$notificationService = new NotificationService(new Notification(), $notificationDispatcher);
+$notificationController = new NotificationController($notificationService);
 
 // --- Recommendations (Phase 6.2: six algorithms; Phase 6.3: hybrid
 // personalization) ------------------------------------------------------
@@ -100,6 +121,9 @@ $pageController = new PageController();
 // Its PersonalizationCache (file-based, 30-minute TTL) is wired from
 // config/recommendations.php, and BookController gets the service so
 // the book detail page can feed the "recently viewed" signal.
+// Phase 9.3: the service also receives the shared notification
+// dispatcher, so a FRESH personalized shelf generation (a cache miss)
+// leaves a "Your picks are ready" notification behind.
 $recommendationRepository = new RecommendationRepository(new BookRepository());
 
 // Phase 6.5: the cache instance is extracted so the metrics service
@@ -123,6 +147,8 @@ $recommendationService = new RecommendationService(
     ),
     $recommendationRepository,
     $personalizationCache,
+    null,
+    $notificationDispatcher,
 );
 
 // --- Reviews & Ratings (Phase 7.1 backend + Phase 7.2 CRUD) -------------
@@ -130,7 +156,10 @@ $recommendationService = new RecommendationService(
 // the book controller (the detail page renders the Reviews section),
 // so the book page and the review pages always see the same rules
 // and the same recommendation-cache hook.
-$reviewService = new ReviewService(new Review(), new Book(), $recommendationService);
+// Phase 9.3: it also gets the shared dispatcher + a User model, so a
+// first "helpful" vote leaves a "Review appreciated" notification for
+// the review's owner.
+$reviewService = new ReviewService(new Review(), new Book(), $recommendationService, null, new User(), $notificationDispatcher);
 
 // Phase 8.1 + 8.2: the personal library. ONE LibraryService instance
 // is shared by the library controller, the book controller (the
@@ -139,7 +168,9 @@ $reviewService = new ReviewService(new Review(), new Book(), $recommendationServ
 // RecommendationService as the review service, so every library
 // write invalidates the user's cached recommendation shelf (the
 // Phase 6.3 signal hook) without the engine itself changing.
-$libraryService = new LibraryService(new UserLibrary(), new Book(), $recommendationService);
+// Phase 9.3: it also gets the shared dispatcher, so finishing a book
+// leaves a "Library milestone" notification behind.
+$libraryService = new LibraryService(new UserLibrary(), new Book(), $recommendationService, null, $notificationDispatcher);
 
 $bookController = new BookController(new BookService(new Book(), new Author(), new Category()), $recommendationService, $reviewService, $libraryService);
 $reviewListPresenter = new ReviewListPresenter($reviewService);
@@ -166,6 +197,15 @@ $adminController = new AdminController(
     new ReviewPolicy(),
 );
 
+// Phase 9.2: the Follow Authors module. The service and its policy
+// are wired HERE, before the user controller (the profile's "Authors
+// I follow" page needs them) and before the author controller (the
+// Follow button). The dispatcher was already built above (the shared
+// notification stack), so a follow always leaves its
+// "author_followed" notification behind.
+$followService = new FollowService(new AuthorFollow(), new Author(), $notificationDispatcher);
+$followPolicy = new FollowPolicy();
+
 // Phase 7.3: the profile page's "My rating activity" block comes
 // from the same shared ReviewService, so the controller is wired
 // here as well - after the service exists. Phase 8.4: the profile's
@@ -173,13 +213,16 @@ $adminController = new AdminController(
 // Phase 8.5: the profile's "Reading Preferences & Recommendation
 // Insights" block uses the SHARED RecommendationService (the same
 // engine every page asks).
-$userController = new UserController($auth, $users, $reviewService, $libraryService, $recommendationService);
+$userController = new UserController($auth, $users, $reviewService, $libraryService, $recommendationService, $followService, $followPolicy);
 
 // Phase 7.6: the author and category pages are real pages now. They
 // share the SAME ReviewService instance, so the statistics they show
 // (average author rating, top rated books, recent community reviews)
 // always match the reviews every other page reads.
-$authorController   = new AuthorController(new Author(), $reviewService);
+// Phase 9.2: the follow service + policy were already wired above
+// (they must exist before the user controller); the author controller
+// gets that shared instance for its Follow button.
+$authorController   = new AuthorController(new Author(), $reviewService, $followService, $followPolicy, new RateLimiter(session()));
 $categoryController = new CategoryController(new Category(), $reviewService);
 
 $recommendationController = new RecommendationController(
@@ -249,6 +292,12 @@ $router->post('/login', [$authController, 'login'], [$secure, new GuestMiddlewar
 
 $router->get('/forgot-password', [$authController, 'showForgotPassword'], [$secure, new GuestMiddleware($auth)]);
 $router->post('/forgot-password', [$authController, 'forgotPassword'], [$secure, new GuestMiddleware($auth), new CsrfMiddleware($csrf)]);
+
+// The reset link from the forgot step: /reset-password?token=...
+// GET shows the form (or the invalid-token state), POST redeems the
+// single-use token and replaces the password.
+$router->get('/reset-password', [$authController, 'showResetPassword'], [$secure, new GuestMiddleware($auth)]);
+$router->post('/reset-password', [$authController, 'resetPassword'], [$secure, new GuestMiddleware($auth), new CsrfMiddleware($csrf)]);
 
 // Logout is a POST form so it is CSRF protected.
 $router->post('/logout', [$authController, 'logout'], [$secure, new CsrfMiddleware($csrf)]);
@@ -432,10 +481,40 @@ $router->post('/library/bulk', [$libraryController, 'bulk'], [$secure, new AuthM
 
 $router->get('/authors', [$authorController, 'index'], [$secure, new AuthMiddleware($auth)]);
 $router->get('/authors/{id}', [$authorController, 'show'], [$secure, new AuthMiddleware($auth)]);
+// Phase 9.2: the Follow Authors module. The follow/unfollow writes
+// are POST/DELETE, CSRF-protected like every other data change, and
+// throttled inside the controller (the "follow_write" bucket). The
+// followers list is a GET read next to the parameterized show route.
+$router->post('/authors/{id}/follow', [$authorController, 'follow'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->delete('/authors/{id}/follow', [$authorController, 'unfollow'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->get('/authors/{id}/followers', [$authorController, 'followers'], [$secure, new AuthMiddleware($auth)]);
 
 $router->get('/categories', [$categoryController, 'index'], [$secure, new AuthMiddleware($auth)]);
 $router->get('/categories/{id}', [$categoryController, 'show'], [$secure, new AuthMiddleware($auth)]);
 
+// Phase 9.2: the signed-in user's "Authors I follow" page - the
+// counterpart of the author page's Follow button.
+$router->get('/profile/following', [$userController, 'following'], [$secure, new AuthMiddleware($auth)]);
+
 $router->get('/wishlist', [$pageController, 'wishlist'], [$secure, new AuthMiddleware($auth)]);
 $router->get('/analytics', [$pageController, 'analytics'], [$secure, new AuthMiddleware($auth)]);
 $router->get('/settings', [$pageController, 'settings'], [$secure, new AuthMiddleware($auth)]);
+
+// --- Notifications (Phase 9.3: the backend API) ---------------------------
+// The center's UI (page, bell dropdown, badge) is Phase 9.4; these
+// routes are the prepared API surface for it - the list read, the two
+// idempotent read writes and the two deletes. Every route requires a
+// login (AuthMiddleware) and the writes carry CSRF like every other
+// data change; ownership is re-gated from the session inside the
+// controller, so the routes themselves stay short.
+//
+// The literal /notifications/read-all and /notifications are checked
+// before the parameterized patterns (the router's exact-match fast
+// path), so the two PATCHes and the two DELETEs can never collide.
+// Fetch callers (X-Requested-With: fetch) get JSON; plain forms get a
+// redirect + flash.
+$router->get('/notifications', [$notificationController, 'index'], [$secure, new AuthMiddleware($auth)]);
+$router->patch('/notifications/read-all', [$notificationController, 'markAllRead'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->patch('/notifications/{id}/read', [$notificationController, 'markRead'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->delete('/notifications', [$notificationController, 'deleteAll'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->delete('/notifications/{id}', [$notificationController, 'destroy'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);

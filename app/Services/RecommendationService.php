@@ -129,6 +129,7 @@ final class RecommendationService
         private readonly RecommendationRepository $repository,
         private readonly ?PersonalizationCache $cache = null,
         private readonly ?Logger $logger = null,
+        private readonly ?NotificationDispatcher $dispatcher = null,
     ) {}
 
     /**
@@ -417,6 +418,15 @@ final class RecommendationService
 
         $this->cacheWrite($userId, $this->storeResult($result));
 
+        // Phase 9.3: the recommendation_ready ping - the shelf was
+        // ACTUALLY generated right now (a fresh cache miss). A user
+        // without personal signals got the honest cold-start pool
+        // ("starting point", no "your picks" claim), so only a real
+        // profile earns the "Your picks are ready" notification.
+        if ($this->dispatcher !== null && $this->profileHasSignals($profile)) {
+            $this->dispatcher->notify('recommendation_ready', [], $userId);
+        }
+
         return $result;
     }
 
@@ -676,6 +686,22 @@ final class RecommendationService
         }
 
         $this->repository->recordBookView($userId, $bookId);
+    }
+
+    /**
+     * Whether the profile carries ANY personal signal. The
+     * recommendation_ready ping (Phase 9.3) is gated on this: a
+     * profile-free user only ever got the honest cold-start pool, so
+     * claiming "your picks are ready" would be a lie.
+     */
+    private function profileHasSignals(PersonalizationProfile $profile): bool
+    {
+        return $profile->favouriteCategories !== []
+            || $profile->favouriteAuthors !== []
+            || $profile->wishlistBookIds !== []
+            || $profile->highlyRatedBookIds !== []
+            || $profile->reviewedBookIds !== []
+            || $profile->recentlyViewedBookIds !== [];
     }
 
     /**

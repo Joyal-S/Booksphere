@@ -182,6 +182,11 @@ return [
     // share one budget - organizing a library is bursty (a user
     // importing their collection), so the window is the widest of
     // the write actions.
+    //
+    // Phase 9.2: the follow/unfollow writes share one budget - a
+    // session may follow or unfollow at most 60 times per minute
+    // (mass-following is exactly what a script would do, so the
+    // limit matches the wishlist-toggling budget).
     'security' => [
         'rate_limit' => [
             'wishlist_toggle' => ['limit' => 60, 'window_seconds' => 60],
@@ -190,6 +195,7 @@ return [
             'review_vote'     => ['limit' => 60, 'window_seconds' => 60],
             'review_report'   => ['limit' => 10, 'window_seconds' => 3600],
             'library_write'   => ['limit' => 120, 'window_seconds' => 3600],
+            'follow_write'    => ['limit' => 60, 'window_seconds' => 60],
         ],
     ],
 ];

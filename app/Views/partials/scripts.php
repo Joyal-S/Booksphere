@@ -20,3 +20,4 @@ declare(strict_types=1);
 <script src="<?= e(asset('js/rating.js')) ?>"></script>
 <script src="<?= e(asset('js/reviews.js')) ?>"></script>
 <script src="<?= e(asset('js/library.js')) ?>"></script>
+<script src="<?= e(asset('js/follow.js')) ?>"></script>

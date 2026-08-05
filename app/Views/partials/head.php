@@ -33,4 +33,5 @@ declare(strict_types=1);
     <link rel="stylesheet" href="<?= e(asset('css/rating.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/reviews.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/library.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/follow.css')) ?>">
 </head>

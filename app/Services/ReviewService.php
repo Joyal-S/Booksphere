@@ -9,6 +9,7 @@ use BookSphere\App\DTO\ReviewDTO;
 use BookSphere\App\Exceptions\ReviewException;
 use BookSphere\App\Models\Book;
 use BookSphere\App\Models\Review;
+use BookSphere\App\Models\User;
 use BookSphere\App\Requests\StoreReviewRequest;
 
 /**
@@ -107,6 +108,8 @@ final class ReviewService
         private readonly Book $books,
         private readonly ?RecommendationService $recommendations = null,
         ?Logger $logger = null,
+        private readonly ?User $users = null,
+        private readonly ?NotificationDispatcher $dispatcher = null,
     ) {
         $this->logger = $logger ?? new Logger(root_path('storage/logs/application.log'));
     }
@@ -813,7 +816,19 @@ final class ReviewService
             throw ReviewException::selfVote($reviewId);
         }
 
+        $firstVote = !$this->reviews->userHasHelpfulVote($reviewId, $userId);
+
         $this->reviews->addHelpfulVote($reviewId, $userId);
+
+        // Phase 9.3: the review_reacted ping - tell the review's OWNER
+        // someone found it helpful. The self-vote rule above guarantees
+        // the actor is never the recipient, and the idempotent vote
+        // (INSERT OR IGNORE) means the ping fires only on the FIRST
+        // helpful click - re-voting an already-voted review does not
+        // spam the author.
+        if ($firstVote) {
+            $this->notifyHelpfulPing($review, $userId);
+        }
 
         $this->logger->info('review.helpful', [
             'review_id' => $reviewId,
@@ -1318,6 +1333,33 @@ final class ReviewService
         }
 
         return $review;
+    }
+
+    /**
+     * The Phase 9.3 "review_reacted" ping: someone first found a
+     * review helpful, so its OWNER gets the "Review appreciated"
+     * notification. The actor's name and the book title are resolved
+     * on demand (both rows exist - the vote and the review), and the
+     * optional dispatcher makes the hook a no-op in any wiring that
+     * never injects one (existing tests, admin CRUD contexts).
+     *
+     * @param array<string, mixed> $review The voted review row
+     * @param int                  $actorId The user who voted
+     */
+    private function notifyHelpfulPing(array $review, int $actorId): void
+    {
+        if ($this->dispatcher === null) {
+            return;
+        }
+
+        $book  = $this->books->findById((int) ($review['book_id'] ?? 0));
+        $actor = $this->users?->findById($actorId);
+
+        $this->dispatcher->notify('review_reacted', [
+            'actor'   => (string) ($actor['full_name'] ?? 'A reader'),
+            'book'    => (string) ($book['title'] ?? 'a book'),
+            'book_id' => (int) ($review['book_id'] ?? 0),
+        ], (int) $review['user_id']);
     }
 
     /**

@@ -75,8 +75,8 @@
     position: relative;
 }
 
-.landing-container,
 .landing-page .container {
+    width: 100%;
     max-width: 1460px;
     margin-inline: auto;
     padding-inline: 40px;
@@ -183,6 +183,11 @@
     min-height: 432px;
 }
 
+/* --- header (full-width bar; its inner .container matches the hero) --- */
+.landing-header {
+    width: 100%;
+}
+
 /* --- navbar (logo row + auth entry) --- */
 .landing-navbar {
     display: flex;
@@ -190,6 +195,7 @@
     justify-content: space-between;
     gap: 20px;
     flex-wrap: wrap;
+    width: 100%;
     margin-bottom: 48px;
 }
 .landing-logo {
@@ -307,7 +313,9 @@
 /* --- hero illustration --- */
 .landing-illus {
     position: relative;
-    height: 380px;
+    height: auto;
+    aspect-ratio: 540 / 420;
+    transform: translateY(-20px);
 }
 .landing-illus-glow {
     position: absolute;
@@ -776,6 +784,51 @@
 /* =========================================================
    11. Responsive
    ========================================================= */
+
+/* Desktop-wide (992px+): the container grows with the monitor up to
+   a comfortable cap, always keeping a 64px outer gutter on each side
+   (128px total) so the content never touches the browser edges. The
+   "fluid-but-capped" pattern is what modern SaaS landing pages
+   (Stripe, Linear, Vercel) use instead of a fixed 1460px box. */
+@media (min-width: 992px) {
+    .landing-page .container {
+        width: min(calc(100% - 128px), 1800px);
+        max-width: none;
+        padding-inline: 0;
+    }
+}
+
+/* Desktop-wide (1200px+): the hero rebalances. The illustration
+   column gets more width (1.25fr vs 1fr) and the two columns sit
+   closer (gap 72 -> 48), while the whole hero is capped at 1960px
+   so the art has room to reach its full size on wide screens. The
+   art itself grows well clear of the headline (740 -> 1040px, +40%). */
+@media (min-width: 1200px) {
+    .landing-feature-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    .landing-navbar {
+        max-width: 1480px;
+        margin-inline: auto;
+    }
+    .landing-hero-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+        gap: 48px;
+        max-width: 1960px;
+        margin-inline: auto;
+    }
+    .landing-illus {
+        height: auto;
+        aspect-ratio: 540 / 420;
+        max-width: 1040px;
+        margin-inline: auto;
+    }
+    .landing-illus svg {
+        width: 100%;
+        height: 100%;
+    }
+}
+
 @media (max-width: 1199.98px) {
     .landing-hero-grid {
         gap: 48px;
@@ -792,8 +845,9 @@
         min-height: 0;
     }
     .landing-illus {
-        max-width: 440px;
+        max-width: 616px;
         margin-inline: auto;
+        transform: none;
     }
     .landing-theme-panel {
         flex-direction: column;
@@ -822,8 +876,8 @@
         gap: 28px;
     }
     .landing-illus {
-        height: 280px;
-        max-width: 340px;
+        height: auto;
+        max-width: 460px;
     }
     .landing-feature-grid {
         gap: 14px;

@@ -128,6 +128,7 @@ final class LibraryService
         private readonly Book $books,
         private readonly ?RecommendationService $recommendations = null,
         ?Logger $logger = null,
+        private readonly ?NotificationDispatcher $dispatcher = null,
     ) {
         $this->logger = $logger ?? new Logger(root_path('storage/logs/application.log'));
     }
@@ -755,6 +756,14 @@ final class LibraryService
 
         if ($updated) {
             $this->afterWrite($userId, 'library.status_changed', $bookId, (int) $record['id']);
+
+            // Phase 9.3: finishing a book is the library_milestone
+            // moment - ping only on the transition INTO 'finished'
+            // (a re-set of an already-finished record is not a new
+            // milestone).
+            if ($status === 'finished') {
+                $this->notifyLibraryMilestone($userId, $bookId, (string) ($record['library_status'] ?? ''));
+            }
         }
 
         return $updated;
@@ -793,6 +802,13 @@ final class LibraryService
 
         if ($updated) {
             $this->afterWrite($userId, 'library.progress_updated', $bookId, (int) $record['id']);
+
+            // Phase 9.3: progress reaching 100 auto-finishes the
+            // record - the same library_milestone moment as an
+            // explicit status change (and only on the transition).
+            if ($progress === self::PROGRESS_MAX) {
+                $this->notifyLibraryMilestone($userId, $bookId, (string) ($record['library_status'] ?? ''));
+            }
         }
 
         return $updated;
@@ -1013,6 +1029,29 @@ final class LibraryService
             'user_id'   => $userId,
             'book_id'   => $bookId,
         ]);
+    }
+
+    /**
+     * The Phase 9.3 "library_milestone" ping: a book just became
+     * 'finished' - only when it was NOT finished before (the caller
+     * guarantees the transition already happened; this helper still
+     * re-checks so a stray call can never re-ping). The book title is
+     * resolved on demand and the optional dispatcher makes the hook a
+     * no-op in any wiring that never injects one.
+     *
+     * @param string $fromStatus The record's status BEFORE the write
+     */
+    private function notifyLibraryMilestone(int $userId, int $bookId, string $fromStatus): void
+    {
+        if ($this->dispatcher === null || $fromStatus === 'finished') {
+            return;
+        }
+
+        $book = $this->books->findById($bookId);
+
+        $this->dispatcher->notify('library_milestone', [
+            'title' => (string) ($book['title'] ?? ''),
+        ], $userId);
     }
 
     /**
