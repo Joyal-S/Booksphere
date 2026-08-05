@@ -116,11 +116,13 @@ $shownCategories = array_slice($categories, 0, 2);
 
         <div class="rec-card-meta">
             <span class="rec-rating" title="Average rating">
-                <i class="fa-solid fa-star" aria-hidden="true"></i>
-                <?= e(number_format((float) $book['average_rating'], 1)) ?>
-                <?php if ((int) $book['ratings_count'] > 0): ?>
-                    <span class="rec-rating-count">(<?= (int) $book['ratings_count'] ?>)</span>
-                <?php endif; ?>
+                <?php $starRating = [
+                    'rating' => (float) $book['average_rating'],
+                    'count'  => (int) $book['ratings_count'] > 0 ? (int) $book['ratings_count'] : null,
+                    'size'   => 'sm',
+                    'tooltip'=> false,
+                ]; ?>
+                <?php require root_path('app/Views/components/star-rating.php'); ?>
             </span>
         </div>
 

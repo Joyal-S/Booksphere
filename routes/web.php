@@ -26,9 +26,12 @@ declare(strict_types=1);
  */
 
 use BookSphere\App\Controllers\AdminController;
+use BookSphere\App\Controllers\AuthorController;
 use BookSphere\App\Controllers\AuthController;
 use BookSphere\App\Controllers\BookController;
+use BookSphere\App\Controllers\CategoryController;
 use BookSphere\App\Controllers\DashboardController;
+use BookSphere\App\Controllers\LibraryController;
 use BookSphere\App\Controllers\PageController;
 use BookSphere\App\Controllers\RecommendationController;
 use BookSphere\App\Controllers\ReviewController;
@@ -47,13 +50,17 @@ use BookSphere\App\Models\Book;
 use BookSphere\App\Models\Category;
 use BookSphere\App\Models\Review;
 use BookSphere\App\Models\User;
+use BookSphere\App\Models\UserLibrary;
+use BookSphere\App\Policies\LibraryPolicy;
 use BookSphere\App\Policies\RecommendationPolicy;
 use BookSphere\App\Policies\ReviewPolicy;
 use BookSphere\App\Presenters\RecommendationDashboardPresenter;
+use BookSphere\App\Presenters\ReviewListPresenter;
 use BookSphere\App\Repositories\BookRepository;
 use BookSphere\App\Repositories\RecommendationRepository;
 use BookSphere\App\Services\AuthService;
 use BookSphere\App\Services\BookService;
+use BookSphere\App\Services\LibraryService;
 use BookSphere\App\Services\PersonalizationCache;
 use BookSphere\App\Services\RecommendationFactory;
 use BookSphere\App\Services\RecommendationMetrics;
@@ -79,8 +86,6 @@ $secure = new SecureHeadersMiddleware();
 // --- Pages -----------------------------------------------------------
 
 $authController = new AuthController($auth, $users);
-$userController = new UserController($auth, $users);
-$dashboardController = new DashboardController();
 $pageController = new PageController();
 
 // --- Recommendations (Phase 6.2: six algorithms; Phase 6.3: hybrid
@@ -127,8 +132,55 @@ $recommendationService = new RecommendationService(
 // and the same recommendation-cache hook.
 $reviewService = new ReviewService(new Review(), new Book(), $recommendationService);
 
-$bookController = new BookController(new BookService(new Book(), new Author(), new Category()), $recommendationService, $reviewService);
-$reviewController = new ReviewController($reviewService, new ReviewPolicy());
+// Phase 8.1 + 8.2: the personal library. ONE LibraryService instance
+// is shared by the library controller, the book controller (the
+// detail page's Add / Update Library panel) and the dashboard
+// controller (the Continue Reading shelf); it receives the SAME
+// RecommendationService as the review service, so every library
+// write invalidates the user's cached recommendation shelf (the
+// Phase 6.3 signal hook) without the engine itself changing.
+$libraryService = new LibraryService(new UserLibrary(), new Book(), $recommendationService);
+
+$bookController = new BookController(new BookService(new Book(), new Author(), new Category()), $recommendationService, $reviewService, $libraryService);
+$reviewListPresenter = new ReviewListPresenter($reviewService);
+// Phase 7.7: the review write endpoints get the session-backed
+// throttle (RateLimiter), the same wiring as the recommendation
+// dashboard writes.
+$reviewController = new ReviewController($reviewService, new ReviewPolicy(), $reviewListPresenter, new RateLimiter(session()));
+
+// Phase 7.3: the dashboard needs the SAME ReviewService instance for
+// its real Top Rated Books section (rating analytics come from the
+// Reviews module - the dashboard only asks), so it is created here,
+// after the shared service, never before it. Phase 8.2: the same
+// pattern for the personal library - the Continue Reading shelf is
+// read through the shared LibraryService, never duplicated.
+// Phase 8.5: the dashboard's real recommendation shelves come from
+// the SHARED RecommendationService (the personalized shelf, the
+// trending shelf and the library-based "Because you read" section).
+$dashboardController = new DashboardController($reviewService, $libraryService, $recommendationService);
+$adminController = new AdminController(
+    new RecommendationMetrics($recommendationRepository, $personalizationCache),
+    $reviewService,
+    // Phase 7.5: the fine per-action gate of the moderation actions
+    // (defence in depth behind AdminMiddleware).
+    new ReviewPolicy(),
+);
+
+// Phase 7.3: the profile page's "My rating activity" block comes
+// from the same shared ReviewService, so the controller is wired
+// here as well - after the service exists. Phase 8.4: the profile's
+// "My Library" block uses the shared LibraryService too.
+// Phase 8.5: the profile's "Reading Preferences & Recommendation
+// Insights" block uses the SHARED RecommendationService (the same
+// engine every page asks).
+$userController = new UserController($auth, $users, $reviewService, $libraryService, $recommendationService);
+
+// Phase 7.6: the author and category pages are real pages now. They
+// share the SAME ReviewService instance, so the statistics they show
+// (average author rating, top rated books, recent community reviews)
+// always match the reviews every other page reads.
+$authorController   = new AuthorController(new Author(), $reviewService);
+$categoryController = new CategoryController(new Category(), $reviewService);
 
 $recommendationController = new RecommendationController(
     $recommendationService,
@@ -146,11 +198,17 @@ $recommendationController = new RecommendationController(
     new RateLimiter(session()),
 );
 
-// Phase 6.5: the admin monitoring surface - one metrics service
-// sharing the engine's repository and cache, so the page shows the
-// live state of the exact objects the engine runs with.
-$adminController = new AdminController(
-    new RecommendationMetrics($recommendationRepository, $personalizationCache),
+// Phase 8.1 + 8.2: Wishlist & Personal Reading Library. The
+// LibraryService is shared (see above); the controller additionally
+// gets the fine policy and the session-backed write throttle.
+// Phase 8.5: the library dashboard's recommendation sections
+// ("Because this is in your library", "People who saved this also
+// liked", ...) come from the SHARED RecommendationService.
+$libraryController = new LibraryController(
+    $libraryService,
+    new LibraryPolicy(),
+    new RateLimiter(session()),
+    $recommendationService,
 );
 
 // Home: the logged-in user's dashboard (the root of the app).
@@ -246,7 +304,7 @@ $router->get('/recommendations/book/{id}', [$recommendationController, 'show'], 
 $router->post('/recommendations/refresh', [$recommendationController, 'refresh'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
 $router->post('/wishlist/toggle', [$recommendationController, 'toggleWishlist'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
 
-// --- Reviews & Ratings (Phase 7.1 + Phase 7.2) ---------------------------
+// --- Reviews & Ratings (Phase 7.1 + Phase 7.2 + Phase 7.4) --------------
 // Every route requires a login (AuthMiddleware); the write routes
 // carry CSRF protection like every other data change in the app.
 // The fine gates (owner-or-admin) run inside the controller via
@@ -256,7 +314,14 @@ $router->post('/wishlist/toggle', [$recommendationController, 'toggleWishlist'],
 // Phase 7.1 note: "/reviews" used to be a "coming soon" placeholder
 // page (PageController); the route now serves the real module.
 // Phase 7.2 note: "/reviews/{id}" is the single-review detail page.
+// Phase 7.4 note: the three literal routes below (search, statistics,
+// user/{id}) are checked by the router's exact-match fast path BEFORE
+// the parameterized "/reviews/{id}" pattern, so registration order is
+// irrelevant - "/reviews/search" can never fall into the {id} bucket.
 $router->get('/reviews', [$reviewController, 'index'], [$secure, new AuthMiddleware($auth)]);
+$router->get('/reviews/search', [$reviewController, 'search'], [$secure, new AuthMiddleware($auth)]);
+$router->get('/reviews/statistics', [$reviewController, 'statistics'], [$secure, new AuthMiddleware($auth)]);
+$router->get('/reviews/user/{id}', [$reviewController, 'userReviews'], [$secure, new AuthMiddleware($auth)]);
 $router->get('/reviews/{id}', [$reviewController, 'show'], [$secure, new AuthMiddleware($auth)]);
 $router->get('/books/{id}/reviews', [$reviewController, 'bookReviews'], [$secure, new AuthMiddleware($auth)]);
 $router->post('/books/{id}/reviews', [$reviewController, 'store'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
@@ -264,13 +329,98 @@ $router->get('/reviews/{id}/edit', [$reviewController, 'edit'], [$secure, new Au
 $router->post('/reviews/{id}/edit', [$reviewController, 'update'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
 $router->post('/reviews/{id}/delete', [$reviewController, 'destroy'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
 
-// --- Main navigation (placeholder pages) ------------------------------
-// Every sidebar destination is a real route. The features themselves
-// arrive in later phases; for now each page shows a "coming soon"
-// placeholder so the navigation never breaks.
+// Phase 7.5: community engagement. The helpful toggle and the report
+// modal submit via fetch (X-Requested-With: fetch) and get JSON back;
+// the routes also answer plain POSTs with a redirect + flash as the
+// no-JS fallback. The anchored parameterized patterns differ by
+// segment count (/reviews/{id} is two segments, these are three and
+// four), and the literal /reviews/search stays in the exact-match
+// table, so no pattern can collide.
+$router->post('/reviews/{id}/helpful', [$reviewController, 'helpful'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/reviews/{id}/helpful/remove', [$reviewController, 'removeHelpful'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/reviews/{id}/report', [$reviewController, 'report'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
 
-$router->get('/categories', [$pageController, 'categories'], [$secure, new AuthMiddleware($auth)]);
-$router->get('/authors', [$pageController, 'authors'], [$secure, new AuthMiddleware($auth)]);
+// Phase 7.5: the review-management console (moderation foundation).
+// The queue page reads the ?status tab (pending | reviewed |
+// dismissed | resolved); the four write routes move reports along
+// their lifecycle and hide / restore reviews. All admin-only.
+$router->get('/admin/reviews', [$adminController, 'reports'], [$secure, new AdminMiddleware($auth)]);
+$router->post('/admin/reports/{id}/resolve', [$adminController, 'resolveReport'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/admin/reports/{id}/dismiss', [$adminController, 'dismissReport'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/admin/reviews/{id}/hide', [$adminController, 'hideReview'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/admin/reviews/{id}/unhide', [$adminController, 'unhideReview'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
+
+// --- Personal Library (Phase 8.1 backend) ---------------------------
+// The wishlist's successor: one record per user per book with a
+// reading-status lifecycle, favourites, progress and statistics.
+// Every route requires a login (AuthMiddleware); the write routes
+// carry CSRF protection like every other data change. The fine
+// ownership gate (own record only, even for admins) runs inside the
+// controller via LibraryPolicy.
+//
+// The GET shelves answer JSON in Phase 8.1 - the Library Dashboard
+// UI is Phase 8.2 and will render these exact payloads. The literal
+// routes (/library/wishlist, /library/favorites, /library/statistics,
+// ...) are matched before the parameterized /library/{id} pattern,
+// so a path can never be misread, and the parameterized routes are
+// POST-only while every literal is GET - the Router's method-first
+// resolution keeps them fully apart.
+$router->get('/library', [$libraryController, 'index'], [$secure, new AuthMiddleware($auth)]);
+$router->post('/library', [$libraryController, 'store'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->get('/library/wishlist', [$libraryController, 'wishlist'], [$secure, new AuthMiddleware($auth)]);
+$router->get('/library/currently-reading', [$libraryController, 'currentlyReading'], [$secure, new AuthMiddleware($auth)]);
+$router->get('/library/finished', [$libraryController, 'finished'], [$secure, new AuthMiddleware($auth)]);
+$router->get('/library/favorites', [$libraryController, 'favorites'], [$secure, new AuthMiddleware($auth)]);
+$router->get('/library/statistics', [$libraryController, 'statistics'], [$secure, new AuthMiddleware($auth)]);
+// Phase 8.2 additions: the live-search endpoint of the My Library
+// page and the two fetch-driven write endpoints (favourite toggle and
+// progress update). All three were already implemented in the
+// controller during Phase 8.1; only the route registration was
+// pending. /library/search is a GET literal (the router's exact-match
+// fast path keeps it away from the parameterized /library/{id} POST),
+// and the two writes carry CSRF like every other data change - the
+// fetch calls include the token, the no-JS forms post it natively.
+$router->get('/library/search', [$libraryController, 'search'], [$secure, new AuthMiddleware($auth)]);
+$router->post('/library/{id}/favorite', [$libraryController, 'toggleFavourite'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/library/{id}/progress', [$libraryController, 'updateProgress'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/library/{id}', [$libraryController, 'update'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/library/{id}/delete', [$libraryController, 'destroy'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+// Phase 8.3: the premium library dashboard's fetch endpoints - the
+// grid filter/sort reads, the continue-shelf fragment and the
+// view-mode write. The GET literals are matched before the
+// parameterized /library/{id} POST patterns (the router's exact-match
+// fast path), and the one write (view-mode) carries CSRF like every
+// other data change.
+$router->get('/library/filter', [$libraryController, 'filter'], [$secure, new AuthMiddleware($auth)]);
+$router->get('/library/sort', [$libraryController, 'sort'], [$secure, new AuthMiddleware($auth)]);
+$router->get('/library/continue-reading', [$libraryController, 'continueReading'], [$secure, new AuthMiddleware($auth)]);
+$router->post('/library/view-mode', [$libraryController, 'viewMode'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+// Phase 8.4: the bulk actions endpoint (move / favourite / un-favourite
+// / remove the selected records). POST-only like every library write,
+// CSRF-protected; the record ids travel in the form and are re-gated
+// by the owner check inside the repository.
+$router->post('/library/bulk', [$libraryController, 'bulk'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+
+// --- Main navigation (placeholder pages) ------------------------------
+// Every sidebar destination is a real route. The remaining features
+// (analytics, settings) arrive in later phases; for now each page
+// shows a "coming soon" placeholder so the navigation never breaks.
+// Categories and Authors became real pages in Phase 7.6 - they are
+// registered with the catalogue routes below. The /wishlist sidebar
+// link still lands here: its BACKEND moved to the Personal Library
+// module in Phase 8.1 (/library routes above), and Phase 8.2 will
+// point this link at the real library dashboard.
+//
+// Phase 7.6: the author and category pages. The literal /authors and
+// /categories routes are matched before the parameterized /authors/{id}
+// and /categories/{id} patterns, so a path can never be misread.
+
+$router->get('/authors', [$authorController, 'index'], [$secure, new AuthMiddleware($auth)]);
+$router->get('/authors/{id}', [$authorController, 'show'], [$secure, new AuthMiddleware($auth)]);
+
+$router->get('/categories', [$categoryController, 'index'], [$secure, new AuthMiddleware($auth)]);
+$router->get('/categories/{id}', [$categoryController, 'show'], [$secure, new AuthMiddleware($auth)]);
+
 $router->get('/wishlist', [$pageController, 'wishlist'], [$secure, new AuthMiddleware($auth)]);
 $router->get('/analytics', [$pageController, 'analytics'], [$secure, new AuthMiddleware($auth)]);
 $router->get('/settings', [$pageController, 'settings'], [$secure, new AuthMiddleware($auth)]);

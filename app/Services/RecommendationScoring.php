@@ -167,18 +167,22 @@ final class RecommendationScoring
 
     /**
      * The default hybrid weights (used when config/recommendations.php
-     * is missing a key). The brief's example:
+     * is missing a key). Phase 7.6 distribution - the brief's
+     * example (category 40 / author 25 / wishlist 10 / reading
+     * history 10 / review score 10 / popularity 5) with the
+     * reserved trending slot:
      *
-     *     category 40 / author 25 / wishlist 15 / rating 10 /
-     *     trending 5 / popularity 5  = 100
+     *     category 40 / author 25 / wishlist 10 / rating 10 /
+     *     review_score 10 / trending 0 / popularity 5  = 100
      */
     public const HYBRID_WEIGHTS_DEFAULT = [
-        'category'  => 40,
-        'author'    => 25,
-        'wishlist'  => 15,
-        'rating'    => 10,
-        'trending'  => 5,
-        'popularity' => 5,
+        'category'     => 40,
+        'author'       => 25,
+        'wishlist'     => 10,
+        'rating'       => 10,
+        'review_score' => 10,
+        'trending'     => 0,
+        'popularity'   => 5,
     ];
 
     /** How many shared favourite categories earn the full category weight. */
@@ -196,6 +200,13 @@ final class RecommendationScoring
 
     /** How many shared rating categories earn the full rating weight. */
     public const RATING_FACTOR_CAP = 3;
+
+    /**
+     * The review-score factor cap. The signal is the book's approved
+     * average rating normalized to 0-1 (average / RATING_MAX), so a
+     * cap of 1 means the full weight is earned at a perfect 5.0.
+     */
+    public const REVIEW_SCORE_FACTOR_CAP = 1.0;
 
     /** The popularity score that earns the full (small) popularity weight. */
     public const POPULARITY_NORMALIZER = 3.0;
@@ -232,24 +243,28 @@ final class RecommendationScoring
      * Input:  the factor signals of one book
      *
      *     [
-     *         'category'  => int  shared favourite categories (0+)
-     *         'author'    => int  shared favourite authors (0+)
-     *         'wishlist'  => int  categories shared with wishlist books
-     *         'rating'    => int  categories shared with highly rated books
-     *         'trending'  => float  the book's trending score (0+)
-     *         'popularity'=> float  the book's popularity score (0+)
+     *         'category'     => int  shared favourite categories (0+)
+     *         'author'       => int  shared favourite authors (0+)
+     *         'wishlist'     => int  categories shared with wishlist books
+     *         'rating'       => int  categories shared with highly rated books
+     *         'review_score' => float  the book's community review quality,
+     *                                  approved average rating / 5 (0-1);
+     *                                  0 when the book has no reviews
+     *         'trending'     => float  the book's trending score (0+)
+     *         'popularity'   => float  the book's popularity score (0+)
      *     ]
      *
      * Output: the weighted score, 0-100 (weight cap inclusive)
      *
      * Formula (weights from config/recommendations.php):
      *
-     *     category   = w.category  x min(shared favourite categories, 2) / 2
-     *     author     = w.author    x min(shared favourite authors, 1)   (binary)
-     *     wishlist   = w.wishlist  x min(shared wishlist categories, 3) / 3
-     *     rating     = w.rating    x min(shared rating categories, 3) / 3
-     *     trending   = w.trending  x 1   (when the book is trending)
-     *     popularity = w.popularity x min(popularity / 3, 1)  (small bonus)
+     *     category     = w.category      x min(shared favourite categories, 2) / 2
+     *     author       = w.author        x min(shared favourite authors, 1)   (binary)
+     *     wishlist     = w.wishlist      x min(shared wishlist categories, 3) / 3
+     *     rating       = w.rating        x min(shared rating categories, 3) / 3
+     *     review_score = w.review_score  x min(review quality 0-1, 1)  (Phase 7.6)
+     *     trending     = w.trending      x 1   (when the book is trending)
+     *     popularity   = w.popularity    x min(popularity / 3, 1)  (small bonus)
      *
      * The category cap gives PARTIAL credit, so a book sharing one
      * favourite category earns 20 of the 40 points - the score stays
@@ -257,7 +272,12 @@ final class RecommendationScoring
      * or is not by a favourite author), the wishlist/rating caps give
      * partial credit up to their weights, and the popularity bonus
      * can never exceed its own small weight - "popularity should
-     * never dominate personalization" by construction.
+     * never dominate personalization" by construction. The Phase 7.6
+     * review_score factor is the Reviews module's seat at the
+     * scoring table: a book the community rates well (its approved
+     * average rating) earns up to its own 10 points, and a book
+     * without reviews earns nothing - the factor is community
+     * signal, never the seeded sample columns.
      *
      * @param array<string, int|float> $signals
      */
@@ -281,12 +301,155 @@ final class RecommendationScoring
             * min((int) ($signals['rating'] ?? 0), self::RATING_FACTOR_CAP)
             / self::RATING_FACTOR_CAP;
 
+        $reviewScore = $weights['review_score']
+            * min((float) ($signals['review_score'] ?? 0), self::REVIEW_SCORE_FACTOR_CAP)
+            / self::REVIEW_SCORE_FACTOR_CAP;
+
         $trending = $weights['trending'] * ((float) ($signals['trending'] ?? 0) > 0 ? 1.0 : 0.0);
 
         $popularity = $weights['popularity']
             * min((float) ($signals['popularity'] ?? 0) / self::POPULARITY_NORMALIZER, 1.0);
 
-        return $category + $author + $wishlist + $rating + $trending + $popularity;
+        return $category + $author + $wishlist + $rating + $reviewScore + $trending + $popularity;
+    }
+
+    // -----------------------------------------------------------------
+    // Phase 8.5: the Personal Library score
+    // -----------------------------------------------------------------
+
+    /**
+     * The factor caps of the library score (how many shared links earn
+     * the full weight): two shared favourite categories, one shared
+     * favourite author (binary), three reading-history categories and
+     * three want-to-read categories - the same partial-credit shape as
+     * the Phase 6.3 hybrid caps.
+     */
+    public const LIBRARY_FACTOR_CAPS = [
+        'favourite_category' => 2,
+        'favourite_author'   => 1,
+        'reading_history'    => 3,
+        'want_to_read'       => 3,
+    ];
+
+    /** The popularity score that earns the full (small) popularity weight. */
+    public const LIBRARY_POPULARITY_NORMALIZER = 3.0;
+
+    /**
+     * The library weights, from RecommendationConfig
+     * (config/recommendations.php -> 'library' -> 'weights').
+     *
+     * @return array<string, float>
+     */
+    public static function libraryWeights(): array
+    {
+        return RecommendationConfig::libraryWeights();
+    }
+
+    /**
+     * The weighted library score of one candidate book, 0-100.
+     *
+     * Input:  the factor signals of one book
+     *
+     *     [
+     *         'favourite_category' => int  categories shared with the
+     *                                      user's favourite books
+     *         'favourite_author'   => int  authors shared with the
+     *                                      user's favourite books
+     *         'reading_history'    => int  categories shared with the
+     *                                      user's finished books
+     *         'want_to_read'       => int  categories shared with the
+     *                                      user's want-to-read books
+     *         'rating'             => float  the book's community review
+     *                                      quality (approved average / 5)
+     *         'popularity'         => float  the book's popularity score
+     *     ]
+     *
+     * Output: the weighted score, 0-100 (weight cap inclusive)
+     *
+     * Formula (weights from RecommendationConfig):
+     *
+     *     favourite_category = w x min(shared favourite categories, 2) / 2
+     *     favourite_author   = w x min(shared favourite authors, 1)  (binary)
+     *     reading_history    = w x min(shared finished categories, 3) / 3
+     *     want_to_read       = w x min(shared want-to-read categories, 3) / 3
+     *     rating             = w x min(review quality 0-1, 1)
+     *     popularity         = w x min(popularity / 3, 1)  (small bonus)
+     *
+     * Same shape as hybridScore(): partial credit up to a cap, a
+     * binary author match, and the popularity bonus capped by its own
+     * small weight so it can never dominate the library signal.
+     *
+     * @param array<string, int|float> $signals
+     */
+    public static function libraryScore(array $signals): float
+    {
+        $weights = self::libraryWeights();
+        $caps    = self::LIBRARY_FACTOR_CAPS;
+
+        $favouriteCategory = $weights['favourite_category']
+            * min((int) ($signals['favourite_category'] ?? 0), $caps['favourite_category'])
+            / $caps['favourite_category'];
+
+        $favouriteAuthor = $weights['favourite_author']
+            * min((int) ($signals['favourite_author'] ?? 0), $caps['favourite_author'])
+            / $caps['favourite_author'];
+
+        $readingHistory = $weights['reading_history']
+            * min((int) ($signals['reading_history'] ?? 0), $caps['reading_history'])
+            / $caps['reading_history'];
+
+        $wantToRead = $weights['want_to_read']
+            * min((int) ($signals['want_to_read'] ?? 0), $caps['want_to_read'])
+            / $caps['want_to_read'];
+
+        $rating = $weights['rating']
+            * min(max(0.0, (float) ($signals['rating'] ?? 0)), 1.0);
+
+        $popularity = $weights['popularity']
+            * min(max(0.0, (float) ($signals['popularity'] ?? 0)) / self::LIBRARY_POPULARITY_NORMALIZER, 1.0);
+
+        return $favouriteCategory + $favouriteAuthor + $readingHistory + $wantToRead + $rating + $popularity;
+    }
+
+    /**
+     * The rating-quality signal of a book on the 0-1 scale (the same
+     * normalization reviewScoreSignal uses): the approved average
+     * rating divided by RATING_MAX, 0 when the book has no reviews.
+     */
+    public static function ratingQuality(float $averageRating, int $reviewCount): float
+    {
+        if ($reviewCount <= 0 || $averageRating <= 0) {
+            return 0.0;
+        }
+
+        return min($averageRating / self::RATING_MAX, 1.0);
+    }
+
+    /**
+     * The raw co-save count that maps to 100 on the 0-100 scale.
+     *
+     * A collaborative shelf (co-saved / shared-with-neighbours) ranks
+     * books by how many users saved them together; this normalizer
+     * says "10 co-saves = a perfect score". The value is a documented
+     * constant of the scoring home, not a number inside a service.
+     */
+    public const CO_SAVED_NORMALIZER = 10.0;
+
+    /**
+     * The collaborative score of a book on the shared 0-100 scale.
+     *
+     * Input:  how many users saved the book alongside the anchor (or
+     *         alongside any of the user's library books)
+     * Output: an integer percent, 0-100 (saved_count / 10 capped)
+     *
+     * Business responsibility: same monotonic normalization idea as
+     * popularityPercent() - the reported value lives on the one
+     * 0-100 scale of the engine, while the shelves rank by the raw
+     * count.
+     */
+    public static function collaborativeScore(int $savedCount): int
+    {
+        return self::toPercent((float) max(0, $savedCount), self::CO_SAVED_NORMALIZER);
     }
 
     // -----------------------------------------------------------------

@@ -72,4 +72,9 @@ final class RecommendationException extends RuntimeException
     {
         return new self("The book {$bookId} has no authors to recommend from.");
     }
+
+    public static function unknownLibrarySection(string $section): self
+    {
+        return new self("Unknown library recommendation section: '{$section}'.");
+    }
 }

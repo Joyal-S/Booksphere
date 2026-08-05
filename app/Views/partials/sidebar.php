@@ -53,8 +53,12 @@ $sessionUser = auth_user();
             </a>
 
             <p class="sidebar-group-label">Library</p>
-            <a class="nav-item<?= $active === 'wishlist' ? ' is-active' : '' ?>" href="/wishlist" title="Wishlist">
-                <i class="fa-solid fa-heart" aria-hidden="true"></i><span>Wishlist</span>
+            <!-- Phase 8.2: the sidebar Wishlist link now lands on the
+                 real Personal Library page ("My Library"). The legacy
+                 /wishlist route still works (a coming-soon page); the
+                 wishlist BACKEND moved to the library module in 8.1. -->
+            <a class="nav-item<?= $active === 'library' ? ' is-active' : '' ?>" href="/library" title="My Library">
+                <i class="fa-solid fa-bookmark" aria-hidden="true"></i><span>My Library</span>
             </a>
             <a class="nav-item<?= $active === 'recommendations' ? ' is-active' : '' ?>" href="/recommendations" title="Recommendations">
                 <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i><span>Recommendations</span>

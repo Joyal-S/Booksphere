@@ -20,13 +20,24 @@ declare(strict_types=1);
  *     $book        - the book row, with 'authors' and 'categories'
  *     $statuses    - status key -> label
  *     $isAdmin     - whether the edit/delete actions are shown
- *     $reviews        - approved review rows (empty without the
- *                       ReviewService, e.g. in older tests)
+ *     $reviews        - review rows of the current page (empty
+ *                       without the ReviewService, e.g. in tests)
  *     $reviewStats    - ['average' => float, 'count' => int]
+ *     $reviewBreakdown- ratingBreakdown() rows (distribution bars)
  *     $myReview       - the signed-in user's review of this book
  *     $canManage      - whether review Edit/Delete actions may show
  *     $reviewSection  - whether the Reviews & Ratings section
  *                       renders (the ReviewService is wired)
+ *     $toolbar / $pagination - the Phase 7.4 review list payload
+ *                       (ReviewListPresenter), or null
+ *     $communityStats - the Phase 7.5 community statistics panel
+ *                       (communityStats()), or null
+ *     $libraryItem    - the signed-in user's library record for this
+ *                       book, or null (Phase 8.2 - chooses between
+ *                       the Add and the Update library panel)
+ *     $libraryStatuses- status key -> display label (Phase 8.2)
+ *     $librarySection - whether the library panel renders (the
+ *                       LibraryService is wired)
  */
 
 $authors    = $book['authors'] ?? [];
@@ -63,11 +74,22 @@ $reviewSection = $reviewSection ?? false;
                 <span class="status-badge status-<?= e($book['status']) ?>">
                     <?= e($statuses[$book['status']] ?? $book['status']) ?>
                 </span>
-                <?php $ratingInfo = [
-                    'rating' => $book['average_rating'] ?? 0,
-                    'count'  => (int) ($book['ratings_count'] ?? 0),
-                ]; ?>
-                <?php require root_path('app/Views/books/components/rating-stars.php'); ?>
+                <?php
+                // The detail-page stars ALWAYS reflect the real
+                // approved reviews (Phase 7.3) - never the seeded
+                // sample columns - so the header, the count and the
+                // distribution bars below stay consistent.
+                $summary = [
+                    'average' => (float) ($reviewStats['average'] ?? 0),
+                    'count'   => (int) ($reviewStats['count'] ?? 0),
+                ];
+                $starRating = [
+                    'rating' => $summary['average'],
+                    'count'  => $summary['count'] > 0 ? $summary['count'] : null,
+                    'size'   => 'lg',
+                ];
+                ?>
+                <?php require root_path('app/Views/components/star-rating.php'); ?>
             </div>
 
             <!-- Statistics strip: rating, votes, pages, year -->
@@ -82,7 +104,7 @@ $reviewSection = $reviewSection ?? false;
                 <div class="book-stat">
                     <i class="fa-solid fa-users" aria-hidden="true"></i>
                     <div>
-                        <strong><?= (int) ($book['ratings_count'] ?? 0) ?></strong>
+                        <strong><?= (int) ($reviewStats['count'] ?? 0) ?></strong>
                         <span>Ratings</span>
                     </div>
                 </div>
@@ -145,7 +167,7 @@ $reviewSection = $reviewSection ?? false;
                 <?php if (!empty($book['created_at'])): ?>
                     <div class="book-meta-item">
                         <dt>Added</dt>
-                        <dd><?= e(date('M j, Y', strtotime($book['created_at']))) ?></dd>
+                        <dd><?= e(format_review_date((string) $book['created_at'])) ?></dd>
                     </div>
                 <?php endif; ?>
             </dl>
@@ -182,32 +204,76 @@ $reviewSection = $reviewSection ?? false;
     <?php require root_path('app/Views/books/partials/_delete-modal.php'); ?>
 <?php endif; ?>
 
+<?php if ($librarySection ?? false): ?>
+    <!-- Phase 8.2: the Personal Library panel - "Add to library"
+         when the book is not saved yet, the full "Update library
+         entry" panel (status, favourite, progress, remove) when it
+         is. The library SQL stays in the Library module; this page
+         only presents the user's own record. -->
+    <?php require root_path('app/Views/library/partials/_book-panel.php'); ?>
+<?php endif; ?>
+
 <?php if ($reviewSection): ?>
     <?php
-    // The Reviews & Ratings section (Phase 7.2): the write-review
-    // entry point (or the "already reviewed" status), the rating
-    // summary and every approved review, newest first.
-    $ratingInfo = [
-        'rating' => (float) $reviewStats['average'],
-        'count'  => (int) $reviewStats['count'],
-    ];
+    // The Reviews & Ratings section (Phase 7.2 + Phase 7.3 + Phase
+    // 7.4): the shared _section partial renders the summary header
+    // (average + stars + "Based on N reviews"), the animated rating
+    // distribution bars, the write-review entry point, the review
+    // toolbar (search within the book, sort, per-page, filters),
+    // the professional review cards with pagination and the three
+    // empty states - the SAME markup the /books/{id}/reviews page
+    // uses, so the two pages can never drift apart.
+    $breakdown = $reviewBreakdown ?? [];
+    $stats     = $reviewStats ?? ['average' => 0.0, 'count' => 0];
     ?>
-    <section class="mt-4" aria-label="Reviews and ratings">
-        <div class="card-base p-4">
-            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                <h2 class="section-title mb-0">Reviews &amp; Ratings</h2>
-                <?php require root_path('app/Views/books/components/rating-stars.php'); ?>
-            </div>
 
-            <?php require root_path('app/Views/reviews/partials/_write-section.php'); ?>
+    <?php
+    // Phase 7.5: the community statistics panel (total reviews,
+    // helpful votes, average rating and the most helpful / newest /
+    // highest rated review) sits between the book card and the
+    // review section.
+    ?>
+    <?php require root_path('app/Views/reviews/partials/_community-stats.php'); ?>
 
-            <div class="mt-4">
-                <?php require root_path('app/Views/reviews/partials/_list.php'); ?>
-            </div>
-        </div>
-    </section>
+    <?php require root_path('app/Views/reviews/partials/_section.php'); ?>
 
     <?php if ($canManage): ?>
         <?php require root_path('app/Views/reviews/partials/_delete-modal.php'); ?>
     <?php endif; ?>
+
+    <?php require root_path('app/Views/reviews/partials/_report-modal.php'); ?>
 <?php endif; ?>
+
+<?php
+// Phase 8.5: the book-detail recommendation sections - "Readers also
+// enjoyed", "More by these authors", "Similar categories", "Similar
+// ratings", "Similar popularity" and the user's personal shelf. Every
+// non-empty section renders as a shelf-strip of the same
+// recommendation cards the /recommendations dashboard uses; the
+// reasons come from the engine, this page only prints them.
+$bookRecommendations = $bookRecommendations ?? [];
+
+$bookSectionTitles = [
+    'readers_also_enjoyed' => 'Readers also enjoyed',
+    'same_author'          => 'More by these authors',
+    'same_category'        => 'Similar categories',
+    'similar_rating'       => 'Similar ratings',
+    'similar_popularity'   => 'Similar popularity',
+    'recommended_for_you'  => 'Recommended for you',
+];
+?>
+
+<?php foreach ($bookSectionTitles as $key => $title): ?>
+    <?php if (isset($bookRecommendations[$key]) && $bookRecommendations[$key] !== []): ?>
+        <?php $shelf = [
+            'eyebrow' => 'More to explore',
+            'title'   => $title,
+            'icon'    => $key === 'recommended_for_you' ? 'fa-wand-magic-sparkles' : 'fa-book-open',
+            'link'    => null,
+            'items'   => $bookRecommendations[$key],
+            'empty'   => '',
+            'columns' => 'row-cols-2 row-cols-md-3 row-cols-xl-4',
+        ]; ?>
+        <?php require root_path('app/Views/recommendations/components/shelf-strip.php'); ?>
+    <?php endif; ?>
+<?php endforeach; ?>

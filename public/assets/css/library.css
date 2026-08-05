@@ -1,0 +1,1646 @@
+/**
+ * library.css
+ *
+ * The stylesheet of the PERSONAL LIBRARY module (Phase 8.2 + Phase
+ * 8.3) - the "My Library" DASHBOARD (the premium header with the
+ * streak chips, the statistics row, the quick actions, the
+ * continue-reading shelf, the filter / sort / view bar, the shelf
+ * tabs, the book grid & list, the pagination and the reading
+ * summary), the library panel on the book detail page and the
+ * Continue Reading shelf on the dashboard.
+ *
+ * Organised as:
+ *     1. Status badge tints of the five library shelves
+ *     2. Library page header & search bar
+ *     3. Shelf tabs with live counters
+ *     4. Library card (cover, titles, strip, progress, actions)
+ *        + the favourite heart button
+ *     5. Shelf sections & empty states
+ *     6. Loading skeletons (cards + statistics)
+ *     7. Library panel (book detail page)
+ *     8. Dashboard "Continue Reading" shelf
+ *     9. Library dashboard (Phase 8.3): the hero header with the
+ *        streak / books / progress chips, the quick actions, the
+ *        filter bar, the filter chips, the list rows, the
+ *        pagination and the recommended badge
+ *    10. Motion (GSAP-friendly states) & accessibility
+ *    11. Responsive breakpoints
+ *
+ * Every value comes from the design tokens in app.css (--primary,
+ * --surface, --border, ...), so light and dark mode work with no
+ * extra rules - the tokens flip under [data-bs-theme="dark"].
+ */
+
+/* =========================================================
+   1. Status badge tints of the five library shelves
+   =========================================================
+   The shared .status-badge (app.css) provides the pill shape; the
+   five library statuses get their own tint so a Moving-through-
+   reading shelf reads at a glance. Same soft-background pattern as
+   .status-draft / .status-published. */
+
+.status-badge.status-want_to_read {
+    background: var(--info-soft);
+    color: var(--info);
+}
+
+.status-badge.status-currently_reading {
+    background: var(--warning-soft);
+    color: var(--warning);
+}
+
+.status-badge.status-finished {
+    background: var(--success-soft);
+    color: var(--success);
+}
+
+.status-badge.status-on_hold {
+    background: var(--surface-2);
+    color: var(--muted);
+}
+
+.status-badge.status-dropped {
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
+/* =========================================================
+   2. Library page header & search bar
+   ========================================================= */
+
+.library-search-bar {
+    display: flex;
+    gap: 10px;
+    padding: 12px;
+}
+
+.library-search-bar .form-control {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+/* Live-search loading state: the whole bar dims slightly while the
+   skeleton row is in flight, so the user knows the region is alive. */
+.library-search-bar.is-searching .form-control {
+    opacity: 0.7;
+}
+
+.library-search-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 6px 0 18px;
+}
+
+.library-search-head .eyebrow {
+    margin: 0;
+}
+
+/* =========================================================
+   3. Shelf tabs with live counters
+   ========================================================= */
+
+.library-tabs {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 22px 0 6px;
+}
+
+.library-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.library-tab:hover {
+    color: var(--primary);
+    border-color: var(--border-strong);
+}
+
+.library-tab.is-active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--primary-contrast);
+    box-shadow: var(--shadow-primary);
+}
+
+.library-tab-count {
+    min-width: 22px;
+    padding: 1px 7px;
+    border-radius: var(--radius-full);
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+.library-tab.is-active .library-tab-count {
+    background: rgb(255 255 255 / 0.22);
+    color: var(--primary-contrast);
+}
+
+/* =========================================================
+   4. Library card
+   ========================================================= */
+
+.library-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    will-change: transform;
+}
+
+/* Card hover lift handled by GSAP in library.js; the CSS fallback
+   keeps a soft shadow so the interaction is visible without JS. */
+.library-card:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow);
+}
+
+.library-card-cover {
+    display: block;
+    flex: 0 0 auto;
+}
+
+.library-card-cover-img {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    display: block;
+    background: var(--surface-2);
+}
+
+.library-card-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    gap: 10px;
+    padding: 14px;
+}
+
+.library-card-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.library-card-titles {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.library-card-title {
+    margin: 0 0 2px;
+    font-family: var(--font-serif);
+    font-size: 1.02rem;
+    line-height: 1.3;
+}
+
+.library-card-title a {
+    color: var(--text);
+}
+
+.library-card-title a:hover {
+    color: var(--primary);
+}
+
+.library-card-authors {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.82rem;
+}
+
+.library-card-cats {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 0.78rem;
+}
+
+/* The card actions row: status select, details, remove */
+.library-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: auto;
+    padding-top: 4px;
+}
+
+.library-card-actions form {
+    margin: 0;
+}
+
+.library-card-strip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* ---- The favourite heart --------------------------------- */
+
+.library-fav-btn,
+.library-panel-fav {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.library-fav-btn:hover {
+    color: var(--danger);
+    border-color: var(--danger-soft);
+}
+
+.library-fav-btn.is-favorite {
+    color: var(--danger);
+    border-color: var(--danger-soft);
+    background: var(--danger-soft);
+}
+
+.library-fav-btn-lg {
+    width: 42px;
+    height: 42px;
+}
+
+/* GSAP pops the icon on toggle (see library.js); without GSAP the
+   transition still gives instant feedback. */
+.library-fav-btn i {
+    pointer-events: none;
+}
+
+/* ---- Reading progress ------------------------------------ */
+
+.library-card-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.library-progress {
+    flex: 1 1 auto;
+    height: 8px;
+    border-radius: var(--radius-full);
+    background: var(--surface-2);
+    overflow: hidden;
+}
+
+.library-progress .progress-bar {
+    background: var(--primary);
+    border-radius: var(--radius-full);
+    transition: width 0.45s ease;
+}
+
+.library-progress-value {
+    min-width: 42px;
+    text-align: right;
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+/* The range input the user drags to update progress. The native
+   track is hidden and a custom filled bar shows the value. */
+.library-progress-input {
+    width: 100%;
+    height: 6px;
+    margin: 0;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--surface-2);
+    border-radius: var(--radius-full);
+    cursor: pointer;
+}
+
+.library-progress-input::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--surface);
+    border-radius: 50%;
+    background: var(--primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.library-progress-input::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--surface);
+    border-radius: 50%;
+    background: var(--primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.library-progress-save {
+    flex: 0 0 auto;
+}
+
+/* A small "saved" pulse the JS adds momentarily after a save. */
+.library-progress-save.is-saved {
+    color: var(--success);
+    border-color: var(--success);
+}
+
+/* =========================================================
+   5. Shelf sections & empty states
+   ========================================================= */
+
+.library-section {
+    margin-top: 30px;
+}
+
+.library-section-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.library-section-count {
+    min-width: 22px;
+    padding: 1px 8px;
+    border-radius: var(--radius-full);
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-align: center;
+}
+
+/* =========================================================
+   6. Loading skeletons
+   =========================================================
+   Mirrors the library card layout (cover band + body lines) so the
+   live search shows exactly where results land - no layout shift. */
+
+.library-skeleton-wrap[hidden] {
+    display: none;
+}
+
+.library-skeleton-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    overflow: hidden;
+}
+
+.library-skeleton-cover {
+    aspect-ratio: 16 / 9;
+    border-radius: 0;
+}
+
+.library-skeleton-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+}
+
+.library-skeleton-line {
+    height: 12px;
+    border-radius: var(--radius-full);
+}
+
+.library-skeleton-line--title {
+    width: 72%;
+    height: 15px;
+}
+
+.library-skeleton-line--meta {
+    width: 55%;
+}
+
+.library-skeleton-line--bar {
+    width: 88%;
+    height: 8px;
+}
+
+/* The shared shimmer gradient lives in app.css .skeleton; these
+   elements simply opt into it (same pattern as review.css). */
+.library-skeleton-card.skeleton,
+.library-skeleton-line.skeleton {
+    background: linear-gradient(
+        100deg,
+        var(--surface-2) 40%,
+        color-mix(in srgb, var(--surface-2) 40%, var(--primary-soft)) 50%,
+        var(--surface-2) 60%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.2s linear infinite;
+}
+
+@keyframes skeleton-shimmer {
+    to {
+        background-position: -200% 0;
+    }
+}
+
+/* =========================================================
+   7. Library panel (book detail page)
+   =========================================================
+   The Add / Update entry block the book detail page renders for the
+   signed-in user. Sits between the book card and the review section
+   as its own surface. */
+
+.library-panel {
+    margin-top: 28px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.library-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.library-panel-head .section-icon {
+    flex: 0 0 auto;
+}
+
+.library-panel-head .eyebrow {
+    margin: 0 0 2px;
+}
+
+.library-panel-head .section-title {
+    margin: 0;
+}
+
+.library-panel-form {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.library-panel-form .form-select {
+    flex: 1 1 220px;
+    min-width: 0;
+}
+
+.library-panel-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border-top: 1px dashed var(--border);
+    padding-top: 16px;
+}
+
+.library-panel-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    border-top: 1px dashed var(--border);
+    padding-top: 16px;
+}
+
+.library-panel-actions form {
+    margin: 0;
+}
+
+.library-panel-actions .form-select {
+    width: auto;
+    min-width: 180px;
+}
+
+/* =========================================================
+   8. Dashboard "Continue Reading" shelf
+   ========================================================= */
+
+.continue-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    will-change: transform;
+}
+
+.continue-card:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow);
+}
+
+.continue-cover {
+    display: block;
+}
+
+.continue-cover img,
+.continue-cover .book-cover-placeholder,
+.continue-cover .book-cover-component {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+}
+
+.continue-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    gap: 10px;
+    padding: 14px;
+}
+
+.continue-title {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: 0.98rem;
+    line-height: 1.3;
+}
+
+.continue-title a {
+    color: var(--text);
+}
+
+.continue-title a:hover {
+    color: var(--primary);
+}
+
+.continue-authors {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+
+.continue-progress {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.continue-progress-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.74rem;
+    color: var(--muted);
+}
+
+.continue-progress-meta strong {
+    color: var(--text);
+}
+
+.continue-resume {
+    padding: 0.28rem 0.7rem;
+    font-size: 0.76rem;
+    line-height: 1.4;
+}
+
+/* =========================================================
+   9. Library dashboard (Phase 8.3)
+   =========================================================
+   The premium "My Library" page: the hero header with its streak /
+   books / progress chips, the statistics row, the quick actions,
+   the filter bar, the active-filter chips, the book list rows, the
+   pagination and the "Recommended for you" badge. */
+
+/* ---- The hero header & chips ------------------------------ */
+
+.library-hero {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding: 8px 0 4px;
+}
+
+.library-hero h1 {
+    font-family: var(--font-serif);
+    font-size: clamp(1.55rem, 3vw, 2.05rem);
+}
+
+.library-hero .lead {
+    margin: 6px 0 0;
+    color: var(--muted);
+}
+
+.library-hero-chips {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.library-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 150px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.library-chip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-full);
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-size: 0.95rem;
+    flex: 0 0 auto;
+}
+
+.library-chip--streak .library-chip-icon {
+    background: color-mix(in srgb, var(--danger) 14%, transparent);
+    color: var(--danger);
+}
+
+.library-chip strong {
+    display: block;
+    font-size: 0.95rem;
+    line-height: 1.1;
+}
+
+.library-chip span {
+    display: block;
+    color: var(--muted);
+    font-size: 0.72rem;
+}
+
+/* ---- The statistics row ----------------------------------- */
+
+.library-stats {
+    margin-top: 26px;
+}
+
+/* The dimmed state while the numbers are skeleton-filled. */
+.library-stats.is-refreshing {
+    opacity: 0.75;
+}
+
+/* ---- Skeleton statistics (the stat-card skeleton) --------- */
+
+.library-skeleton-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    height: 100%;
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+}
+
+.library-skeleton-tile {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-full);
+}
+
+.library-skeleton-line--sm {
+    width: 46%;
+}
+
+.library-skeleton-stat.skeleton .library-skeleton-tile,
+.library-skeleton-stat.skeleton .library-skeleton-line {
+    background: linear-gradient(
+        100deg,
+        var(--surface-2) 40%,
+        color-mix(in srgb, var(--surface-2) 40%, var(--primary-soft)) 50%,
+        var(--surface-2) 60%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.2s linear infinite;
+}
+
+/* ---- Quick actions ----------------------------------------- */
+
+.library-quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 12px;
+    margin-top: 26px;
+}
+
+.library-quick-action {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--text);
+    text-decoration: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.library-quick-action:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-sm);
+    color: var(--text);
+}
+
+.library-quick-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-lg);
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-size: 1.1rem;
+    flex: 0 0 auto;
+}
+
+.library-quick-body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.library-quick-body strong {
+    display: block;
+    font-size: 0.9rem;
+}
+
+.library-quick-body small {
+    display: block;
+    color: var(--muted);
+    font-size: 0.74rem;
+}
+
+.library-quick-arrow {
+    color: var(--muted);
+    font-size: 0.8rem;
+    transition: transform 0.18s ease, color 0.18s ease;
+}
+
+.library-quick-action:hover .library-quick-arrow {
+    color: var(--primary);
+    transform: translateX(3px);
+}
+
+/* ---- The filter bar ---------------------------------------- */
+
+.library-filter-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px;
+    margin-top: 30px;
+}
+
+.library-filter-bar.is-searching .form-control {
+    opacity: 0.7;
+}
+
+.library-filter-search {
+    display: flex;
+    gap: 10px;
+}
+
+.library-filter-search .form-control {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.library-filter-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.library-filter-select .form-select {
+    min-width: 150px;
+}
+
+.library-filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+    transition: color 0.18s ease, border-color 0.18s ease;
+}
+
+.library-filter-toggle:hover {
+    color: var(--primary);
+    border-color: var(--border-strong);
+}
+
+.library-filter-toggle:has(input:checked) {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: var(--primary-soft);
+}
+
+.library-filter-toggle input {
+    accent-color: var(--primary);
+}
+
+.library-filter-spacer {
+    flex: 1 1 auto;
+}
+
+/* The grid / list view switch */
+.library-view-toggle {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.library-view-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 34px;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.18s ease, background 0.18s ease;
+}
+
+.library-view-btn + .library-view-btn {
+    border-left: 1px solid var(--border);
+}
+
+.library-view-btn:hover {
+    color: var(--primary);
+}
+
+.library-view-btn.is-active {
+    background: var(--primary);
+    color: var(--primary-contrast);
+}
+
+/* ---- Active-filter chips ----------------------------------- */
+
+.library-chip-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 24px 0 12px;
+}
+
+.library-chip-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.library-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.library-chip a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.18s ease, background 0.18s ease;
+}
+
+.library-chip a:hover {
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
+.library-chip-count {
+    margin-left: 4px;
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+/* ---- Book list view ---------------------------------------- */
+
+.library-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.library-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.library-row:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow);
+}
+
+.library-row-cover {
+    flex: 0 0 auto;
+    width: 88px;
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.library-row-cover-img {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    display: block;
+    background: var(--surface-2);
+}
+
+.library-row-body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.library-row-title {
+    margin: 0 0 2px;
+    font-family: var(--font-serif);
+    font-size: 1rem;
+    line-height: 1.3;
+}
+
+.library-row-title a {
+    color: var(--text);
+}
+
+.library-row-title a:hover {
+    color: var(--primary);
+}
+
+.library-row-authors {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+
+.library-row-facts {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.library-row-progress {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 180px;
+    min-width: 140px;
+}
+
+.library-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+/* ---- Pagination -------------------------------------------- */
+
+.library-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 26px 0 8px;
+}
+
+.library-page-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.library-page-btn:hover {
+    color: var(--primary);
+    border-color: var(--border-strong);
+}
+
+.library-page-btn.is-current {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--primary-contrast);
+    box-shadow: var(--shadow-primary);
+}
+
+.library-page-btn.is-disabled {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+/* ---- Card extras: the recommendation badge, updated stamp ------ */
+
+.library-card-cover {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.library-card-cover-link {
+    display: block;
+}
+
+.library-recommended-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: var(--primary);
+    color: var(--primary-contrast);
+    font-size: 0.68rem;
+    font-weight: 700;
+    box-shadow: var(--shadow-sm);
+}
+
+.library-card-updated {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 0.74rem;
+}
+
+.library-card-resume {
+    padding: 0.28rem 0.7rem;
+    font-size: 0.74rem;
+    line-height: 1.4;
+}
+
+/* =========================================================
+   10. Motion & accessibility
+   =========================================================
+   The is-saving marker the JS applies while a fetch is in flight
+   (dimmed + not-allowed so double-clicks are obvious). */
+
+.library-card.is-saving,
+.library-panel.is-saving,
+.continue-card.is-saving {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+[data-library-results][aria-busy="true"] {
+    min-height: 260px;
+}
+
+/* Focus states for the custom interactive controls. */
+.library-fav-btn:focus-visible,
+.library-progress-input:focus-visible,
+.library-tab:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--primary) 55%, transparent);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .library-card,
+    .continue-card {
+        transition: none;
+    }
+
+    .library-progress .progress-bar {
+        transition: none;
+    }
+
+    .library-skeleton-card.skeleton,
+    .library-skeleton-line.skeleton {
+        animation: none;
+    }
+}
+
+/* =========================================================
+   11. Responsive breakpoints
+   ========================================================= */
+
+@media (max-width: 575.98px) {
+    .library-tabs {
+        gap: 6px;
+    }
+
+    .library-tab {
+        padding: 7px 11px;
+        font-size: 0.78rem;
+    }
+
+    .library-card-cover-img {
+        aspect-ratio: 21 / 9;
+    }
+
+    .library-panel {
+        padding: 16px;
+    }
+
+    .library-panel-form .form-select {
+        flex: 1 1 100%;
+    }
+
+    .library-hero {
+        align-items: flex-start;
+    }
+
+    .library-hero-chips {
+        width: 100%;
+    }
+
+    .library-chip {
+        flex: 1 1 100%;
+    }
+
+    .library-filter-bar {
+        padding: 10px;
+    }
+
+    .library-filter-search {
+        flex-direction: column;
+    }
+
+    .library-filter-search .btn {
+        width: 100%;
+    }
+
+    .library-filter-spacer {
+        display: none;
+    }
+
+    .library-row {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .library-row-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+/* Dark mode: the tokens in app.css already flip the design system;
+   only a couple of hand-mixed rgba values need sharper overrides. */
+[data-bs-theme="dark"] .library-tab-count {
+    background: var(--surface-inverse);
+}
+
+/* =========================================================
+   13. Phase 8.4: Smart Collections rail
+   ========================================================= */
+
+.library-collections {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(150px, 1fr));
+    gap: 10px;
+    margin: 22px 0 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+/* The compact quick-access variant of the dashboard: a wrapping row,
+   not the library page's scrollable grid. */
+.library-collections--quick {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    overflow-x: visible;
+    margin: 0;
+}
+
+/* Small book thumbnails used on the profile "My Library" block. */
+.profile-book-thumb {
+    width: 36px;
+    height: 52px;
+    object-fit: cover;
+    border-radius: var(--radius-sm, 4px);
+    flex-shrink: 0;
+}
+
+.library-collection {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--text);
+    text-decoration: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.library-collection:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-sm);
+    color: var(--text);
+    transform: translateY(-2px);
+}
+
+.library-collection.is-active {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-primary);
+}
+
+.library-collection[aria-disabled="true"] {
+    opacity: 0.55;
+}
+
+.library-collection-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    border-radius: var(--radius);
+    background: var(--surface-2);
+    color: var(--muted);
+}
+
+.library-collection--all:hover .library-collection-icon,
+.library-collection--all.is-active .library-collection-icon {
+    background: var(--primary-soft);
+    color: var(--primary);
+}
+
+.library-collection--want_to_read .library-collection-icon,
+.library-collection--currently_reading .library-collection-icon,
+.library-collection--on_hold .library-collection-icon {
+    background: var(--warning-soft);
+    color: var(--warning);
+}
+
+.library-collection--finished .library-collection-icon {
+    background: var(--success-soft);
+    color: var(--success);
+}
+
+.library-collection--dropped .library-collection-icon,
+.library-collection--favorites .library-collection-icon {
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
+.library-collection.is-active .library-collection-icon,
+.library-collection:hover .library-collection-icon {
+    background: var(--primary-soft);
+    color: var(--primary);
+}
+
+.library-collection-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.library-collection-name {
+    font-size: 0.82rem;
+    line-height: 1.25;
+}
+
+.library-collection-count {
+    font-size: 0.72rem;
+    color: var(--muted);
+}
+
+.library-collection-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.68rem;
+    color: var(--muted);
+}
+
+.library-collection-meta i {
+    margin-right: 3px;
+}
+
+.library-collection-dot {
+    opacity: 0.6;
+}
+
+/* =========================================================
+   14. Phase 8.4: bulk selection
+   ========================================================= */
+
+.library-card,
+.library-row {
+    position: relative;
+}
+
+/* The selection checkbox overlay - revealed on hover / focus /
+   once any book is selected (the .is-bulk-mode page state). */
+.library-select-label {
+    position: absolute;
+    z-index: 6;
+    top: 8px;
+    right: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-full);
+    background: rgb(255 255 255 / 0.92);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.18s ease, background 0.18s ease;
+}
+
+.is-bulk-mode .library-select-label,
+.library-card:hover .library-select-label,
+.library-card:focus-within .library-select-label,
+.library-row:hover .library-select-label,
+.library-row:focus-within .library-select-label {
+    opacity: 1;
+}
+
+.library-select-label:has(input:checked) {
+    opacity: 1;
+    background: var(--primary);
+}
+
+.library-select-input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.library-row .library-select-label {
+    top: 50%;
+    right: auto;
+    left: 8px;
+    transform: translateY(-50%);
+}
+
+.library-row-cover {
+    position: relative;
+}
+
+.library-focus-ring .library-fav-btn:focus-visible,
+.library-focus-ring .library-select-label:focus-within {
+    outline: 3px solid var(--primary-soft);
+    outline-offset: 2px;
+}
+
+/* =========================================================
+   15. Phase 8.4: the bulk actions bar
+   ========================================================= */
+
+.library-bulk-bar {
+    position: sticky;
+    bottom: 14px;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 20px 0 8px;
+    padding: 10px 14px;
+    border: 1px solid var(--primary-soft);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    transition: opacity 0.2s ease;
+}
+
+.library-bulk-bar.is-empty {
+    display: none;
+}
+
+.library-bulk-bar.is-saving {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.library-bulk-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.library-bulk-select-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.library-bulk-count {
+    font-size: 0.82rem;
+    color: var(--muted);
+}
+
+.library-bulk-clear {
+    padding: 0;
+    text-decoration: none;
+}
+
+.library-bulk-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.library-bulk-status {
+    width: auto;
+    min-width: 160px;
+}
+
+/* =========================================================
+   16. Phase 8.4: the quick action menu + review count
+   ========================================================= */
+
+.library-card-actions-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.library-quick-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    color: var(--muted);
+    transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.library-quick-toggle:hover {
+    color: var(--primary);
+    border-color: var(--border-strong);
+}
+
+.library-quick-menu {
+    min-width: 210px;
+}
+
+.library-quick-menu .dropdown-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.85rem;
+    padding: 8px 14px;
+}
+
+.library-quick-menu .dropdown-item.is-current {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.library-quick-menu .quick-current-check {
+    margin-left: auto;
+}
+
+.library-quick-menu .dropdown-header {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.library-review-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    color: var(--muted);
+    white-space: nowrap;
+}
+
+.library-row-facts .library-review-count {
+    font-size: 0.8rem;
+}
+
+/* =========================================================
+   17. Phase 8.4: responsive + dark overrides
+   ========================================================= */
+
+@media (max-width: 1199.98px) {
+    .library-collections {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        overflow-x: visible;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .library-collections {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .library-bulk-bar {
+        bottom: 8px;
+    }
+
+    .library-bulk-status {
+        width: 100%;
+    }
+}
+
+[data-bs-theme="dark"] .library-select-label {
+    background: rgb(20 20 32 / 0.9);
+}
+
+[data-bs-theme="dark"] .library-collection-icon {
+    background: var(--surface-inverse);
+}
+
+[data-bs-theme="dark"] .library-collection.is-active {
+    box-shadow: 0 0 0 1px var(--primary);
+}

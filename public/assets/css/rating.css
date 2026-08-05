@@ -1,0 +1,349 @@
+/**
+ * rating.css
+ *
+ * The REUSABLE rating styles of BookSphere (Phase 7.3): the
+ * StarRatingComponent (display stars + interactive star input) and
+ * the rating distribution bars. Loaded on every page through
+ * partials/head.php.
+ *
+ * Organised as:
+ *     1. Design tokens (sizes, colours - overrides the app tokens)
+ *     2. Display stars (.star-rating) - sm / md / lg
+ *     3. Interactive input (.star-input) - hover, selection,
+ *        keyboard focus, live preview
+ *     4. Rating distribution bars (.rating-distribution)
+ *     5. Motion (respects prefers-reduced-motion)
+ *     6. Responsive breakpoints
+ *     7. Dark mode
+ *
+ * All colours flow through CSS variables (--star, --text, --muted,
+ * --surface, --border from app.css), so the component inherits the
+ * active theme automatically.
+ */
+
+/* =========================================================
+   1. Design tokens
+   ========================================================= */
+:root {
+    --rating-star: var(--star, #f59e0b);
+    --rating-star-empty: var(--border-strong, #d5dbe8);
+    --rating-star-hover-scale: 1.18;
+    --rating-star-gap: 0.15em;
+
+    /* Star size per variant */
+    --rating-size-sm: 0.85rem;
+    --rating-size-md: 1.1rem;
+    --rating-size-lg: 1.45rem;
+}
+
+/* =========================================================
+   2. Display stars (.star-rating)
+   ========================================================= */
+.star-rating {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+    line-height: 1;
+    color: var(--text);
+    white-space: nowrap;
+}
+
+.star-rating-visual {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--rating-star-gap);
+    color: var(--rating-star-empty);
+}
+
+.star-rating-visual i {
+    font-size: var(--rating-size-md);
+    transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.star-rating-visual i.is-filled,
+.star-rating-visual i.is-half {
+    color: var(--rating-star);
+}
+
+.star-rating-value {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.star-rating-count {
+    color: var(--muted);
+    font-size: 0.85em;
+}
+
+/* Size variants */
+.star-rating-sm .star-rating-visual i { font-size: var(--rating-size-sm); }
+.star-rating-sm .star-rating-value   { font-size: 0.9rem; }
+.star-rating-md .star-rating-visual i { font-size: var(--rating-size-md); }
+.star-rating-lg .star-rating-visual i { font-size: var(--rating-size-lg); }
+
+/* Compact list layout: one filled star + the value (keeps dense
+   lists like "My Reviews" and the book table uncluttered). */
+.star-rating-compact .star-rating-visual {
+    display: none;
+}
+
+.star-rating-compact .star-rating-value::before {
+    content: "\f005";              /* fa-solid star */
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    color: var(--rating-star);
+    margin-right: 0.3em;
+}
+
+.star-rating-compact .star-rating-count {
+    display: none;
+}
+
+/* =========================================================
+   3. Interactive input (.star-input)
+   ========================================================= */
+.star-input {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.star-input-label {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text);
+}
+
+.star-input-stars {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--rating-star-gap) * 1.6);
+}
+
+.star-input-star {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.1em;
+    margin: 0;
+    background: none;
+    border: none;
+    border-radius: 0.35em;
+    cursor: pointer;
+    color: var(--rating-star-empty);
+    line-height: 1;
+    transition: transform 0.15s ease, color 0.15s ease, filter 0.15s ease;
+}
+
+.star-input-star i {
+    font-size: var(--rating-size-md);
+    pointer-events: none;   /* the button owns the interaction */
+}
+
+/* Hover: the hovered star and everything before it light up. */
+.star-input-star:hover i,
+.star-input-star.is-hovered i {
+    color: var(--rating-star);
+}
+
+.star-input-star:hover {
+    transform: scale(var(--rating-star-hover-scale));
+}
+
+/* Selected stars stay filled (selected = solid, others regular). */
+.star-input-star.is-selected i {
+    color: var(--rating-star);
+}
+
+/* Keyboard focus: a visible ring, matching the app's focus token. */
+.star-input-star:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    color: var(--rating-star);
+}
+
+/* Size variants */
+.star-input-sm .star-input-star i { font-size: var(--rating-size-sm); }
+.star-input-md .star-input-star i { font-size: var(--rating-size-md); }
+.star-input-lg .star-input-star i { font-size: var(--rating-size-lg); }
+
+.star-input-preview {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--muted);
+    min-height: 1.25em;
+}
+
+.star-input-preview.has-rating {
+    color: var(--rating-star);
+    font-weight: 600;
+}
+
+.star-input-error {
+    font-size: 0.85rem;
+}
+
+/* =========================================================
+   4. Rating distribution bars (.rating-distribution)
+   ========================================================= */
+.rating-distribution {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.rating-distribution-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0 0 0.25rem;
+}
+
+.rating-dist-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.rating-dist-stars {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.12em;
+    color: var(--rating-star);
+    font-size: 0.8rem;
+    width: 5.5em;               /* five stars always align */
+    flex-shrink: 0;
+}
+
+.rating-dist-bar {
+    height: 0.6rem;
+    border-radius: var(--radius-full);
+    background: var(--surface-2);
+    overflow: hidden;
+    margin: 0;
+}
+
+.rating-dist-bar .progress-bar {
+    background: linear-gradient(90deg, var(--rating-star), #fbbf24);
+    border-radius: var(--radius-full);
+    width: 0;                   /* set to the real percent by rating.js */
+    transition: width 0.4s ease-out;
+}
+
+.rating-dist-count {
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    min-width: 6.5em;
+    flex-shrink: 0;
+}
+
+.rating-dist-empty {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+/* =========================================================
+   4.5 Analytics tiles & lists (.analytics-tile,
+       .analytics-average-value, .analytics-list)
+   ========================================================= */
+.analytics-tile {
+    background: var(--surface-2);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    padding: 0.9rem 1rem;
+    min-height: 100%;
+}
+
+.analytics-tile-value {
+    display: block;
+    font-size: 1.6rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--text-strong);
+}
+
+.analytics-tile-label {
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.analytics-average-value {
+    font-size: 2.4rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--rating-star);
+    font-variant-numeric: tabular-nums;
+}
+
+.analytics-list {
+    padding-left: 1.1rem;
+    margin-top: 0.5rem;
+}
+
+.analytics-list li {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.analytics-list a {
+    color: var(--text-strong);
+    text-decoration: none;
+}
+
+.analytics-list a:hover {
+    color: var(--accent);
+    text-decoration: underline;
+}
+
+.analytics-list .text-muted {
+    margin-left: 0.35rem;
+    white-space: nowrap;
+}
+
+/* =========================================================
+   5. Motion
+   ========================================================= */
+.star-input-star.is-selected {
+    animation: star-pop 0.25s ease;
+}
+
+@keyframes star-pop {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(var(--rating-star-hover-scale)); }
+    100% { transform: scale(1); }
+}
+
+/* =========================================================
+   6. Responsive
+   ========================================================= */
+@media (max-width: 575.98px) {
+    .star-rating-value { font-size: 0.9rem; }
+    .rating-dist-row   { gap: 0.5rem; }
+    .rating-dist-stars { font-size: 0.7rem; width: 5em; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .star-input-star,
+    .star-rating-visual i,
+    .rating-dist-bar .progress-bar {
+        transition: none;
+        animation: none;
+    }
+}
+
+/* =========================================================
+   7. Dark mode
+   ========================================================= */
+[data-bs-theme="dark"] {
+    --rating-star-empty: #4a5468;
+    --rating-star-hover-scale: 1.18;
+}
+
+[data-bs-theme="dark"] .rating-dist-bar {
+    background: var(--surface-2, #1e293b);
+}

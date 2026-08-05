@@ -5,16 +5,12 @@ declare(strict_types=1);
 /**
  * books/components/rating-stars.php
  *
- * The reusable RATING STARS display: five stars that visualise
- * an average rating (1-5 scale) with half-star support, followed
- * by the numeric value and optional vote count.
- *
- * Why it exists:
- *     - The rating appears in the list table, on the detail page
- *       and on book cards; one component keeps the markup
- *       identical and accessible everywhere.
- *     - Star fills are computed once here (full / half / empty)
- *       so views never repeat rounding logic.
+ * The ADAPTER of the reusable StarRatingComponent (Phase 7.3),
+ * kept for the callers that already know the $ratingInfo contract:
+ * the book detail page, the book table row, the review lists and
+ * the book reviews page. It maps the legacy options onto the
+ * component's props and delegates - one markup, one component,
+ * every page can never drift.
  *
  * Usage (a view sets $ratingInfo first):
  *
@@ -25,8 +21,8 @@ declare(strict_types=1);
  *     ];
  *     <?php require root_path('app/Views/books/components/rating-stars.php'); ?>
  *
- * Accessibility: the visual stars are aria-hidden; the actual
- * value is announced through a visually-hidden text label.
+ * The half-star rounding and the accessibility label now live in
+ * the component itself (components/star-rating.php).
  */
 
 $ratingInfo = array_merge([
@@ -35,25 +31,11 @@ $ratingInfo = array_merge([
     'compact' => false,
 ], $ratingInfo ?? []);
 
-$rating = max(0.0, min(5.0, (float) $ratingInfo['rating']));
+$starRating = [
+    'rating'   => (float) $ratingInfo['rating'],
+    'count'    => $ratingInfo['count'] === null ? null : (int) $ratingInfo['count'],
+    'compact'  => (bool) $ratingInfo['compact'],
+    'readOnly' => true,
+];
 
-?>
-<span class="rating-stars<?= $ratingInfo['compact'] ? ' rating-stars-compact' : '' ?>"
-      title="<?= e(number_format($rating, 1)) ?> out of 5">
-    <span class="rating-stars-visual" aria-hidden="true">
-        <?php for ($i = 1; $i <= 5; $i++): ?>
-            <?php if ($rating >= $i - 0.25): ?>
-                <i class="fa-solid fa-star is-filled"></i>
-            <?php elseif ($rating >= $i - 0.75): ?>
-                <i class="fa-solid fa-star-half-stroke is-half"></i>
-            <?php else: ?>
-                <i class="fa-regular fa-star"></i>
-            <?php endif; ?>
-        <?php endfor; ?>
-    </span>
-    <span class="rating-stars-value"><?= e(number_format($rating, 1)) ?></span>
-    <?php if ($ratingInfo['count'] !== null): ?>
-        <span class="rating-stars-count">(<?= (int) $ratingInfo['count'] ?> ratings)</span>
-    <?php endif; ?>
-    <span class="visually-hidden">Rated <?= e(number_format($rating, 1)) ?> out of 5 stars</span>
-</span>
+require root_path('app/Views/components/star-rating.php');

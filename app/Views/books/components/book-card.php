@@ -51,11 +51,12 @@ $book = array_merge([
     <span class="book-card-module-body">
         <span class="book-card-module-title"><?= e($book['title']) ?></span>
         <span class="book-card-module-meta">
-            <span class="book-rating"><i class="fa-solid fa-star" aria-hidden="true"></i>
-                <?= e(number_format((float) $book['average_rating'], 1)) ?></span>
-            <?php if ((int) $book['ratings_count'] > 0): ?>
-                <span class="book-rating-count">(<?= (int) $book['ratings_count'] ?> ratings)</span>
-            <?php endif; ?>
+            <?php $starRating = [
+                'rating' => (float) $book['average_rating'],
+                'count'  => (int) $book['ratings_count'] > 0 ? (int) $book['ratings_count'] : null,
+                'size'   => 'sm',
+            ]; ?>
+            <?php require root_path('app/Views/components/star-rating.php'); ?>
             <?php if (!empty($book['status'])): ?>
                 <span class="status-badge status-<?= e($book['status']) ?>">
                     <?= e(ucfirst($book['status'])) ?>

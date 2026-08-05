@@ -122,6 +122,9 @@ final class PersonalizationCache
      * Business responsibility: the explicit invalidation hook the
      * brief demands - call it whenever a wishlist, rating or review
      * of the user changes so the next shelf reflects the new signal.
+     * Phase 8.5: the user's per-section library shelves
+     * (section_{user}_{section}.json) are dropped too - a library /
+     * rating / review change alters every library-derived shelf.
      */
     public function invalidate(int $userId): void
     {
@@ -135,6 +138,10 @@ final class PersonalizationCache
         if (is_file($file)) {
             unlink($file);
         }
+
+        foreach (glob($this->directory . '/section_' . $userId . '_*.json') ?: [] as $sectionFile) {
+            @unlink($sectionFile);
+        }
     }
 
     /**
@@ -147,6 +154,10 @@ final class PersonalizationCache
         }
 
         foreach (glob($this->directory . '/user_*.json') ?: [] as $file) {
+            @unlink($file);
+        }
+
+        foreach (glob($this->directory . '/section_*.json') ?: [] as $file) {
             @unlink($file);
         }
     }
@@ -214,5 +225,93 @@ final class PersonalizationCache
     private function fileFor(int $userId): string
     {
         return $this->directory . DIRECTORY_SEPARATOR . 'user_' . $userId . '.json';
+    }
+
+    // -----------------------------------------------------------------
+    // Phase 8.5: per-section library shelves (separate cache files)
+    // -----------------------------------------------------------------
+
+    /**
+     * Read the cached library-section shelf of one user, or null on a
+     * miss.
+     *
+     * Input:  the user id and the section key
+     * Output: the cached payload array, or null when there is no
+     *         fresh file (never written, expired, or disabled)
+     *
+     * Business responsibility: the library sections of Phase 8.5
+     * (because_you_read, similar_favourites, ...) are cached per user
+     * PER SECTION under their own files, so the pages never re-run
+     * the candidate pipeline on every request. The cache obeys the
+     * same TTL as the hybrid shelf, and invalidate()/flush() drop the
+     * section files together with the hybrid file - one signal change
+     * refreshes every shelf of the user.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function getSection(int $userId, string $section): ?array
+    {
+        if (!$this->enabled || !$this->validSectionKey($section)) {
+            return null;
+        }
+
+        $file = $this->sectionFileFor($userId, $section);
+
+        if (!is_file($file)) {
+            return null;
+        }
+
+        if ($this->ttlSeconds >= 0 && time() - filemtime($file) > $this->ttlSeconds) {
+            return null;
+        }
+
+        $payload = json_decode((string) file_get_contents($file), true);
+
+        return is_array($payload) ? $payload : null;
+    }
+
+    /**
+     * Store the library-section shelf of one user.
+     *
+     * Input:  the user id, the section key and the payload
+     * Output: nothing (the file is written atomically, like the
+     *         hybrid shelf)
+     */
+    public function putSection(int $userId, string $section, array $payload): void
+    {
+        if (!$this->enabled || !$this->validSectionKey($section)) {
+            return;
+        }
+
+        if (!is_dir($this->directory) && !mkdir($this->directory, 0755, true)) {
+            throw new RuntimeException('Cache directory is not writable: ' . $this->directory);
+        }
+
+        $file = $this->sectionFileFor($userId, $section);
+        $temp = $file . '.' . uniqid('', true) . '.tmp';
+
+        file_put_contents($temp, (string) json_encode($payload, JSON_UNESCAPED_SLASHES));
+
+        if (!rename($temp, $file)) {
+            @unlink($temp);
+        }
+    }
+
+    /**
+     * A section key may only contain lowercase letters and
+     * underscores - the key becomes part of a file name, so anything
+     * else is rejected (never sanitized into place).
+     */
+    private function validSectionKey(string $section): bool
+    {
+        return preg_match('/^[a-z_]+$/', $section) === 1;
+    }
+
+    /**
+     * The section cache file of one user.
+     */
+    private function sectionFileFor(int $userId, string $section): string
+    {
+        return $this->directory . DIRECTORY_SEPARATOR . 'section_' . $userId . '_' . $section . '.json';
     }
 }

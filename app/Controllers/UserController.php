@@ -10,6 +10,9 @@ use BookSphere\App\Core\Response;
 use BookSphere\App\Core\Validator;
 use BookSphere\App\Models\User;
 use BookSphere\App\Services\AuthService;
+use BookSphere\App\Services\LibraryService;
+use BookSphere\App\Services\RecommendationService;
+use BookSphere\App\Services\ReviewService;
 
 /**
  * UserController
@@ -30,14 +33,54 @@ final class UserController extends Controller
     public function __construct(
         private readonly AuthService $auth,
         private readonly User $users,
+        private readonly ?ReviewService $reviews = null,
+        // Phase 8.4: the profile's "My Library" block is read through
+        // the SAME shared LibraryService - the single source of truth
+        // for the user's personal library.
+        private readonly ?LibraryService $library = null,
+        // Phase 8.5: the "Reading Preferences & Recommendation
+        // Insights" block (favourite categories/authors, the
+        // Recommendation Accuracy figure and the books influencing
+        // the shelves) comes from the SHARED RecommendationService.
+        private readonly ?RecommendationService $recommendations = null,
     ) {}
 
     public function show(Request $request, array $params = []): void
     {
+        $userId = (int) $this->auth->id();
+
         $this->view('profile.show', [
-            'title'  => 'My profile',
-            'active' => 'profile',
-            'user'   => $this->users->findById((int) $this->auth->id()),
+            'title'       => 'My profile',
+            'active'      => 'profile',
+            'user'        => $this->users->findById($userId),
+            'ratingStats' => $this->reviews?->profileStats($userId) ?? [],
+            // Phase 7.4: the profile's "Recent Reviews" block, fed
+            // by the same Reviews module the dashboard uses.
+            'recentReviews' => $this->reviews?->reviewsByUser($userId, 3) ?? [],
+            // Phase 7.5: the community reputation block (helpful
+            // votes received, most helpful review) - the Helpful
+            // Score; badge tiers arrive in a later phase.
+            'reputation' => $this->reviews?->reviewReputation($userId) ?? [],
+            // Phase 7.6: the enriched review statistics (Total
+            // Reviews, Average Rating Given, Highest Rated Book,
+            // Most Reviewed Category, Favourite Genres) and the
+            // monthly Review Activity Timeline - both composed by
+            // the Reviews module.
+            'userReviewStats' => $this->reviews?->userReviewStatistics($userId) ?? [],
+            'activityTimeline' => $this->reviews?->reviewActivityTimeline($userId) ?? [],
+            // Phase 8.4: the "My Library" block - the personal library
+            // summary, the favourite books and categories, and the
+            // recently-added / recently-finished shelves, all read
+            // through the shared LibraryService.
+            'librarySummary'   => $this->library?->statusCounts($userId) ?? [],
+            'favouriteBooks'   => $this->library?->favoriteBooks($userId, 4) ?? [],
+            'favouriteCategories' => $this->library?->preferredGenres($userId, 5) ?? [],
+            'recentlyAddedLib' => $this->library?->recentlyAdded($userId, 3) ?? [],
+            'recentlyFinished' => $this->library?->finished($userId, 3) ?? [],
+            // Phase 8.5: the reading preferences (top library
+            // categories + authors), the Recommendation Accuracy
+            // figure and the books influencing the shelves.
+            'recommendationInsights' => $this->recommendations?->profileRecommendationInsights($userId) ?? [],
         ]);
     }
 

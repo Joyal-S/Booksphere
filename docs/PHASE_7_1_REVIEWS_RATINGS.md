@@ -43,7 +43,7 @@ The project was analysed first, per the brief:
 | `app/Views/reviews/_form.php` | shared rating/title/review form (reuses `form-input` component) |
 | `app/Views/reviews/edit.php` | edit page wrapper |
 | `app/Views/reviews/book.php` | book reviews + rating summary page |
-| `tests/ReviewTest.php` | Phase 7.1 suite, **91 checks** |
+| `tests/ReviewTest.php` | Phase 7.1 suite, **133 checks** |
 
 ## 3. Files Modified
 
@@ -139,7 +139,7 @@ timestamp).
 
 ## 12. Testing Checklist — all green
 
-Automated (`php tests/ReviewTest.php`): **91/91** — schema columns + indexes,
+Automated (`php tests/ReviewTest.php`): **133/133** — schema columns + indexes,
 unique-constraint enforcement, all validation rules, every repository query,
 service rules (duplicate / missing book / is_edited), average + count sync on
 create/update/delete, browse regression, policy matrix (guest/owner/other/admin),

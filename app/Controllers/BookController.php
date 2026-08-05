@@ -8,7 +8,9 @@ use BookSphere\App\Core\Controller;
 use BookSphere\App\Core\Request;
 use BookSphere\App\Core\Response;
 use BookSphere\App\Core\View;
+use BookSphere\App\Presenters\ReviewListPresenter;
 use BookSphere\App\Services\BookService;
+use BookSphere\App\Services\LibraryService;
 use BookSphere\App\Services\RecommendationService;
 use BookSphere\App\Services\ReviewService;
 
@@ -44,6 +46,13 @@ use BookSphere\App\Services\ReviewService;
  * review status, the approved list). The service is optional: a
  * controller without it (some tests) renders the page without the
  * section, and the route wiring always provides it.
+ *
+ * Phase 8.2: the LibraryService is injected (the SAME shared
+ * instance the library module uses) so the detail page can answer
+ * the "is this book in my library?" question - the Add to Library
+ * panel vs the Update Library entry panel - with the user's real
+ * record. Optional like the other two services; the route wiring
+ * always provides it.
  */
 final class BookController extends Controller
 {
@@ -51,6 +60,7 @@ final class BookController extends Controller
         private readonly BookService $service,
         private readonly ?RecommendationService $recommendations = null,
         private readonly ?ReviewService $reviews = null,
+        private readonly ?LibraryService $library = null,
     ) {}
 
     /**
@@ -148,33 +158,100 @@ final class BookController extends Controller
         // Phase 7.2: the Reviews & Ratings section. Three reads -
         // the approved reviews, the denormalized rating summary and
         // the signed-in user's own review (the "Write Review" vs
-        // "already reviewed" decision). All SQL stays inside the
-        // Reviews module; the controller only asks.
-        $reviews = [];
-        $stats   = ['average' => 0.0, 'count' => 0];
-        $mine    = null;
+        // "already reviewed" decision). Phase 7.3 adds the rating
+        // breakdown (the animated distribution bars). Phase 7.4 turns
+        // the list into the professional review section: sorted,
+        // searchable (within the book), filterable and paginated -
+        // the SAME ReviewListPresenter the /books/{id}/reviews page
+        // uses, so the two pages can never drift apart. All SQL stays
+        // inside the Reviews module; the controller only asks.
+        $reviews    = [];
+        $stats      = ['average' => 0.0, 'count' => 0];
+        $breakdown  = [];
+        $mine       = null;
+        $toolbar    = null;
+        $pagination = null;
+        $communityStats = null;
 
         if ($this->reviews !== null) {
-            $bookId  = (int) $book['id'];
-            $reviews = $this->reviews->reviewsForBook($bookId);
-            $stats   = $this->reviews->statsForBook($bookId);
+            $bookId = (int) $book['id'];
+
+            // Phase 7.3: the rating summary is aggregated from the
+            // reviews table itself (ratingSummary), so the stars,
+            // the count and the distribution bars above them always
+            // tell the same truthful story - the seeded sample
+            // columns on the books table are never shown on the
+            // detail page.
+            $summary   = $this->reviews->ratingSummary($bookId);
+            $stats     = ['average' => $summary['average'], 'count' => $summary['count']];
+            $breakdown = $this->reviews->ratingBreakdown($bookId);
 
             if (($userId = auth()?->id()) !== null) {
                 $mine = $this->reviews->userReview($userId, $bookId);
             }
+
+            // Phase 7.4: the section is a professional review list.
+            $presenter = new ReviewListPresenter($this->reviews);
+            $state     = $presenter->state($request);
+            $state['book_id'] = $bookId;
+            $result    = $this->reviews->paginateReviews($state, $state['perPage'], $state['page']);
+
+            // Phase 7.5: the signed-in actor's helpful-vote state is
+            // attached per review (their button repaints in place),
+            // and the community statistics panel (total reviews,
+            // helpful votes, average, the three spotlight reviews)
+            // is read for the book page.
+            $reviews = ($userId = auth()?->id()) !== null
+                ? $this->reviews->attachVoteState($result['items'], $userId)
+                : $result['items'];
+            $communityStats = $this->reviews->communityStats($bookId);
+            $base       = '/books/' . $bookId . '/reviews';
+            $toolbar    = $presenter->toolbar($state, $base);
+            $pagination = $presenter->pagination($state, $result, $base);
+        }
+
+        // Phase 8.2: the user's library state for THIS book. One
+        // service call answers "is it in my library?" - null shows
+        // the Add panel, a record shows the Update panel (status,
+        // favourite, progress). Only present when the LibraryService
+        // is wired (it always is in the real route wiring); the SQL
+        // stays inside the library module, the controller only asks.
+        $libraryItem = null;
+
+        if ($this->library !== null && ($userId = auth()?->id()) !== null) {
+            $libraryItem = $this->library->bookDetailsState((int) $userId, (int) $book['id']);
+        }
+
+        // Phase 8.5: the book-detail recommendation sections - "Readers
+        // also enjoyed", "Same author", "Same category", "Similar
+        // rating", "Similar popularity" and the user's personal shelf
+        // (minus this book). Best effort like the other optional
+        // services: an unwired engine means no section, never an error.
+        $bookRecommendations = [];
+
+        if ($this->recommendations !== null && ($userId = auth()?->id()) !== null) {
+            $bookRecommendations = $this->recommendations->bookRecommendations((int) $book['id'], (int) $userId);
         }
 
         $this->view('books.show', [
-            'title'       => $book['title'],
-            'active'      => 'books',
-            'book'        => $book,
-            'statuses'    => BookService::STATUSES,
-            'isAdmin'     => auth_is_admin(),
-            'reviews'     => $reviews,
-            'reviewStats' => $stats,
-            'myReview'    => $mine,
-            'canManage'   => auth_is_admin() || $mine !== null,
-            'reviewSection' => $this->reviews !== null,
+            'title'           => $book['title'],
+            'active'          => 'books',
+            'book'            => $book,
+            'statuses'        => BookService::STATUSES,
+            'isAdmin'         => auth_is_admin(),
+            'reviews'         => $reviews,
+            'reviewStats'     => $stats,
+            'reviewBreakdown' => $breakdown,
+            'myReview'        => $mine,
+            'canManage'       => auth_is_admin() || $mine !== null,
+            'reviewSection'   => $this->reviews !== null,
+            'toolbar'         => $toolbar,
+            'pagination'      => $pagination,
+            'communityStats'  => $communityStats,
+            'libraryItem'     => $libraryItem,
+            'libraryStatuses' => LibraryService::STATUSES,
+            'librarySection'  => $this->library !== null,
+            'bookRecommendations' => $bookRecommendations,
         ]);
     }
 

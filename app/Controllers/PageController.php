@@ -10,41 +10,22 @@ use BookSphere\App\Core\Request;
 /**
  * PageController
  *
- * Serves the placeholder pages of the main navigation: Categories,
- * Authors, Wishlist, Analytics and Settings. None of these
- * features exist yet (they belong to later phases), so every action
- * renders the same "coming soon" page with a page-specific title,
- * icon and description.
+ * Serves the placeholder pages of the main navigation: Wishlist,
+ * Analytics and Settings. None of these features exist yet (they
+ * belong to later phases), so every action renders the same "coming
+ * soon" page with a page-specific title, icon and description.
  *
  * The routes exist now so the sidebar navigation never leads to
  * a 404 once a user is logged in. (Browse Books became a real,
  * admin-only module in the book management phase and now lives in
  * BookController; Recommendations moved to RecommendationController
  * in Phase 6.1; Reviews became a real module in Phase 7.1 and now
- * lives in ReviewController.)
+ * lives in ReviewController; Categories and Authors became real
+ * pages in Phase 7.6 and now live in CategoryController and
+ * AuthorController.)
  */
 final class PageController extends Controller
 {
-    public function categories(Request $request, array $params = []): void
-    {
-        $this->comingSoon(
-            'categories',
-            'Categories',
-            'fa-tags',
-            'Browse books by genre and category once the catalogue phase is complete.',
-        );
-    }
-
-    public function authors(Request $request, array $params = []): void
-    {
-        $this->comingSoon(
-            'authors',
-            'Authors',
-            'fa-user-pen',
-            'Author pages with their biographies and published books arrive in a later phase.',
-        );
-    }
-
     public function wishlist(Request $request, array $params = []): void
     {
         $this->comingSoon(

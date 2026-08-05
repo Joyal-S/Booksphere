@@ -31,17 +31,17 @@ $backLabel = $backLabel ?? 'Back to my reviews';
 <form method="post" action="<?= e($action) ?>" class="card-base p-4" novalidate>
     <input type="hidden" name="_token" value="<?= e(csrf_token()) ?>">
 
-    <?php $field = [
+    <?php $starRating = [
         'name'     => 'rating',
         'label'    => 'Your rating',
-        'type'     => 'select',
-        'value'    => $old['rating'],
-        'errors'   => $errors,
-        'required' => true,
-        'options'  => ['5' => '★★★★★ — Excellent', '4' => '★★★★ — Good', '3' => '★★★ — Average', '2' => '★★ — Poor', '1' => '★ — Terrible'],
-        'help'     => 'How many stars would you give this book?',
+        'readOnly' => false,
+        'size'     => 'lg',
+        'rating'   => (float) $old['rating'],
     ]; ?>
-    <?php require root_path('app/Views/books/components/form-input.php'); ?>
+    <?php require root_path('app/Views/components/star-rating.php'); ?>
+    <?php if (isset($errors['rating'])): ?>
+        <div class="text-danger small mt-1"><?= e($errors['rating'][0]) ?></div>
+    <?php endif; ?>
 
     <?php $field = [
         'name'      => 'title',

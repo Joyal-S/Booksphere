@@ -161,6 +161,26 @@ function auth_is_admin(): bool
 }
 
 /**
+ * Format a stored UTC timestamp as the short display date of the
+ * review lists ("M j, Y" - e.g. "Dec 31, 2026").
+ *
+ * The database stores timestamps in UTC; this helper only formats,
+ * it does not convert timezones (the app deliberately shows UTC
+ * dates). Empty or invalid values render as an empty string, so
+ * views never print the 1970 default date.
+ */
+function format_review_date(?string $value): string
+{
+    if ($value === null || $value === '') {
+        return '';
+    }
+
+    $stamp = strtotime($value);
+
+    return $stamp === false ? '' : date('M j, Y', $stamp);
+}
+
+/**
  * Return the current CSRF token for forms.
  *
  * Every form that changes data must include this as a hidden

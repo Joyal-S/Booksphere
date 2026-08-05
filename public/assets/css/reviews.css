@@ -1,0 +1,448 @@
+/**
+ * reviews.css — the professional review interface (Phase 7.4).
+ *
+ * Styling for the review header, the review toolbar (search box,
+ * sort / per-page selects, filter chips), the timeline of review
+ * cards, the read-more expansion, the loading skeletons and the
+ * review pagination. Every colour comes from the app.css variables,
+ * so light and dark themes keep working automatically, and the
+ * skeleton shimmer reuses the existing .skeleton animation.
+ */
+
+/* ---- Review header (summary: average + stars + "Based on N") ---- */
+
+.review-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+    width: 100%;
+}
+
+.review-header-titles .eyebrow {
+    margin-bottom: 0.25rem;
+}
+
+.review-header-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.review-header-average {
+    font-family: var(--font-serif, Fraunces, serif);
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--primary);
+}
+
+.review-header-based-on {
+    font-size: 0.875rem;
+    color: var(--muted);
+}
+
+/* ---- Review toolbar (search + selects + chips) ------------------- */
+
+.review-toolbar-wrap {
+    border-top: 1px solid var(--border);
+    padding-top: 1.25rem;
+}
+
+.review-toolbar-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem 1.25rem;
+}
+
+.review-toolbar-row .review-search {
+    flex: 1 1 320px;
+}
+
+.review-toolbar-selects {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem;
+}
+
+.review-toolbar-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+}
+
+.review-toolbar-label .form-select {
+    min-width: 8.5rem;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.review-search-input {
+    min-width: 0;
+}
+
+/* ---- Filter chips ------------------------------------------------- */
+
+.review-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.review-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.review-chip:hover {
+    border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+    color: var(--primary);
+}
+
+.review-chip.is-active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.review-chip--toggle.is-active {
+    background: color-mix(in srgb, var(--primary) 12%, var(--surface-1));
+    border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+    color: var(--primary);
+}
+
+.review-chip--reset {
+    color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 40%, var(--border));
+}
+
+.review-chip--reset:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.review-filters-sep {
+    width: 1px;
+    height: 1.25rem;
+    background: var(--border-strong);
+    margin: 0 0.25rem;
+}
+
+/* ---- The review timeline (full cards) ----------------------------- */
+
+.review-list-item {
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 0;
+}
+
+.review-list-item:first-child {
+    padding-top: 0.5rem;
+}
+
+.review-list-item:last-child {
+    border-bottom: 0;
+    padding-bottom: 0.25rem;
+}
+
+.review-card--full .review-card-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.review-card--full .avatar {
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 2.75rem;
+    font-size: 0.9375rem;
+    text-decoration: none;
+}
+
+.review-card-name {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--bs-body-color);
+    margin: 0;
+    text-decoration: none;
+}
+
+a.review-card-name:hover {
+    color: var(--primary);
+    text-decoration: underline;
+}
+
+.review-card-meta {
+    margin-top: 0.25rem;
+}
+
+.review-card-time {
+    font-size: 0.8125rem;
+    color: var(--muted);
+}
+
+.review-card-title {
+    font-family: var(--font-serif, Fraunces, serif);
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0.25rem 0 0.5rem;
+}
+
+.review-card-text--long {
+    margin-bottom: 0.75rem;
+    white-space: pre-wrap;
+}
+
+.review-read-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0;
+    background: none;
+    border: 0;
+    color: var(--primary);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 0.75rem;
+}
+
+.review-read-more:hover {
+    text-decoration: underline;
+}
+
+.review-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.review-card-actions .review-helpful,
+.review-card-actions .review-report {
+    color: var(--muted);
+}
+
+/* ---- Phase 7.5: helpful toggle + report ----------------------------- */
+
+/* The pressed state of the helpful button: the count sits in a
+   pill, the active vote flips the whole control to solid. */
+.review-card-actions .review-helpful {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.review-helpful-count {
+    display: inline-block;
+    min-width: 1.5rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: var(--radius-pill, 999px);
+    background: var(--surface-2);
+    font-weight: 600;
+    font-size: 0.8125rem;
+    text-align: center;
+}
+
+.review-helpful.is-active {
+    background: var(--success, #2e7d32);
+    border-color: var(--success, #2e7d32);
+    color: #fff;
+}
+
+.review-helpful.is-active .review-helpful-count {
+    background: rgba(255, 255, 255, 0.22);
+    color: #fff;
+}
+
+/* Hover feedback for enabled controls only (disabled buttons get
+   Bootstrap's opacity treatment; no pointer tricks here). */
+.review-card-actions .review-helpful:not(:disabled):hover,
+.review-card-actions .review-report:not(:disabled):hover {
+    transform: translateY(-1px);
+}
+
+.review-card-actions .review-helpful:not(:disabled):hover {
+    border-color: var(--success, #2e7d32);
+    color: var(--success, #2e7d32);
+}
+
+.review-card-actions .review-helpful.is-active:not(:disabled):hover {
+    color: #fff;
+}
+
+/* ---- Community statistics panel (book page) -------------------------- */
+
+.community-spot {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-2);
+    height: 100%;
+}
+
+.community-spot-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.community-spot-title {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.community-spot-meta {
+    font-size: 0.8125rem;
+    color: var(--muted);
+}
+
+.community-spot-meta i {
+    color: var(--warning, #f4b400);
+}
+
+/* ---- Loading skeletons --------------------------------------------- */
+
+[data-review-list] .review-skeleton {
+    display: none;
+}
+
+[data-review-list].is-loading .review-skeleton {
+    display: block;
+    animation: review-fade-in 0.2s ease;
+}
+
+[data-review-list].is-loading .review-list,
+[data-review-list].is-loading .empty-state,
+[data-review-list].is-loading .review-pagination {
+    display: none;
+}
+
+@keyframes review-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.review-skeleton-card {
+    display: flex;
+    gap: 1rem;
+    padding: 1.25rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.review-skeleton-avatar {
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: 0 0 2.75rem;
+    border-radius: 50%;
+}
+
+.review-skeleton-body {
+    flex: 1;
+    display: grid;
+    gap: 0.6rem;
+}
+
+.review-skeleton-line {
+    height: 0.875rem;
+    border-radius: var(--radius-sm);
+}
+
+.review-skeleton-line--short { width: 35%; }
+.review-skeleton-line--medium { width: 60%; }
+
+/* The shimmer comes from the shared .skeleton class in app.css
+   (the loading-skeleton component adds it to the avatar and the
+   lines) - the review skeleton never re-implements the gradient. */
+
+/* ---- Review pagination --------------------------------------------- */
+
+.review-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1.5rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1.25rem;
+    margin-top: 0.5rem;
+}
+
+.review-pagination-result {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--muted);
+}
+
+.review-pagination-per-page form,
+.review-pagination-per-page {
+    margin: 0;
+}
+
+.review-pagination-per-page label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--muted);
+}
+
+.review-pagination-pager {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.review-pager-current {
+    cursor: default;
+}
+
+/* ---- Review statistics panel --------------------------------------- */
+
+.review-stats-distribution {
+    margin-top: 1.25rem;
+    padding: 1.25rem 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-2);
+}
+
+/* ---- Review detail page -------------------------------------------- */
+
+.review-detail-body {
+    white-space: pre-wrap;
+}
+
+@media (max-width: 575.98px) {
+    .review-header-average {
+        font-size: 1.5rem;
+    }
+}

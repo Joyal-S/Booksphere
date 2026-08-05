@@ -23,6 +23,10 @@ use RuntimeException;
  *     - permissionDenied()    -> the actor is neither the owner nor
  *                                 an admin (defence in depth behind
  *                                 the ReviewPolicy gate)
+ *     - selfVote()            -> a review owner marked their own
+ *                                 review as helpful (Phase 7.5)
+ *     - alreadyReported()     -> the user filed a second report on
+ *                                 the same review (Phase 7.5)
  *
  * How it is used:
  *     - The service throws these when a business rule fails.
@@ -58,5 +62,20 @@ final class ReviewException extends RuntimeException
     public static function permissionDenied(string $action): self
     {
         return new self("You are not allowed to {$action} this review.");
+    }
+
+    public static function selfVote(int $reviewId): self
+    {
+        return new self("You cannot mark your own review {$reviewId} as helpful.");
+    }
+
+    public static function selfReport(int $reviewId): self
+    {
+        return new self("You cannot report your own review {$reviewId}.");
+    }
+
+    public static function alreadyReported(int $userId, int $reviewId): self
+    {
+        return new self("The user {$userId} already reported review {$reviewId}.");
     }
 }

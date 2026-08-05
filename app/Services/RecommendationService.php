@@ -488,6 +488,10 @@ final class RecommendationService
             $parts[] = 'Popular among readers of your highly rated books.';
         }
 
+        if (in_array('review_score', $matched, true)) {
+            $parts[] = 'Highly rated by the community.';
+        }
+
         if (in_array('trending', $matched, true)) {
             $parts[] = 'Gaining momentum this month.';
         }
@@ -883,13 +887,14 @@ final class RecommendationService
             $viewedOverlap   = count(array_intersect($categoryIds[$id] ?? [], $viewedCategoryIds));
 
             $signals = [
-                'category'   => count(array_intersect($categoryIds[$id] ?? [], $profile->favouriteCategoryIds())),
-                'author'     => count(array_intersect($authorIds[$id] ?? [], $profile->favouriteAuthorIds())),
-                'wishlist'   => $wishlistOverlap + $viewedOverlap,
-                'viewed'     => $viewedOverlap,
-                'rating'     => count(array_intersect($categoryIds[$id] ?? [], $ratingCategoryIds)),
-                'trending'   => (float) ($row['trending_score'] ?? 0),
-                'popularity' => (float) ($row['popularity_score'] ?? 0),
+                'category'     => count(array_intersect($categoryIds[$id] ?? [], $profile->favouriteCategoryIds())),
+                'author'       => count(array_intersect($authorIds[$id] ?? [], $profile->favouriteAuthorIds())),
+                'wishlist'     => $wishlistOverlap + $viewedOverlap,
+                'viewed'       => $viewedOverlap,
+                'rating'       => count(array_intersect($categoryIds[$id] ?? [], $ratingCategoryIds)),
+                'review_score' => $this->reviewScoreSignal($row),
+                'trending'     => (float) ($row['trending_score'] ?? 0),
+                'popularity'   => (float) ($row['popularity_score'] ?? 0),
             ];
 
             $score = $this->calculateHybridScore($signals);
@@ -917,7 +922,7 @@ final class RecommendationService
      *
      * Input:  the factor signals of the book
      * Output: the matched keys ('category', 'author', 'wishlist',
-     *         'viewed', 'rating', 'trending')
+     *         'viewed', 'rating', 'review_score', 'trending')
      *
      * Business responsibility: the machine-readable half of the
      * explanation, and the basis of the confidence label. The pure
@@ -938,11 +943,44 @@ final class RecommendationService
             }
         }
 
+        if ((float) ($signals['review_score'] ?? 0) > 0) {
+            $matched[] = 'review_score';
+        }
+
         if ((float) ($signals['trending'] ?? 0) > 0) {
             $matched[] = 'trending';
         }
 
         return $matched;
+    }
+
+    /**
+     * The review-score signal of one candidate book: its community
+     * review quality, normalized to 0-1.
+     *
+     * Input:  a candidate row (carries the book's denormalized
+     *         average_rating / ratings_count columns)
+     * Output: average_rating / 5 when the book has at least one
+     *         review, 0 otherwise
+     *
+     * Business responsibility: the Phase 7.6 review factor is
+     * community signal only - a book with no approved reviews can
+     * never earn the review_score weight, and the value is the
+     * reviews-synced column the ReviewService maintains, never a
+     * seeded sample.
+     *
+     * @param array<string, mixed> $row
+     */
+    private function reviewScoreSignal(array $row): float
+    {
+        $count   = (int) ($row['ratings_count'] ?? 0);
+        $average = (float) ($row['average_rating'] ?? 0);
+
+        if ($count <= 0 || $average <= 0) {
+            return 0.0;
+        }
+
+        return min($average / RecommendationScoring::RATING_MAX, 1.0);
     }
 
     /**
@@ -1030,7 +1068,8 @@ final class RecommendationService
         return 'Hybrid personalization: category matches x ' . $weights['category']
             . ' + author matches x ' . $weights['author']
             . ' + wishlist similarity x ' . $weights['wishlist']
-            . ' + rating similarity x ' . $weights['rating']
+            . ' + reading history x ' . $weights['rating']
+            . ' + review score x ' . $weights['review_score']
             . ' + trending x ' . $weights['trending']
             . ' + popularity x ' . $weights['popularity']
             . ' (of 100) - personalised from your wishlist, ratings, reviews and recent views.';
@@ -1160,6 +1199,897 @@ final class RecommendationService
     {
         $this->repository->authorExists($authorId)
             || throw RecommendationException::authorNotFound($authorId);
+    }
+
+    // -----------------------------------------------------------------
+    // Phase 8.5: Personal Library recommendations
+    //
+    // The library is now a first-class signal source. Every section
+    // below is a weighted, EXPLAINABLE shelf: weights come from
+    // RecommendationConfig (config/recommendations.php), every item
+    // carries a reason the views can only print, books already in the
+    // user's library or wishlist are never suggested again, shelves
+    // are cached per user per section (PersonalizationCache, same TTL
+    // and invalidation as the hybrid shelf), and every served shelf
+    // is logged to recommendation_logs for the profile's accuracy
+    // figure and the admin audit.
+    // -----------------------------------------------------------------
+
+    /**
+     * The library shelf sections of Phase 8.5: key => label. The
+     * section key is what libraryRecommendations() accepts, the
+     * label is the shelf title the views render - the two can never
+     * disagree because they share this one map.
+     */
+    public const LIBRARY_SECTIONS = [
+        'because_library'      => 'Recommended from your library',
+        'because_you_read'     => 'Because you read',
+        'similar_favourites'   => 'Similar to your favourites',
+        'continue_exploring'   => 'Continue exploring',
+        'discover_new_authors' => 'Discover new authors',
+        'hidden_gems'          => 'Hidden gems',
+        'recently_popular'     => 'Recently popular',
+        'fresh_arrivals'       => 'Fresh arrivals',
+    ];
+
+    /**
+     * The section catalogue, for the views and the tests.
+     *
+     * @return array<string, string>
+     */
+    public function librarySections(): array
+    {
+        return self::LIBRARY_SECTIONS;
+    }
+
+    /**
+     * One library-derived recommendation shelf of one user.
+     *
+     * Input:  a user id, the section key (see librarySections()) and
+     *         the shelf size
+     * Output: a RecommendationResult whose items each carry a score
+     *         (0-100), an explainable reason and a confidence label
+     *
+     * Sections:
+     *
+     *     because_library      all six weighted library factors
+     *     because_you_read     reading history (finished books)
+     *     similar_favourites   favourite categories + authors
+     *     continue_exploring   want-to-read similarity
+     *     discover_new_authors books matching your categories but by
+     *                          authors you never kept
+     *     hidden_gems          high rated, few reviews
+     *     recently_popular     the trending shelf (community)
+     *     fresh_arrivals       the newest additions (community)
+     *
+     * The personal sections follow the hybrid pipeline: bounded
+     * candidate pool (one query), batch category/author links (no
+     * N+1), weighted scoring from RecommendationConfig, exclusion of
+     * the user's own library + wishlist books, sorting by score, and
+     * a per-user per-section cache. Every shelf is logged to
+     * recommendation_logs (signal = section key).
+     *
+     * A guest (no real user id) only ever receives the community
+     * shelves; a user without a library gets the popularity fallback
+     * pool (a cold-start shelf instead of an empty one).
+     *
+     * @throws RecommendationException When the section key is unknown
+     */
+    public function libraryRecommendations(int $userId, string $section = 'because_library', ?int $limit = null): RecommendationResult
+    {
+        $limit = $limit ?? RecommendationConfig::sectionLimit('dashboard');
+
+        if (!isset(self::LIBRARY_SECTIONS[$section])) {
+            throw RecommendationException::unknownLibrarySection($section);
+        }
+
+        $label = self::LIBRARY_SECTIONS[$section];
+
+        // Community shelves run for anyone.
+        if ($section === 'recently_popular') {
+            $result = $this->getTrendingBooks($limit);
+            $result = RecommendationResult::fromBooks($section, $label, $result->items, 'The books gaining the most review and wishlist momentum in the last 30 days.');
+            $this->logShelf($userId, $result->items, $section);
+
+            return $result;
+        }
+
+        if ($section === 'fresh_arrivals') {
+            $result = $this->getRecentlyAddedBooks($limit);
+            $result = RecommendationResult::fromBooks($section, $label, $result->items, 'The newest books of the catalogue.');
+            $this->logShelf($userId, $result->items, $section);
+
+            return $result;
+        }
+
+        if ($userId < 1) {
+            return RecommendationResult::placeholder($section, $label, 'Sign in and add books to your library to personalise this shelf.');
+        }
+
+        $cached = $this->cacheReadSection($userId, $section);
+
+        if ($cached !== null) {
+            $result = RecommendationResult::fromBooks(
+                $section,
+                $label,
+                $this->limitRecommendations($cached['items'], $limit),
+                (string) ($cached['note'] ?? ''),
+            );
+
+            return $result;
+        }
+
+        $items = $this->scoreLibraryShelf($userId, $section);
+
+        $exclude = [
+            ...$this->repository->libraryBookIds($userId, 200),
+            ...$this->repository->wishlistBookIds($userId),
+        ];
+
+        $items = $this->filterRecommendations($items, $exclude);
+        $items = $this->sortRecommendations($items);
+        $items = $this->limitRecommendations($items, $limit);
+
+        $result = RecommendationResult::fromBooks($section, $label, $items, $this->libraryNote($section));
+
+        $this->cacheWriteSection($userId, $section, $this->storeResult($result));
+        $this->logShelf($userId, $result->items, $section);
+
+        return $result;
+    }
+
+    /**
+     * The book-detail recommendation sections of one book.
+     *
+     * Input:  the anchor book id, the optional logged-in user id and
+     *         the shelf size
+     * Output: keyed sections, each an array of item arrays (with
+     *         score + reason):
+     *
+     *     readers_also_enjoyed  "people who saved this also liked"
+     *     same_author           more books by the anchor's authors
+     *     same_category         books in the anchor's categories
+     *     similar_rating        books with a close average rating
+     *     similar_popularity    books with a close review count
+     *     recommended_for_you   the user's personal shelf (logged-in
+     *                           users only)
+     *
+     * Every section excludes the anchor book and deduplicates; the
+     * community sections score on the shared 0-100 scale
+     * (RecommendationScoring::collaborativeScore / ratingQuality).
+     * The served items are logged to recommendation_logs with their
+     * section key as the signal.
+     *
+     * @throws RecommendationException When the anchor book is missing
+     * @return array<string, array<int, array<string, mixed>>>
+     */
+    public function bookRecommendations(int $bookId, ?int $userId = null, ?int $limit = null): array
+    {
+        $limit  = $limit ?? RecommendationConfig::sectionLimit('book');
+        $anchor = $this->repository->anchorBook($bookId);
+
+        if ($anchor === null) {
+            throw RecommendationException::bookNotFound($bookId);
+        }
+
+        $sections = [];
+
+        // No book may appear twice across the page's sections: each
+        // section is deduplicated against everything already served.
+        // The personal shelf is served FIRST so it always keeps its
+        // books - the most specific, personalized section must never
+        // be emptied by the generic community shelves below it.
+        $seen = [];
+        $serve = function (array $rows) use (&$seen): array {
+            $clean = [];
+
+            foreach ($rows as $row) {
+                $id = (int) ($row['id'] ?? 0);
+
+                if ($id < 1 || isset($seen[$id])) {
+                    continue;
+                }
+
+                $seen[$id] = true;
+                $clean[]   = $row;
+            }
+
+            return $clean;
+        };
+
+        // Recommended for you: the personal shelf, minus the anchor.
+        $sections['recommended_for_you'] = $serve($userId !== null && $userId > 0
+            ? $this->filterRecommendations($this->getPersonalizedRecommendations($userId, $limit)->items, [$bookId])
+            : []);
+
+        // Readers also enjoyed: the collaborative shelf.
+        $rows = $this->repository->coSavedBooks($bookId, $limit * 3);
+        $sections['readers_also_enjoyed'] = $serve($this->limitRecommendations(
+            $this->filterRecommendations($this->decorateCommunityItems($rows, 'Readers who saved this book also enjoyed it.'), [$bookId]),
+            $limit,
+        ));
+
+        // Same author: merge every author's shelf, dedupe later.
+        $merged = [];
+
+        foreach ($this->repository->authorsForBook($bookId) as $author) {
+            $merged = array_merge($merged, $this->repository->booksByAuthor((int) $author['id'], $limit, $bookId));
+        }
+
+        $sections['same_author'] = $serve($this->limitRecommendations(
+            $this->filterRecommendations($this->decorateCommunityItems($merged, 'By the same author as this book.'), [$bookId]),
+            $limit,
+        ));
+
+        // Same category: one multi-category read.
+        $categoryIds = array_map(
+            fn (array $row): int => (int) $row['id'],
+            $this->repository->categoriesForBook($bookId),
+        );
+
+        $rows = $this->repository->booksInCategories($categoryIds, $limit * 3, $bookId);
+        $sections['same_category'] = $serve($this->limitRecommendations(
+            $this->filterRecommendations($this->decorateCommunityItems($rows, 'Shares a category with this book.'), [$bookId]),
+            $limit,
+        ));
+
+        // Similar by rating / popularity: the config-driven bands.
+        $similarity = RecommendationConfig::similarity();
+
+        $rows = $this->repository->booksSimilarByRating($anchor['average_rating'], $similarity['rating_band'], $limit * 3);
+        $sections['similar_rating'] = $serve($this->limitRecommendations(
+            $this->filterRecommendations($this->decorateCommunityItems($rows, 'Readers rate this book similarly.'), [$bookId]),
+            $limit,
+        ));
+
+        $rows = $this->repository->booksSimilarByPopularity($anchor['ratings_count'], $similarity['popularity_factor'], $limit * 3);
+        $sections['similar_popularity'] = $serve($this->limitRecommendations(
+            $this->filterRecommendations($this->decorateCommunityItems($rows, 'A similar community favourite.'), [$bookId]),
+            $limit,
+        ));
+
+        // The personal shelf was served first (the top dedupe
+        // priority on the page) - the community sections above.
+        $this->logSections($userId, $sections);
+
+        return $sections;
+    }
+
+    /**
+     * The library-page recommendation sections of one user.
+     *
+     * Input:  a user id and the shelf size
+     * Output: keyed sections, each an array of item arrays:
+     *
+     *     because_in_library     the weighted library shelf
+     *     people_also_saved      collaborative: what library
+     *                            neighbours saved
+     *     favourite_category     books in the user's top category
+     *     favourite_author       books by the user's top author
+     *     recently_discovered    what the community saved lately
+     *
+     * A user without a library gets empty sections (the library page
+     * shows its empty states instead of fabricated shelves). Every
+     * served item is logged with its section key.
+     *
+     * @return array<string, array<int, array<string, mixed>>>
+     */
+    public function libraryPageRecommendations(int $userId, ?int $limit = null): array
+    {
+        $limit = $limit ?? RecommendationConfig::sectionLimit('library');
+
+        // A user without a library gets honest empty sections - the
+        // page renders its empty states instead of fabricated
+        // shelves. (libraryRecommendations() alone cold-starts with
+        // the popularity fallback; the library page does not want
+        // "Because this is in your library" filled with popular
+        // books that have nothing to do with a library that does
+        // not exist.)
+        if ($this->repository->libraryBookIds($userId, 1) === []) {
+            return [
+                'because_in_library'  => [],
+                'people_also_saved'   => [],
+                'favourite_category'  => [],
+                'favourite_author'    => [],
+                'recently_discovered' => [],
+            ];
+        }
+
+        $sections = [];
+
+        // Because this is in your library (logged by
+        // libraryRecommendations() itself - not re-logged here).
+        $sections['because_in_library'] = $this->libraryRecommendations($userId, 'because_library', $limit)->items;
+
+        // People who saved this also liked: one collaborative query
+        // over the user's whole library.
+        $rows = $this->repository->coSavedForLibrary($userId, $limit * 3);
+        $sections['people_also_saved'] = $this->excludeOwnLibrary($userId, $this->limitRecommendations(
+            $this->decorateCommunityItems($rows, 'People who saved books from your library also liked this.'),
+            $limit,
+        ));
+
+        // Favourite category / author shelves: the user's top
+        // category and author (by books kept), minus their library.
+        $topCategories = $this->repository->topLibraryCategories($userId, 1);
+
+        if ($topCategories !== []) {
+            $name = (string) $topCategories[0]['name'];
+            $rows = $this->repository->booksInCategories([(int) $topCategories[0]['id']], $limit * 3);
+            $sections['favourite_category'] = $this->excludeOwnLibrary($userId, $this->limitRecommendations(
+                $this->decorateCommunityItems($rows, "Because you keep {$name} in your library."),
+                $limit,
+            ));
+        } else {
+            $sections['favourite_category'] = [];
+        }
+
+        $topAuthors = $this->repository->topLibraryAuthors($userId, 1);
+
+        if ($topAuthors !== []) {
+            $name = (string) $topAuthors[0]['name'];
+            $rows = $this->repository->booksInAuthors([(int) $topAuthors[0]['id']], $limit * 3);
+            $sections['favourite_author'] = $this->excludeOwnLibrary($userId, $this->limitRecommendations(
+                $this->decorateCommunityItems($rows, "Because you keep books by {$name} in your library."),
+                $limit,
+            ));
+        } else {
+            $sections['favourite_author'] = [];
+        }
+
+        // Recently discovered: books the community saved inside the
+        // discovery window.
+        $cutoff = gmdate('Y-m-d\TH:i:s\Z', time() - RecommendationConfig::similarity()['discovery_window_days'] * 86400);
+        $rows   = $this->repository->recentlyDiscoveredBooks($limit * 3, $cutoff);
+        $sections['recently_discovered'] = $this->excludeOwnLibrary($userId, $this->limitRecommendations(
+            $this->decorateCommunityItems($rows, 'Recently discovered by other readers.'),
+            $limit,
+        ));
+
+        $this->logSections($userId, $sections, ['because_in_library']);
+
+        return $sections;
+    }
+
+    /**
+     * The profile-page recommendation insights of one user.
+     *
+     * Input:  a user id
+     * Output:
+     *
+     *     categories    the user's top library categories (id, name,
+     *                   kept) - the reading preferences
+     *     authors       the user's top library authors (id, name,
+     *                   kept)
+     *     accuracy      recommended (logged recommendations inside
+     *                   the window), acted (how many the user saved /
+     *                   rated / reviewed), percent (0-100 or null when
+     *                   nothing was recommended yet)
+     *     influencing   the favourite + finished books that shaped
+     *                   the shelves (title, cover, categories)
+     *     logs          the recent logged recommendations (bounded)
+     *
+     * Everything is a read over the library and recommendation_logs -
+     * the page never writes through here.
+     *
+     * @return array<string, mixed>
+     */
+    public function profileRecommendationInsights(int $userId): array
+    {
+        $limit = RecommendationConfig::sectionLimit('profile');
+
+        $cutoff = gmdate('Y-m-d\TH:i:s\Z', time() - RecommendationConfig::accuracyWindowDays() * 86400);
+        $logs   = $this->repository->recommendationLogs($userId, $cutoff, $limit * 2);
+
+        $recommended = count($logs);
+        $acted       = 0;
+
+        foreach ($logs as $row) {
+            if ((int) ($row['in_library'] ?? 0) === 1
+                || (int) ($row['rated'] ?? 0) === 1
+                || (int) ($row['saved'] ?? 0) === 1
+            ) {
+                $acted++;
+            }
+        }
+
+        return [
+            'categories'  => $this->repository->topLibraryCategories($userId, $limit),
+            'authors'     => $this->repository->topLibraryAuthors($userId, $limit),
+            'accuracy'    => [
+                'recommended' => $recommended,
+                'acted'       => $acted,
+                'percent'     => $recommended > 0 ? (int) round($acted / $recommended * 100) : null,
+            ],
+            'influencing' => $this->repository->libraryProfileBooks($userId, $limit),
+            'logs'        => array_slice($logs, 0, $limit),
+        ];
+    }
+
+    /**
+     * Append the serve-log of one shelf to recommendation_logs.
+     *
+     * Input:  a user id, the served items and the signal (section)
+     *         key that produced them
+     * Output: nothing
+     *
+     * Business responsibility: the audit trail behind the profile's
+     * Recommendation Accuracy figure. A guest is never logged; the
+     * per-user retention (config) is enforced after every write. A
+     * failing log write (e.g. a database without the 0019 migration)
+     * degrades to a warning - the shelf itself is never lost.
+     *
+     * @param array<int, array<string, mixed>> $items
+     */
+    public function logRecommendations(int $userId, array $items, string $signal): void
+    {
+        if ($userId < 1 || $items === []) {
+            return;
+        }
+
+        $entries = [];
+
+        foreach ($items as $item) {
+            $id = (int) ($item['id'] ?? $item['book_id'] ?? 0);
+
+            if ($id < 1) {
+                continue;
+            }
+
+            $entries[] = [
+                'book_id' => $id,
+                'reason'  => (string) ($item['reason'] ?? ''),
+                'score'   => (float) ($item['score'] ?? 0),
+                'signal'  => $signal,
+            ];
+        }
+
+        try {
+            $this->repository->logRecommendations($userId, $entries);
+            $this->repository->pruneRecommendationLogs($userId, RecommendationConfig::logRetention());
+        } catch (\Throwable $exception) {
+            $this->logger?->warning('Recommendation log write skipped.', [
+                'error' => $exception->getMessage(),
+                'user_id' => $userId,
+            ]);
+        }
+    }
+
+    /**
+     * Log one shelf under its section key.
+     *
+     * @param array<int, array<string, mixed>> $items
+     */
+    private function logShelf(int $userId, array $items, string $signal): void
+    {
+        $this->logRecommendations($userId, $items, $signal);
+    }
+
+    /**
+     * Log every non-empty section of a keyed sections payload under
+     * its own signal key.
+     *
+     * A guest (null user id) has no audit trail and is a quiet no-op -
+     * bookRecommendations() runs for anonymous visitors too.
+     *
+     * @param array<string, array<int, array<string, mixed>>> $sections
+     * @param array<int, string>                              $skip Signals never logged (already logged elsewhere)
+     */
+    private function logSections(?int $userId, array $sections, array $skip = []): void
+    {
+        if ($userId === null) {
+            return;
+        }
+
+        foreach ($sections as $signal => $items) {
+            if (in_array($signal, $skip, true) || $items === []) {
+                continue;
+            }
+
+            $this->logRecommendations($userId, $items, $signal);
+        }
+    }
+
+    /**
+     * The weighted library shelf of one user, before exclusion and
+     * sorting.
+     *
+     * Input:  a user id and the section key
+     * Output: scored item arrays (score 0-100, reason, confidence,
+     *         matched) for every candidate that scored above zero
+     *
+     * Pipeline: one bounded candidate query per section
+     * (hybridCandidates reuses the library-derived category sets),
+     * batch category/author links (two IN queries - no N+1), the
+     * weighted libraryScore from RecommendationConfig, the section's
+     * own explainable reason and confidence.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function scoreLibraryShelf(int $userId, string $section): array
+    {
+        $signals = $this->librarySignalIds($userId);
+
+        $favouriteCategoryIds = $this->categoryIdsOf($signals['favourite']);
+        $finishedCategoryIds  = $this->categoryIdsOf($signals['finished']);
+        $wantToReadCategoryIds = $this->categoryIdsOf($signals['want_to_read']);
+        $favouriteAuthorIds   = $this->authorIdsOf($signals['favourite']);
+
+        $fallbackIds = array_map(
+            fn (array $row): int => (int) $row['id'],
+            $this->repository->popularBooks((int) config('recommendations.candidates.popularity_fallback', 10)),
+        );
+
+        $poolLimit = (int) config('recommendations.candidates.pool_limit', 50);
+
+        // Section -> candidate pool + which factors are active.
+        switch ($section) {
+            case 'because_library':
+                $pool = $this->repository->hybridCandidates(
+                    $favouriteCategoryIds,
+                    $favouriteAuthorIds,
+                    $wantToReadCategoryIds,
+                    $finishedCategoryIds,
+                    [],
+                    $fallbackIds,
+                    $poolLimit,
+                );
+                $factorSets = [
+                    'favourite_category' => $favouriteCategoryIds,
+                    'favourite_author'   => $favouriteAuthorIds,
+                    'reading_history'    => $finishedCategoryIds,
+                    'want_to_read'       => $wantToReadCategoryIds,
+                ];
+                break;
+
+            case 'because_you_read':
+                $pool = $this->repository->hybridCandidates([], [], [], $finishedCategoryIds, [], $fallbackIds, $poolLimit);
+                $factorSets = ['reading_history' => $finishedCategoryIds];
+                break;
+
+            case 'similar_favourites':
+                $pool = $this->repository->hybridCandidates(
+                    $favouriteCategoryIds,
+                    $favouriteAuthorIds,
+                    [],
+                    [],
+                    [],
+                    $fallbackIds,
+                    $poolLimit,
+                );
+                $factorSets = [
+                    'favourite_category' => $favouriteCategoryIds,
+                    'favourite_author'   => $favouriteAuthorIds,
+                ];
+                break;
+
+            case 'continue_exploring':
+                $pool = $this->repository->hybridCandidates([], [], $wantToReadCategoryIds, [], [], $fallbackIds, $poolLimit);
+                $factorSets = ['want_to_read' => $wantToReadCategoryIds];
+                break;
+
+            case 'discover_new_authors':
+                $discoverCategories = array_values(array_unique([...$favouriteCategoryIds, ...$finishedCategoryIds]));
+                $pool = $this->repository->hybridCandidates($discoverCategories, [], [], [], [], $fallbackIds, $poolLimit);
+                $factorSets = ['favourite_category' => $discoverCategories];
+                break;
+
+            case 'hidden_gems':
+                $gems = RecommendationConfig::hiddenGems();
+                $pool = $this->repository->hiddenGemBooks($gems['min_rating'], $gems['max_reviews'], $poolLimit);
+                $factorSets = [];
+                break;
+
+            default:
+                $pool = [];
+                $factorSets = [];
+        }
+
+        $candidateIds = array_map(fn (array $row): int => (int) $row['id'], $pool);
+        $categoryIds  = $this->idsPerBook($this->repository->categoriesForBooks($candidateIds));
+        $authorIds    = $this->idsPerBook($this->repository->authorsForBooks($candidateIds));
+
+        // Discover-new-authors: the authors the user already keeps.
+        $knownAuthorIds = $section === 'discover_new_authors'
+            ? $this->distinctIds($this->repository->authorsForBooks($signals['all']))
+            : [];
+
+        $categoryNames = $this->repository->categoryNames(array_values(array_unique(array_merge([], ...array_values($factorSets)))));
+        $authorNames   = $this->repository->authorNames(array_values(array_unique($this->authorIdsOf($signals['favourite']))));
+
+        $items = [];
+
+        foreach ($pool as $row) {
+            $id = (int) $row['id'];
+
+            // Hidden gems have no personal factor - the section IS
+            // the filter; the score reflects community quality.
+            $signalsForBook = [];
+
+            foreach ($factorSets as $factor => $ids) {
+                $base = str_ends_with($factor, 'author')
+                    ? ($authorIds[$id] ?? [])
+                    : ($categoryIds[$id] ?? []);
+
+                $signalsForBook[$factor] = count(array_intersect($base, $ids));
+            }
+
+            // Discover-new-authors: only books by authors the user
+            // never kept survive the candidate filter.
+            if ($section === 'discover_new_authors' && array_intersect($authorIds[$id] ?? [], $knownAuthorIds) !== []) {
+                continue;
+            }
+
+            $signalsForBook['rating']     = $this->reviewScoreSignal($row);
+            $signalsForBook['popularity'] = (float) ($row['popularity_score'] ?? 0);
+
+            $score = RecommendationScoring::libraryScore($signalsForBook);
+
+            if ($score <= 0) {
+                continue;
+            }
+
+            $matched = [];
+
+            foreach (['favourite_category', 'favourite_author', 'reading_history', 'want_to_read'] as $factor) {
+                if ((int) ($signalsForBook[$factor] ?? 0) > 0) {
+                    $matched[] = $factor;
+                }
+            }
+
+            if ((float) ($signalsForBook['rating'] ?? 0) > 0) {
+                $matched[] = 'rating';
+            }
+
+            $items[] = [
+                ...$row,
+                'score'      => round($score, 1),
+                'reason'     => $this->libraryReason($section, $matched, $signalsForBook, $factorSets, $categoryIds[$id] ?? [], $authorIds[$id] ?? [], $categoryNames, $authorNames),
+                'confidence' => $this->libraryConfidence($score, $matched),
+                'matched'    => $matched,
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * The explainable reason of one library-shelf item.
+     *
+     * Input:  the section, the matched factors, the raw signals, the
+     *         factor sets, the book's category/author ids and the
+     *         name maps
+     * Output: a short human-readable explanation ("Recommended
+     *         because you like Self Help.", "Similar to books you
+     *         finished.")
+     *
+     * Business responsibility: the EXPLAINABLE part of Phase 8.5 -
+     * the reason names the actual category/author that fired (from
+     * the batch name maps, never a per-book query) and stays honest
+     * for every section.
+     *
+     * @param array<int, string>              $matched
+     * @param array<string, int|float>        $signals
+     * @param array<string, array<int, int>>  $factorSets
+     * @param array<int, int>                 $bookCategoryIds
+     * @param array<int, int>                 $bookAuthorIds
+     * @param array<int, string>              $categoryNames
+     * @param array<int, string>              $authorNames
+     */
+    private function libraryReason(
+        string $section,
+        array $matched,
+        array $signals,
+        array $factorSets,
+        array $bookCategoryIds,
+        array $bookAuthorIds,
+        array $categoryNames,
+        array $authorNames,
+    ): string {
+        $parts = [];
+
+        if (in_array('favourite_category', $matched, true)) {
+            $shared = array_values(array_intersect($bookCategoryIds, $factorSets['favourite_category'] ?? []));
+            $name   = isset($shared[0]) ? (string) ($categoryNames[(int) $shared[0]] ?? '') : '';
+
+            $parts[] = $name !== ''
+                ? "Recommended because you like {$name} books."
+                : 'Recommended because you like books in a category you read.';
+        }
+
+        if (in_array('favourite_author', $matched, true)) {
+            $shared = array_values(array_intersect($bookAuthorIds, $factorSets['favourite_author'] ?? []));
+            $name   = isset($shared[0]) ? (string) ($authorNames[(int) $shared[0]] ?? '') : '';
+
+            $parts[] = $name !== ''
+                ? "Because you favourite books by {$name}."
+                : 'Because you favourite this author.';
+        }
+
+        if (in_array('reading_history', $matched, true)) {
+            $parts[] = 'Similar to books you finished.';
+        }
+
+        if (in_array('want_to_read', $matched, true)) {
+            $parts[] = 'Similar to books on your want-to-read shelf.';
+        }
+
+        if (in_array('rating', $matched, true)) {
+            $parts[] = 'Highly rated by the community.';
+        }
+
+        if ($parts !== []) {
+            return implode(' ', array_slice($parts, 0, 2));
+        }
+
+        return $section === 'hidden_gems'
+            ? 'A hidden gem - highly rated with few reviews.'
+            : 'A community favourite - a starting point for your library.';
+    }
+
+    /**
+     * The confidence label of a library-shelf item.
+     *
+     * Input:  the score and the matched personal factors
+     * Output: 'high' | 'medium' | 'low' (thresholds from config)
+     *
+     * Business logic: mirrors confidenceFor() but counts the LIBRARY
+     * factor keys - a book earns 'high' only with a strong score AND
+     * at least one personal library match, so community-only
+     * popularity can never claim high confidence.
+     *
+     * @param array<int, string> $matched
+     */
+    private function libraryConfidence(float $score, array $matched): string
+    {
+        $thresholds = (array) config('recommendations.confidence', ['high' => 60, 'medium' => 30]);
+        $personal   = count(array_intersect($matched, ['favourite_category', 'favourite_author', 'reading_history', 'want_to_read']));
+
+        if ($score >= (float) ($thresholds['high'] ?? 60) && $personal >= 1) {
+            return 'high';
+        }
+
+        if ($score >= (float) ($thresholds['medium'] ?? 30)) {
+            return 'medium';
+        }
+
+        return 'low';
+    }
+
+    /**
+     * The library signal ids of one user, grouped by shelf.
+     *
+     * @return array{favourite: array<int, int>, finished: array<int, int>, want_to_read: array<int, int>, all: array<int, int>}
+     */
+    private function librarySignalIds(int $userId): array
+    {
+        $cap = (int) config('recommendations.candidates.signal_book_cap', 20);
+
+        return [
+            'favourite'    => $this->repository->favouriteBookIds($userId, $cap),
+            'finished'     => $this->repository->finishedBookIds($userId, $cap),
+            'want_to_read' => $this->repository->wantToReadBookIds($userId, $cap),
+            'all'          => $this->repository->libraryBookIds($userId, $cap * 2),
+        ];
+    }
+
+    /**
+     * The distinct author ids of a set of books (batch loaded once).
+     *
+     * @param array<int, int> $bookIds
+     * @return array<int, int>
+     */
+    private function authorIdsOf(array $bookIds): array
+    {
+        return $this->distinctIds($this->repository->authorsForBooks($bookIds));
+    }
+
+    /**
+     * Turn a community shelf (co-saved / shared / similar rows) into
+     * items on the shared 0-100 scale with an explainable reason.
+     *
+     * Input:  the repository rows and the reason every item shows
+     * Output: item arrays (score + reason + confidence + matched)
+     *
+     * Business responsibility: collaborative shelves score with
+     * RecommendationScoring::collaborativeScore (the co-save count
+     * normalized), every other community row scores with the rating
+     * quality - both documented in the scoring home, never magic
+     * numbers inside this service.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function decorateCommunityItems(array $rows, string $reason): array
+    {
+        $items = [];
+
+        foreach ($rows as $row) {
+            $count = (int) ($row['saved_count'] ?? $row['shared_count'] ?? $row['discovery_count'] ?? 0);
+
+            if ($count > 0) {
+                $score = RecommendationScoring::collaborativeScore($count);
+            } else {
+                $score = (int) round(
+                    RecommendationScoring::ratingQuality((float) ($row['average_rating'] ?? 0), (int) ($row['ratings_count'] ?? 0)) * 100,
+                );
+            }
+
+            $items[] = [
+                ...$row,
+                'score'      => $score,
+                'reason'     => $reason,
+                'confidence' => 'medium',
+                'matched'    => ['collaborative'],
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * Drop every item whose book is already in the user's library
+     * ("never recommend a book the user already keeps").
+     *
+     * @param array<int, array<string, mixed>> $items
+     * @return array<int, array<string, mixed>>
+     */
+    private function excludeOwnLibrary(int $userId, array $items): array
+    {
+        return $this->filterRecommendations($items, $this->repository->libraryBookIds($userId, 200));
+    }
+
+    /**
+     * The run note of a library shelf (the formula, with the real
+     * configured weights).
+     */
+    private function libraryNote(string $section): string
+    {
+        if ($section === 'hidden_gems') {
+            $gems = RecommendationConfig::hiddenGems();
+
+            return "Hidden gems: at least {$gems['min_rating']} average rating with at most {$gems['max_reviews']} reviews.";
+        }
+
+        $weights = RecommendationScoring::libraryWeights();
+
+        return 'Library personalization: favourite categories x ' . $weights['favourite_category']
+            . ' + favourite authors x ' . $weights['favourite_author']
+            . ' + reading history x ' . $weights['reading_history']
+            . ' + want-to-read similarity x ' . $weights['want_to_read']
+            . ' + review score x ' . $weights['rating']
+            . ' + popularity x ' . $weights['popularity']
+            . ' (of 100) - personalised from your library, favourites, reading history and want-to-read shelf.';
+    }
+
+    /**
+     * Read the cached library-section shelf of one user, or null on
+     * a miss (the Phase 8.5 sibling of cacheRead()).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function cacheReadSection(int $userId, string $section): ?array
+    {
+        try {
+            return $this->cache?->getSection($userId, $section);
+        } catch (\Throwable $exception) {
+            $this->cacheWarning('read-section', $exception);
+
+            return null;
+        }
+    }
+
+    /**
+     * Store the library-section shelf of one user, best-effort (the
+     * Phase 8.5 sibling of cacheWrite()).
+     */
+    private function cacheWriteSection(int $userId, string $section, array $payload): void
+    {
+        try {
+            $this->cache?->putSection($userId, $section, $payload);
+        } catch (\Throwable $exception) {
+            $this->cacheWarning('write-section', $exception);
+        }
     }
 
     /**

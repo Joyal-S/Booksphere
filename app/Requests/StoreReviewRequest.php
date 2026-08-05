@@ -37,6 +37,13 @@ use BookSphere\App\Core\Validator;
  */
 final class StoreReviewRequest
 {
+    /** The maximum review title length. */
+    public const MAX_TITLE_LENGTH = 120;
+
+    /** The review body bounds. */
+    public const MIN_REVIEW_LENGTH = 20;
+    public const MAX_REVIEW_LENGTH = 2000;
+
     /** The rules of the review form (labels make the messages friendly). */
     public static function validate(array $data): Validator
     {
@@ -45,10 +52,10 @@ final class StoreReviewRequest
             ->integer('rating', 'rating')
             ->between('rating', 1, 5, 'rating')
             ->required('title', 'title')
-            ->max('title', 120, 'title')
+            ->max('title', self::MAX_TITLE_LENGTH, 'title')
             ->required('review', 'review')
-            ->min('review', 20, 'review')
-            ->max('review', 2000, 'review');
+            ->min('review', self::MIN_REVIEW_LENGTH, 'review')
+            ->max('review', self::MAX_REVIEW_LENGTH, 'review');
     }
 
     /**

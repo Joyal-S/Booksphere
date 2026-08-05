@@ -856,6 +856,514 @@ final class RecommendationRepository
         );
     }
 
+    /**
+     * The anchor snapshot the book-detail sections need: id, title,
+     * average rating and ratings count of one book - or null when
+     * the book is missing or soft-deleted.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function anchorBook(int $bookId): ?array
+    {
+        $book = $this->books->findById($bookId);
+
+        if ($book === null) {
+            return null;
+        }
+
+        return [
+            'id'             => (int) $book['id'],
+            'title'          => (string) ($book['title'] ?? ''),
+            'average_rating' => (float) ($book['average_rating'] ?? 0),
+            'ratings_count'  => (int) ($book['ratings_count'] ?? 0),
+        ];
+    }
+
+    // -----------------------------------------------------------------
+    // Phase 8.5: Personal Library signal reads
+    // -----------------------------------------------------------------
+
+    /**
+     * The book ids of one user's library, newest first.
+     *
+     * Input:  a user id, an optional status filter and a cap
+     * Output: the library book ids (all shelves, or one shelf when
+     *         $status is given)
+     *
+     * Business responsibility: the raw library signal of Phase 8.5.
+     * The library is the modern wishlist (Phase 8.1) and every shelf
+     * of it feeds the engine: favourites, finished books and
+     * want-to-read books all produce their own weighted factor.
+     * The user's own library books are ALWAYS excluded from their
+     * recommendation shelves - a book already in the library is never
+     * suggested again.
+     *
+     * @return array<int, int>
+     */
+    public function libraryBookIds(int $userId, int $limit, ?string $status = null): array
+    {
+        $statusClause = $status !== null ? ' AND ul.library_status = ?' : '';
+        $params       = $status !== null ? [$userId, $status, $limit] : [$userId, $limit];
+
+        return array_map(
+            fn (array $row): int => (int) $row['book_id'],
+            db()->query(
+                'SELECT ul.book_id
+                 FROM user_library ul
+                 WHERE ul.user_id = ?' . $statusClause . '
+                 ORDER BY ul.created_at DESC, ul.id DESC
+                 LIMIT ?',
+                $params,
+            ),
+        );
+    }
+
+    /**
+     * The user's starred books (is_favorite = 1) - the strongest
+     * affinity signal of the library.
+     *
+     * @return array<int, int>
+     */
+    public function favouriteBookIds(int $userId, int $limit): array
+    {
+        return array_map(
+            fn (array $row): int => (int) $row['book_id'],
+            db()->query(
+                'SELECT ul.book_id
+                 FROM user_library ul
+                 WHERE ul.user_id = ? AND ul.is_favorite = 1
+                 ORDER BY ul.updated_at DESC, ul.id DESC
+                 LIMIT ?',
+                [$userId, $limit],
+            ),
+        );
+    }
+
+    /**
+     * The user's finished books, most recently finished first - the
+     * reading-history signal.
+     *
+     * @return array<int, int>
+     */
+    public function finishedBookIds(int $userId, int $limit): array
+    {
+        return array_map(
+            fn (array $row): int => (int) $row['book_id'],
+            db()->query(
+                'SELECT ul.book_id
+                 FROM user_library ul
+                 WHERE ul.user_id = ? AND ul.library_status = ?
+                 ORDER BY ul.finished_reading_at DESC, ul.id DESC
+                 LIMIT ?',
+                [$userId, 'finished', $limit],
+            ),
+        );
+    }
+
+    /**
+     * The user's want-to-read books, most recently added first - the
+     * "continue exploring" signal.
+     *
+     * @return array<int, int>
+     */
+    public function wantToReadBookIds(int $userId, int $limit): array
+    {
+        return array_map(
+            fn (array $row): int => (int) $row['book_id'],
+            db()->query(
+                'SELECT ul.book_id
+                 FROM user_library ul
+                 WHERE ul.user_id = ? AND ul.library_status = ?
+                 ORDER BY ul.created_at DESC, ul.id DESC
+                 LIMIT ?',
+                [$userId, 'want_to_read', $limit],
+            ),
+        );
+    }
+
+    /**
+     * The user's top categories by books kept - the library
+     * "favourite categories" of the profile and the library page.
+     *
+     * Input:  a user id and how many categories to return
+     * Output: rows of id, name, kept (how many library books belong
+     *         to the category), ordered by kept descending
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function topLibraryCategories(int $userId, int $limit): array
+    {
+        return db()->query(
+            'SELECT c.id, c.name, COUNT(*) AS kept
+             FROM user_library ul
+             JOIN book_categories bc ON bc.book_id = ul.book_id
+             JOIN categories c       ON c.id = bc.category_id
+             WHERE ul.user_id = ?
+             GROUP BY c.id, c.name
+             ORDER BY kept DESC, c.name ASC
+             LIMIT ?',
+            [$userId, $limit],
+        );
+    }
+
+    /**
+     * The user's top authors by books kept - the author counterpart
+     * of topLibraryCategories().
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function topLibraryAuthors(int $userId, int $limit): array
+    {
+        return db()->query(
+            'SELECT a.id, a.name, COUNT(*) AS kept
+             FROM user_library ul
+             JOIN book_authors ba ON ba.book_id = ul.book_id
+             JOIN authors a       ON a.id = ba.author_id
+             WHERE ul.user_id = ?
+             GROUP BY a.id, a.name
+             ORDER BY kept DESC, a.name ASC
+             LIMIT ?',
+            [$userId, $limit],
+        );
+    }
+
+    /**
+     * "People who saved this also liked": the books other users saved
+     * alongside the anchor book, ordered by how many of them did so.
+     *
+     * Input:  the anchor book id and the maximum number of books
+     * Output: book rows ordered by saved_count DESC (each row carries
+     *         the number of other users who saved it)
+     *
+     * Business responsibility: the collaborative signal of Phase 8.5 -
+     * one query joins the library of every user who saved the anchor
+     * with their other saved books and groups by book. The anchor
+     * itself is excluded; only active, published books are returned.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function coSavedBooks(int $bookId, int $limit): array
+    {
+        return db()->query(
+            'SELECT t.*, co.saved_count
+             FROM (
+                 SELECT ul2.book_id, COUNT(*) AS saved_count
+                 FROM user_library ul1
+                 JOIN user_library ul2 ON ul2.user_id = ul1.user_id AND ul2.book_id != ?
+                 WHERE ul1.book_id = ?
+                 GROUP BY ul2.book_id
+             ) co
+             JOIN (
+                 SELECT ' . self::BOOK_SELECT . '
+                 FROM books b
+                 WHERE ' . self::ACTIVE_WHERE . '
+             ) t ON t.id = co.book_id
+             ORDER BY co.saved_count DESC, t.average_rating DESC, t.id ASC
+             LIMIT ?',
+            [$bookId, $bookId, self::RECOMMENDED_STATUS, $limit],
+        );
+    }
+
+    /**
+     * "People who saved this also liked" for the WHOLE library of one
+     * user: the books other users saved alongside any of the user's
+     * books, the user's own books excluded.
+     *
+     * Input:  a user id and the maximum number of books
+     * Output: book rows ordered by shared_count DESC (how many of the
+     *         user's library neighbours saved the book)
+     *
+     * Business responsibility: the library-page collaborative shelf.
+     * One query: every user who shares at least one library book with
+     * the user contributes their other books; the more neighbours
+     * saved a book, the higher it ranks.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function coSavedForLibrary(int $userId, int $limit): array
+    {
+        return db()->query(
+            'SELECT t.*, co.shared_count
+             FROM (
+                 SELECT ul.book_id, COUNT(DISTINCT ul.user_id) AS shared_count
+                 FROM user_library ul
+                 WHERE ul.user_id IN (
+                       SELECT DISTINCT ul2.user_id
+                       FROM user_library ul2
+                       WHERE ul2.book_id IN (SELECT book_id FROM user_library WHERE user_id = ?)
+                         AND ul2.user_id != ?
+                 )
+                   AND ul.book_id NOT IN (SELECT book_id FROM user_library WHERE user_id = ?)
+                 GROUP BY ul.book_id
+             ) co
+             JOIN (
+                 SELECT ' . self::BOOK_SELECT . '
+                 FROM books b
+                 WHERE ' . self::ACTIVE_WHERE . '
+             ) t ON t.id = co.book_id
+             ORDER BY co.shared_count DESC, t.average_rating DESC, t.id ASC
+             LIMIT ?',
+            [$userId, $userId, $userId, self::RECOMMENDED_STATUS, $limit],
+        );
+    }
+
+    /**
+     * The books the community has been discovering recently: saved to
+     * libraries inside the discovery window, most-saved first.
+     *
+     * Input:  the maximum number of books and the window cutoff
+     * Output: book rows ordered by discovery_count DESC (each row
+     *         carries how many saves it gathered in the window)
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function recentlyDiscoveredBooks(int $limit, string $cutoff): array
+    {
+        return db()->query(
+            'SELECT t.*, d.discovery_count
+             FROM (
+                 SELECT ul.book_id, COUNT(*) AS discovery_count
+                 FROM user_library ul
+                 WHERE ul.created_at >= ?
+                 GROUP BY ul.book_id
+             ) d
+             JOIN (
+                 SELECT ' . self::BOOK_SELECT . '
+                 FROM books b
+                 WHERE ' . self::ACTIVE_WHERE . '
+             ) t ON t.id = d.book_id
+             ORDER BY d.discovery_count DESC, t.average_rating DESC, t.id ASC
+             LIMIT ?',
+            [$cutoff, self::RECOMMENDED_STATUS, $limit],
+        );
+    }
+
+    /**
+     * The Hidden Gems shelf: books with few reviews but a high
+     * average rating (the denormalized columns ReviewService keeps
+     * in sync with the approved reviews).
+     *
+     * Input:  the filter (min rating, max review count) and the limit
+     * Output: book rows, best-rated first (ties: fewer reviews first)
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function hiddenGemBooks(float $minRating, int $maxReviews, int $limit): array
+    {
+        return db()->query(
+            'SELECT ' . self::BOOK_SELECT . '
+             FROM books b
+             WHERE ' . self::ACTIVE_WHERE . '
+               AND b.average_rating >= ?
+               AND b.ratings_count <= ?
+             ORDER BY b.average_rating DESC, b.ratings_count ASC, b.id ASC
+             LIMIT ?',
+            [self::RECOMMENDED_STATUS, $minRating, $maxReviews, $limit],
+        );
+    }
+
+    /**
+     * The books whose average rating sits inside a band around the
+     * anchor's rating - the book page's "similar by rating" shelf.
+     *
+     * Input:  the anchor rating, the band width and the limit
+     * Output: book rows ordered by the rating gap ascending (each row
+     *         carries rating_gap)
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function booksSimilarByRating(float $anchorRating, float $band, int $limit): array
+    {
+        return db()->query(
+            'SELECT ' . self::BOOK_SELECT . ',
+                    ABS(b.average_rating - ?) AS rating_gap
+             FROM books b
+             WHERE ' . self::ACTIVE_WHERE . '
+               AND b.average_rating BETWEEN ? - ? AND ? + ?
+             ORDER BY rating_gap ASC, b.ratings_count DESC, b.id ASC
+             LIMIT ?',
+            [$anchorRating, self::RECOMMENDED_STATUS, $anchorRating, $band, $anchorRating, $band, $limit],
+        );
+    }
+
+    /**
+     * The books whose popularity (ratings count) sits inside a band
+     * around the anchor's - the book page's "similar by popularity"
+     * shelf.
+     *
+     * Input:  the anchor count, the band (a fraction of the count)
+     *         and the limit
+     * Output: book rows ordered by the count gap ascending (each row
+     *         carries count_gap)
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function booksSimilarByPopularity(int $anchorCount, float $factor, int $limit): array
+    {
+        $band = max(1, (int) round($anchorCount * $factor));
+
+        return db()->query(
+            'SELECT ' . self::BOOK_SELECT . ',
+                    ABS(b.ratings_count - ?) AS count_gap
+             FROM books b
+             WHERE ' . self::ACTIVE_WHERE . '
+               AND b.ratings_count BETWEEN ? AND ?
+             ORDER BY count_gap ASC, b.average_rating DESC, b.id ASC
+             LIMIT ?',
+            [$anchorCount, self::RECOMMENDED_STATUS, max(0, $anchorCount - $band), $anchorCount + $band, $limit],
+        );
+    }
+
+    /**
+     * The library books that most shaped the recommendations - the
+     * favourites and the finished books of one user, with their
+     * titles and categories - the "Books Influencing
+     * Recommendations" block of the profile page.
+     *
+     * Input:  a user id and how many books to return
+     * Output: rows of book_id, title, cover_image, average_rating,
+     *         ratings_count, library_status, is_favorite,
+     *         categories_list, favourites first, then most recently
+     *         updated
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function libraryProfileBooks(int $userId, int $limit): array
+    {
+        return db()->query(
+            'SELECT ul.book_id,
+                    b.title,
+                    b.cover_image,
+                    b.average_rating,
+                    b.ratings_count,
+                    ul.library_status,
+                    ul.is_favorite,
+                    (SELECT GROUP_CONCAT(c.name, ", ")
+                     FROM book_categories bc
+                     JOIN categories c ON c.id = bc.category_id
+                     WHERE bc.book_id = b.id) AS categories_list
+             FROM user_library ul
+             JOIN books b ON b.id = ul.book_id
+             WHERE ul.user_id = ?
+               AND (ul.is_favorite = 1 OR ul.library_status = ?)
+             ORDER BY ul.is_favorite DESC, ul.updated_at DESC, ul.id DESC
+             LIMIT ?',
+            [$userId, 'finished', $limit],
+        );
+    }
+
+    // -----------------------------------------------------------------
+    // Phase 8.5: recommendation_logs (the audit + accuracy trail)
+    // -----------------------------------------------------------------
+
+    /**
+     * Append one recommendation log entry per served book.
+     *
+     * Input:  the user id and the entries (each: book_id, reason,
+     *         score, signal)
+     * Output: nothing (one multi-row INSERT in a transaction)
+     *
+     * Business responsibility: the audit trail of Phase 8.5. Every
+     * book a library-derived shelf serves is recorded - the caller
+     * decides WHEN a shelf is worth logging (each section method logs
+     * its own result), this method only persists. The rows power the
+     * profile's Recommendation Accuracy figure.
+     *
+     * @param array<int, array<string, mixed>> $entries
+     */
+    public function logRecommendations(int $userId, array $entries): void
+    {
+        if ($entries === []) {
+            return;
+        }
+
+        $rows = array_slice($entries, 0, 100);
+
+        $sql = 'INSERT INTO recommendation_logs (user_id, book_id, reason, score, signal)
+                VALUES ';
+
+        $placeholders = [];
+        $params       = [];
+
+        foreach ($rows as $entry) {
+            $placeholders[] = '(?, ?, ?, ?, ?)';
+            array_push($params, $userId, (int) $entry['book_id'], (string) $entry['reason'], (float) $entry['score'], (string) $entry['signal']);
+        }
+
+        db()->execute($sql . implode(', ', $placeholders), $params);
+    }
+
+    /**
+     * Prune a user's logs to the newest rows.
+     *
+     * Input:  a user id and how many rows to keep
+     * Output: nothing
+     *
+     * Business responsibility: the retention rule of the logs table -
+     * the table stays bounded per user (config
+     * recommendations.library.logs.retention_per_user) without a
+     * background job. Called by the service after every log write.
+     */
+    public function pruneRecommendationLogs(int $userId, int $keep): void
+    {
+        if ($keep < 1) {
+            return;
+        }
+
+        db()->execute(
+            'DELETE FROM recommendation_logs
+             WHERE user_id = ?
+               AND id NOT IN (
+                   SELECT id FROM recommendation_logs
+                   WHERE user_id = ?
+                   ORDER BY generated_at DESC, id DESC
+                   LIMIT ?
+               )',
+            [$userId, $userId, $keep],
+        );
+    }
+
+    /**
+     * The recent recommendation logs of one user inside the accuracy
+     * window, each annotated with whether the user acted on the book
+     * (library record, rating, or wishlist save).
+     *
+     * Input:  a user id, the window cutoff and the limit
+     * Output: rows of book_id, title, cover_image, reason, score,
+     *         signal, generated_at, in_library, rated, saved
+     *
+     * Business responsibility: the single read behind the profile's
+     * "Recommendation Accuracy" figure - three EXISTS subqueries
+     * annotate each logged book with the user's actions, so the
+     * service computes the accuracy from one row set (no N+1).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function recommendationLogs(int $userId, string $cutoff, int $limit): array
+    {
+        return db()->query(
+            'SELECT l.book_id,
+                    b.title,
+                    b.cover_image,
+                    l.reason,
+                    l.score,
+                    l.signal,
+                    l.generated_at,
+                    EXISTS(SELECT 1 FROM user_library ul
+                           WHERE ul.user_id = l.user_id AND ul.book_id = l.book_id) AS in_library,
+                    EXISTS(SELECT 1 FROM reviews r
+                           WHERE r.user_id = l.user_id AND r.book_id = l.book_id) AS rated,
+                    EXISTS(SELECT 1 FROM wishlist w
+                           WHERE w.user_id = l.user_id AND w.book_id = l.book_id) AS saved
+             FROM recommendation_logs l
+             JOIN books b ON b.id = l.book_id
+             WHERE l.user_id = ? AND l.generated_at >= ?
+             ORDER BY l.generated_at DESC, l.id DESC
+             LIMIT ?',
+            [$userId, $cutoff, $limit],
+        );
+    }
+
     // -----------------------------------------------------------------
     // Phase 6.5: monitoring reads (the admin metrics page)
     // -----------------------------------------------------------------
