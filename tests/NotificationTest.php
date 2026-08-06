@@ -176,8 +176,8 @@ $check('The is_read CHECK allows only 0/1', str_contains($notificationSql, 'CHEC
 $check('The user_id foreign key cascades', str_contains(preg_replace('/\s+/', ' ', $notificationSql), 'REFERENCES users (id) ON DELETE CASCADE'));
 
 $notificationIndexes = array_column(db()->query('PRAGMA index_list(notifications)'), 'name');
-$check('The (user_id) index exists', in_array('idx_notifications_user', $notificationIndexes, true));
-$check('The (user_id, is_read) covering index exists', in_array('idx_notifications_user_read', $notificationIndexes, true));
+$check('The (user_id, created_at) covering index exists (Phase 9.6 - replaces the bare (user_id) index)', in_array('idx_notifications_user_created', $notificationIndexes, true));
+$check('The (user_id, is_read, created_at) covering index exists', in_array('idx_notifications_user_read_created', $notificationIndexes, true));
 $check('The (created_at) index exists', in_array('idx_notifications_created', $notificationIndexes, true));
 
 $preferenceColumns = array_column(db()->query('PRAGMA table_info(notification_preferences)'), 'name');

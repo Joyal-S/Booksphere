@@ -34,4 +34,7 @@ declare(strict_types=1);
     <link rel="stylesheet" href="<?= e(asset('css/reviews.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/library.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/follow.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/notifications.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/settings.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/google-books.css')) ?>">
 </head>

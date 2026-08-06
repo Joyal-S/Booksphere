@@ -1,0 +1,492 @@
+/* ==========================================================================
+   notifications.css - the Phase 9.4 Notification Center UI
+
+   The module stylesheet of the bell + badge, the dropdown panel and
+   the center page. It builds on the app design tokens (app.css) -
+   every colour is a --token so light and dark mode flip here for
+   free - and reuses the shared components (empty-state, pagination,
+   skeleton) without restyling them.
+
+   Section index:
+     1. Bell badge      - the unread count on the bell
+     2. Dropdown        - the bell panel (header / list / footer)
+     3. Center intro    - the page header row
+     4. Filter chips    - the tab + type-group chips
+     5. Bulk toolbar    - the selection bar above the list
+     6. Cards           - the notification items
+     7. Loading         - the skeleton stacks (dropdown + list)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Bell badge
+   -------------------------------------------------------------------------- */
+
+.notif-badge {
+    position: absolute;
+    top: 2px;
+    right: 0;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: var(--radius-full);
+    background: var(--primary);
+    color: var(--primary-contrast);
+    font-size: 0.625rem;
+    font-weight: 700;
+    line-height: 17px;
+    text-align: center;
+    box-shadow: 0 0 0 2px var(--surface);
+}
+
+/* The pulse when the unread count rises (a new notification). The
+   ring is drawn from the --primary token so it tracks the theme
+   (light and dark both get the right accent). */
+.notif-badge.is-pulsing {
+    animation: notif-pulse 1.2s ease-out 2;
+}
+
+@keyframes notif-pulse {
+    0%   { box-shadow: 0 0 0 2px var(--surface), 0 0 0 0 color-mix(in srgb, var(--primary) 45%, transparent); }
+    70%  { box-shadow: 0 0 0 2px var(--surface), 0 0 0 9px color-mix(in srgb, var(--primary) 0%, transparent); }
+    100% { box-shadow: 0 0 0 2px var(--surface), 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent); }
+}
+
+/* --------------------------------------------------------------------------
+   2. Dropdown - the bell panel. Sits on the app.css .notif-menu base
+   (width, padding reset) and extends it: a taller panel, a header
+   with the mark-all action, the scrollable item list and the footer.
+   -------------------------------------------------------------------------- */
+
+.notif-menu {
+    width: 360px;
+    max-width: min(92vw, 360px);
+}
+
+.notif-menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.notif-menu-header form {
+    margin: 0;
+}
+
+.notif-menu-action {
+    padding: 2px 0;
+    border: 0;
+    background: none;
+    color: var(--primary-strong);
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.notif-menu-action:hover:not(:disabled) {
+    text-decoration: underline;
+}
+
+.notif-menu-action:disabled {
+    color: var(--muted);
+    cursor: not-allowed;
+}
+
+.notif-menu-panel {
+    max-height: min(60vh, 420px);
+    overflow-y: auto;
+}
+
+.notif-menu-panel:empty {
+    display: none;
+}
+
+.notif-menu-panel .notif-menu-message {
+    padding: 26px 16px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.82rem;
+}
+
+.notif-menu-panel .notif-menu-message i {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 1.4rem;
+    color: var(--border-strong);
+}
+
+.notif-menu-panel .notif-menu-message p {
+    margin: 0;
+}
+
+/* The compact dropdown item: icon tile, title + message, time and
+   the unread dot - no checkbox, no actions. */
+.notif-menu-panel .notif-item {
+    border-radius: var(--radius);
+}
+
+.notif-menu-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    color: var(--primary-strong);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.notif-menu-footer:hover {
+    background: var(--surface-2);
+    color: var(--primary-strong);
+}
+
+/* --------------------------------------------------------------------------
+   3. Center intro - the page header row (eyebrow + title + lead on
+   the left, the two page-wide actions on the right).
+   -------------------------------------------------------------------------- */
+
+.notif-intro {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+}
+
+.notif-intro h1 {
+    margin: 0 0 4px;
+    font-size: clamp(1.6rem, 3vw, 2rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.notif-intro .lead {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
+.notif-intro-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* --------------------------------------------------------------------------
+   4. Filter chips - the read-state tabs and the type-group chips.
+   -------------------------------------------------------------------------- */
+
+.notif-chips {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.notif-chips-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.notif-chip {
+    padding: 7px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.notif-chip:hover {
+    border-color: var(--primary);
+    color: var(--primary-strong);
+}
+
+.notif-chip.is-active {
+    border-color: var(--primary);
+    background: var(--primary-soft);
+    color: var(--primary-strong);
+}
+
+.notif-chip--group {
+    padding: 5px 14px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+/* --------------------------------------------------------------------------
+   5. Bulk toolbar - the selection bar above the list.
+   -------------------------------------------------------------------------- */
+
+.notif-bulk {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 16px;
+    margin-bottom: 14px;
+    padding: 10px 14px;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--surface-2);
+}
+
+.notif-bulk-select-all {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    color: var(--text);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.notif-bulk-count {
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.notif-bulk-delete {
+    margin-left: auto;
+}
+
+/* --------------------------------------------------------------------------
+   6. Cards - one notification item.
+   -------------------------------------------------------------------------- */
+
+.notif-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding-left: 0;
+    list-style: none;
+}
+
+.notif-list-item {
+    display: flex;
+}
+
+.notif-item {
+    position: relative;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.notif-item:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-sm);
+}
+
+.notif-item.is-unread {
+    border-color: var(--primary);
+    background: linear-gradient(90deg, var(--primary-soft), var(--surface) 42%);
+}
+
+.notif-item-check {
+    display: flex;
+    align-items: center;
+    padding-top: 4px;
+}
+
+.notif-item-check .form-check-input {
+    margin: 0;
+}
+
+.notif-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius);
+    font-size: 1rem;
+}
+
+/* The accent tones - soft background, strong foreground (the app's
+   tone tokens; the stored color of a row maps to one of these). */
+.notif-icon--primary   { background: var(--primary-soft); color: var(--primary-strong); }
+.notif-icon--info      { background: var(--info-soft);    color: var(--info); }
+.notif-icon--success   { background: var(--success-soft); color: var(--success); }
+.notif-icon--warning   { background: var(--warning-soft); color: var(--warning); }
+.notif-icon--danger    { background: var(--danger-soft);  color: var(--danger); }
+
+.notif-item-body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.notif-item-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.notif-item-title {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.is-unread .notif-item-title {
+    color: var(--primary-strong);
+}
+
+.notif-item-time {
+    flex: 0 0 auto;
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.notif-item-message {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 0.84rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.notif-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.notif-item-actions form {
+    margin: 0;
+}
+
+.notif-item-action {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 0;
+    border: 0;
+    background: none;
+    color: var(--primary-strong);
+    font-size: 0.76rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.notif-item-action:hover {
+    text-decoration: underline;
+}
+
+.notif-item-action--danger {
+    color: var(--danger);
+}
+
+/* The unread dot on the right edge - replaced by the accent bar +
+   tint on the card, kept for the tight dropdown items. */
+.notif-item-dot {
+    position: absolute;
+    top: 18px;
+    right: 14px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--primary);
+    box-shadow: 0 0 0 3px var(--surface);
+}
+
+.notif-item.is-read .notif-item-dot {
+    display: none;
+}
+
+/* --------------------------------------------------------------------------
+   7. Loading - the skeleton stacks (bell dropdown + list fetches).
+   -------------------------------------------------------------------------- */
+
+.notif-skeleton-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+}
+
+.notif-skeleton-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.notif-skeleton-icon {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius);
+}
+
+.notif-skeleton-body {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.notif-skeleton-line {
+    display: block;
+    width: 62%;
+    height: 12px;
+    border-radius: 6px;
+}
+
+.notif-skeleton-line--sm {
+    width: 40%;
+    height: 9px;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive - the cards and the intro stack on small screens.
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 575.98px) {
+    .notif-item {
+        gap: 10px;
+        padding: 12px;
+    }
+
+    .notif-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 0.9rem;
+    }
+
+    .notif-item-head {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+
+    .notif-item-check {
+        padding-top: 2px;
+    }
+
+    .notif-intro-actions {
+        width: 100%;
+    }
+
+    .notif-intro-actions .btn {
+        flex: 1 1 auto;
+    }
+}

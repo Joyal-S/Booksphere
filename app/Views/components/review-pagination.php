@@ -26,13 +26,19 @@ declare(strict_types=1);
  */
 
 $pagination = array_merge([
-    'base'     => '/reviews',
-    'params'   => [],
-    'page'     => 1,
-    'pages'    => 1,
-    'total'    => 0,
-    'perPage'  => 10,
-    'perPages' => [10, 20, 50],
+    'base'       => '/reviews',
+    'params'     => [],
+    'page'       => 1,
+    'pages'      => 1,
+    'total'      => 0,
+    'perPage'    => 10,
+    'perPages'   => [10, 20, 50],
+    // The result-line noun and the pager landmark label. They
+    // default to the reviews wording; other lists (e.g. the Phase
+    // 9.4 notification center) pass their own, so the component
+    // stays shared without hardcoding a noun.
+    'label'      => 'review',
+    'pagerLabel' => 'Review pages',
 ], $pagination ?? []);
 
 $page     = max(1, (int) $pagination['page']);
@@ -67,7 +73,7 @@ $numbers = range($first, $last);
 <?php if ($total > 0): ?>
     <div class="review-pagination">
         <p class="review-pagination-result">
-            Showing <?= $from ?>&ndash;<?= $to ?> of <?= $total ?> review<?= $total === 1 ? '' : 's' ?>
+            Showing <?= $from ?>&ndash;<?= $to ?> of <?= $total ?> <?= e((string) $pagination['label']) ?><?= $total === 1 ? '' : 's' ?>
         </p>
 
         <?php if (count($pagination['perPages']) > 1): ?>
@@ -88,7 +94,7 @@ $numbers = range($first, $last);
         <?php endif; ?>
 
         <?php if ($pages > 1): ?>
-            <nav class="review-pagination-pager" aria-label="Review pages">
+            <nav class="review-pagination-pager" aria-label="<?= e((string) $pagination['pagerLabel']) ?>">
                 <?php if ($page > 1): ?>
                     <a class="btn btn-sm btn-outline-secondary" href="<?= e($pageUrl($page - 1)) ?>">
                         <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>

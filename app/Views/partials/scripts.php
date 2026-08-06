@@ -21,3 +21,6 @@ declare(strict_types=1);
 <script src="<?= e(asset('js/reviews.js')) ?>"></script>
 <script src="<?= e(asset('js/library.js')) ?>"></script>
 <script src="<?= e(asset('js/follow.js')) ?>"></script>
+<script src="<?= e(asset('js/notifications.js')) ?>"></script>
+<script src="<?= e(asset('js/settings.js')) ?>"></script>
+<script src="<?= e(asset('js/google-books.js')) ?>"></script>

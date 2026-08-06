@@ -71,6 +71,21 @@ final class Request
     }
 
     /**
+     * Return a sanitized value from the POST BODY ONLY (Phase 9.6:
+     * the CSRF token is read through this - a token in the query
+     * string is never accepted, so a stray ?_token=... on a GET link
+     * can neither validate a forged request nor leak a live token).
+     *
+     * @param mixed $default Value returned when the key does not exist
+     */
+    public function post(string $key, mixed $default = null): mixed
+    {
+        $value = $_POST[$key] ?? $default;
+
+        return is_string($value) ? trim($value) : $value;
+    }
+
+    /**
      * Return a request header value, or null when it was not sent.
      *
      * The header name is case-insensitive ("X-Requested-With" and

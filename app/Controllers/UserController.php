@@ -234,13 +234,34 @@ final class UserController extends Controller
             Response::error(403, 'You are not allowed to view this list.');
         }
 
+        // Phase 9.6: the list is PAGINATED (it used to truncate
+        // silently at 50 rows while the lead text under-counted), so
+        // the lead shows the honest total and every row is reachable.
+        $page    = max(1, (int) $request->input('page', 1));
+        $perPage = (int) $request->input('per_page', 20);
+        $pageData = $this->follows !== null
+            ? $this->follows->followingPage($userId, $page, $perPage)
+            : ['items' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'per_page' => 20];
+
         $this->view('profile.following', [
             'title'    => 'Authors I follow',
             'active'   => 'profile',
-            'authors'  => $this->follows?->followingList($userId) ?? [],
+            'authors'  => $pageData['items'],
+            'total'    => (int) $pageData['total'],
             // The per-row follow button state (the whole list belongs
             // to the session user, so every row is "following").
             'followed' => true,
+            'pagination' => [
+                'base'       => '/profile/following',
+                'params'     => [],
+                'page'       => (int) $pageData['page'],
+                'pages'      => (int) $pageData['pages'],
+                'total'      => (int) $pageData['total'],
+                'perPage'    => (int) $pageData['per_page'],
+                'perPages'   => [10, 20, 50],
+                'label'      => 'author',
+                'pagerLabel' => 'Following pages',
+            ],
         ]);
     }
 }

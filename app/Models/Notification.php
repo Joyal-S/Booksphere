@@ -115,21 +115,26 @@ final class Notification
 
     /**
      * One page of the notification center: 'all' | 'unread' | 'read'
-     * tabs, newest first.
+     * tabs, newest first. $types optionally narrows the page to a
+     * type-group member list (the Phase 9.4 filter chips).
      *
+     * @param array<int, string> $types
      * @return array<int, array<string, mixed>>
      */
-    public function forUser(int $userId, string $tab = 'all', int $offset = 0, int $limit = 50): array
+    public function forUser(int $userId, string $tab = 'all', int $offset = 0, int $limit = 50, array $types = []): array
     {
-        return $this->repository->forUser($userId, $tab, $offset, $limit);
+        return $this->repository->forUser($userId, $tab, $offset, $limit, $types);
     }
 
     /**
      * The total row count behind a tab (the pagination denominator).
+     * $types narrows the count exactly like forUser().
+     *
+     * @param array<int, string> $types
      */
-    public function countForUser(int $userId, string $tab = 'all'): int
+    public function countForUser(int $userId, string $tab = 'all', array $types = []): int
     {
-        return $this->repository->countForUser($userId, $tab);
+        return $this->repository->countForUser($userId, $tab, $types);
     }
 
     /**
@@ -149,6 +154,14 @@ final class Notification
     }
 
     /**
+     * Mark one notification UNREAD again (idempotent, owner-scoped).
+     */
+    public function markUnread(int $id, int $userId): bool
+    {
+        return $this->repository->markUnread($id, $userId);
+    }
+
+    /**
      * Mark every notification of the user read. Returns the number
      * of rows actually changed.
      */
@@ -163,6 +176,18 @@ final class Notification
     public function deleteOwnedBy(int $id, int $userId): bool
     {
         return $this->repository->deleteOwnedBy($id, $userId);
+    }
+
+    /**
+     * Delete a SET of the user's notifications in one round trip
+     * (foreign ids are simply not touched). Returns the number of
+     * rows actually removed.
+     *
+     * @param array<int> $ids
+     */
+    public function deleteMany(array $ids, int $userId): int
+    {
+        return $this->repository->deleteMany($ids, $userId);
     }
 
     /**

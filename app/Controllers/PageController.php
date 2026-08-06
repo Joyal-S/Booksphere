@@ -10,10 +10,10 @@ use BookSphere\App\Core\Request;
 /**
  * PageController
  *
- * Serves the placeholder pages of the main navigation: Wishlist,
- * Analytics and Settings. None of these features exist yet (they
- * belong to later phases), so every action renders the same "coming
- * soon" page with a page-specific title, icon and description.
+ * Serves the placeholder pages of the main navigation: Wishlist and
+ * Analytics. Neither feature exists yet (both belong to later
+ * phases), so every action renders the same "coming soon" page with
+ * a page-specific title, icon and description.
  *
  * The routes exist now so the sidebar navigation never leads to
  * a 404 once a user is logged in. (Browse Books became a real,
@@ -22,7 +22,8 @@ use BookSphere\App\Core\Request;
  * in Phase 6.1; Reviews became a real module in Phase 7.1 and now
  * lives in ReviewController; Categories and Authors became real
  * pages in Phase 7.6 and now live in CategoryController and
- * AuthorController.)
+ * AuthorController; Settings became a real page in Phase 9.5 and now
+ * lives in SettingsController.)
  */
 final class PageController extends Controller
 {
@@ -43,16 +44,6 @@ final class PageController extends Controller
             'Analytics',
             'fa-chart-column',
             'Usage charts and catalogue statistics arrive in a later phase.',
-        );
-    }
-
-    public function settings(Request $request, array $params = []): void
-    {
-        $this->comingSoon(
-            'settings',
-            'Settings',
-            'fa-gear',
-            'Profile preferences and reading settings arrive in a later phase.',
         );
     }
 

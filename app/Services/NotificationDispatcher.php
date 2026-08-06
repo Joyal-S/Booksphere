@@ -31,7 +31,11 @@ use BookSphere\App\Models\Notification;
  *     5. enqueue the channel rows in notification_deliveries (a
  *        no-op in 9.2 - the outbox ships empty so email/push are
  *        purely additive later)
- *     6. log notification.created with the type and the recipient
+ *     6. Phase 9.5: hand the same event to the optional
+ *        EmailNotificationService - the ONLY door emails enter
+ *        through. The email module is purely additive: without the
+ *        service (or with EMAIL_ENABLED=false) nothing changes.
+ *     7. log notification.created with the type and the recipient
  *        count
  *
  * The preference category of each type is fixed here (the closed
@@ -46,6 +50,8 @@ use BookSphere\App\Models\Notification;
  * Dependencies:
  *     - Notification model (facade) for the rows.
  *     - NotificationFormatter (pure) for the content.
+ *     - EmailNotificationService (OPTIONAL, Phase 9.5) for the email
+ *       channel - without it the module behaves exactly as in 9.2-9.4.
  *     - Logger (optional, defaults to the application log).
  */
 final class NotificationDispatcher
@@ -71,6 +77,7 @@ final class NotificationDispatcher
         private readonly Notification $notifications,
         private readonly NotificationFormatter $formatter,
         ?Logger $logger = null,
+        private readonly ?EmailNotificationService $email = null,
     ) {
         $this->logger = $logger ?? new Logger(root_path('storage/logs/application.log'));
     }
@@ -94,6 +101,12 @@ final class NotificationDispatcher
         $id = $this->notifications->create($content + ['user_id' => $userId]);
 
         $this->outbox($id, $userId);
+
+        // Phase 9.5: the email channel hooks in HERE - after the row
+        // exists, through the optional service, never inline in a
+        // module. A missing or disabled email stack is a silent no-op.
+        $this->email?->dispatch($type, $context, $userId, $content);
+
         $this->logger->info('notification.created', ['type' => $type, 'recipients' => 1, 'id' => $id]);
 
         return $id;

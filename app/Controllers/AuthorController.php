@@ -221,14 +221,36 @@ final class AuthorController extends Controller
 
         $authorId = (int) $author['id'];
 
+        // Phase 9.6: the list is PAGINATED (it used to truncate
+        // silently at 50 rows while the lead text under-counted), so
+        // the lead shows the honest total and every follower is
+        // reachable.
+        $page    = max(1, (int) $request->input('page', 1));
+        $perPage = (int) $request->input('per_page', 20);
+        $pageData = $this->follows !== null
+            ? $this->follows->followersPage($authorId, $page, $perPage)
+            : ['items' => [], 'total' => 0, 'page' => 1, 'pages' => 1, 'per_page' => 20];
+
         $this->view('authors.followers', [
             'title'     => 'Followers of ' . $author['name'],
             'active'    => 'authors',
             'author'    => $author,
-            'followers' => $this->follows ? $this->follows->followersList($authorId) : [],
+            'followers' => $pageData['items'],
+            'total'     => (int) $pageData['total'],
             'following' => $this->follows !== null && auth_check()
                 ? $this->follows->isFollowing((int) auth()->id(), $authorId)
                 : false,
+            'pagination' => [
+                'base'       => '/authors/' . $authorId . '/followers',
+                'params'     => [],
+                'page'       => (int) $pageData['page'],
+                'pages'      => (int) $pageData['pages'],
+                'total'      => (int) $pageData['total'],
+                'perPage'    => (int) $pageData['per_page'],
+                'perPages'   => [10, 20, 50],
+                'label'      => 'person',
+                'pagerLabel' => 'Follower pages',
+            ],
         ]);
     }
 

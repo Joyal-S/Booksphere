@@ -24,10 +24,14 @@ final class CsrfMiddleware
 
     /**
      * Validate the CSRF token, or stop the request with a 419 error.
+     *
+     * The token must arrive in the POST body (Request::post) - a
+     * token carried in the query string is ignored, so a forged GET
+     * link can never pass as a valid submission.
      */
     public function handle(Request $request, callable $next): mixed
     {
-        if (!$this->csrf->validate($request->input('_token'))) {
+        if (!$this->csrf->validate($request->post('_token'))) {
             Response::error(419, 'Invalid form token.');
         }
 

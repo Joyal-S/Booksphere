@@ -37,16 +37,20 @@ final readonly class FollowDTO
     /**
      * Build a DTO from raw (possibly untrusted) input.
      *
+     * The ACTOR's id never comes from the submitted payload (Phase
+     * 9.6 hardening: a crafted "user_id" field could otherwise make
+     * user A follow or unfollow on behalf of user B): it is always
+     * the session value the caller hands in. Only the author id is
+     * read from the form.
+     *
      * @param array<string, mixed> $raw    The submitted values
-     * @param int|null             $userId The logged-in user id, used
-     *                                     as the user_id fallback
-     *                                     (the same sanitization as
-     *                                     LibraryItemDTO)
+     * @param int|null             $userId The logged-in user id - the
+     *                                     ONLY accepted actor id
      */
     public static function fromArray(array $raw, ?int $userId = null): self
     {
         return new self(
-            userId:   self::positiveId($raw['user_id'] ?? null, $userId),
+            userId:   $userId !== null && $userId > 0 ? $userId : null,
             authorId: self::positiveId($raw['author_id'] ?? null),
         );
     }

@@ -40,4 +40,33 @@ final class Author
 
         return $rows[0] ?? null;
     }
+
+    /**
+     * Find an author by name, creating it when it does not exist yet.
+     *
+     * The importer's author staging uses this. authors.name is UNIQUE,
+     * so the insert-or-ignore + read-back pattern is race-safe: two
+     * imports of the same new author can never create a second row.
+     *
+     * @throws \InvalidArgumentException when the name is empty
+     */
+    public function findOrCreate(string $name): int
+    {
+        $name = trim($name);
+
+        if ($name === '') {
+            throw new \InvalidArgumentException('Author name must not be empty.');
+        }
+
+        $rows = db()->query('SELECT id FROM authors WHERE name = ?', [$name]);
+
+        if ($rows !== []) {
+            return (int) $rows[0]['id'];
+        }
+
+        db()->execute('INSERT OR IGNORE INTO authors (name, biography, photo) VALUES (?, NULL, NULL)', [$name]);
+        $rows = db()->query('SELECT id FROM authors WHERE name = ?', [$name]);
+
+        return (int) $rows[0]['id'];
+    }
 }

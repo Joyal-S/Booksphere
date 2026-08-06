@@ -8,6 +8,7 @@ use BookSphere\App\Core\Logger;
 use BookSphere\App\Exceptions\FollowException;
 use BookSphere\App\Models\Author;
 use BookSphere\App\Models\AuthorFollow;
+use PDOException;
 
 /**
  * FollowService
@@ -73,7 +74,14 @@ final class FollowService
      */
     public function follow(int $userId, int $authorId): int
     {
-        if (!$this->authorExists($authorId)) {
+        // The author row is fetched ONCE and reused: the existence
+        // guard, the "cannot follow yourself" rule (the author id and
+        // the user id share the same id space) and the notification
+        // hook all read the same row - two identical queries used to
+        // run on every follow.
+        $author = $this->authors->findById($authorId);
+
+        if ($author === null) {
             throw FollowException::authorNotFound($authorId);
         }
 
@@ -85,10 +93,24 @@ final class FollowService
             throw FollowException::duplicateFollow($userId, $authorId);
         }
 
-        $id = $this->follows->create([
-            'user_id'   => $userId,
-            'author_id' => $authorId,
-        ]);
+        try {
+            $id = $this->follows->create([
+                'user_id'   => $userId,
+                'author_id' => $authorId,
+            ]);
+        } catch (PDOException $exception) {
+            // The UNIQUE (user_id, author_id) index is the last line
+            // of defence: a double-submit that slips past the
+            // isFollowing check (two requests racing between the
+            // check and the insert) surfaces here as a constraint
+            // violation. It is mapped to the module's duplicate
+            // answer (409) instead of an uncaught SQL error (500).
+            if ((string) ($exception->getCode() ?? '') === '23000') {
+                throw FollowException::duplicateFollow($userId, $authorId);
+            }
+
+            throw $exception;
+        }
 
         $this->logger->info('follow.created', [
             'id'      => $id,
@@ -99,8 +121,6 @@ final class FollowService
         // The actor's confirmation ping (the basic follow
         // notification): formatted at write time with the author's
         // name, gated by the author_followed preference.
-        $author = $this->authors->findById($authorId);
-
         $this->dispatcher?->notify('author_followed', [
             'author'    => (string) ($author['name'] ?? ''),
             'author_id' => $authorId,
@@ -159,6 +179,32 @@ final class FollowService
     }
 
     /**
+     * One PAGE of the user's followed authors (Phase 9.6 - the page
+     * that replaces the silently-truncated LIMIT-50 list): the honest
+     * total, the page's rows and the pager math, so the view can say
+     * "showing 11-20 of 137 authors" and link between pages.
+     *
+     * @return array<string, mixed> items, total, page, pages, per_page
+     */
+    public function followingPage(int $userId, int $page = 1, int $perPage = 20): array
+    {
+        $perPage = min(50, max(1, $perPage));
+        $page    = max(1, $page);
+
+        $total = $this->follows->countForUser($userId);
+        $pages = max(1, (int) ceil($total / $perPage));
+        $page  = min($page, $pages);
+
+        return [
+            'items'    => $this->follows->findForUser($userId, $perPage, ($page - 1) * $perPage),
+            'total'    => $total,
+            'page'     => $page,
+            'pages'    => $pages,
+            'per_page' => $perPage,
+        ];
+    }
+
+    /**
      * The followers of one author, newest first.
      *
      * @return array<int, array<string, mixed>>
@@ -166,6 +212,30 @@ final class FollowService
     public function followersList(int $authorId, int $limit = 50): array
     {
         return $this->follows->findFollowersOf($authorId, $limit);
+    }
+
+    /**
+     * One PAGE of an author's followers (Phase 9.6), shaped like
+     * followingPage() so both pages share one pager contract.
+     *
+     * @return array<string, mixed> items, total, page, pages, per_page
+     */
+    public function followersPage(int $authorId, int $page = 1, int $perPage = 20): array
+    {
+        $perPage = min(50, max(1, $perPage));
+        $page    = max(1, $page);
+
+        $total = $this->follows->countFollowersOf($authorId);
+        $pages = max(1, (int) ceil($total / $perPage));
+        $page  = min($page, $pages);
+
+        return [
+            'items'    => $this->follows->findFollowersOf($authorId, $perPage, ($page - 1) * $perPage),
+            'total'    => $total,
+            'page'     => $page,
+            'pages'    => $pages,
+            'per_page' => $perPage,
+        ];
     }
 
     /**

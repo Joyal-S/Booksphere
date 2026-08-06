@@ -181,6 +181,46 @@ function format_review_date(?string $value): string
 }
 
 /**
+ * Format a stored UTC timestamp as the RELATIVE age the notification
+ * cards print ("just now", "5m ago", "3h ago", "2d ago", then the
+ * short date "Dec 31, 2026" past a week). Following the review date
+ * helper, it deliberately shows UTC time and renders empty values
+ * (and unparseable strings) as an empty string, never the epoch.
+ */
+function format_notification_time(?string $value): string
+{
+    if ($value === null || $value === '') {
+        return '';
+    }
+
+    $stamp = strtotime($value);
+
+    if ($stamp === false) {
+        return '';
+    }
+
+    $diff = time() - $stamp;
+
+    if ($diff < 60) {
+        return 'just now';
+    }
+
+    if ($diff < 3600) {
+        return (string) floor($diff / 60) . 'm ago';
+    }
+
+    if ($diff < 86400) {
+        return (string) floor($diff / 3600) . 'h ago';
+    }
+
+    if ($diff < 604800) {
+        return (string) floor($diff / 86400) . 'd ago';
+    }
+
+    return date('M j, Y', $stamp);
+}
+
+/**
  * Return the current CSRF token for forms.
  *
  * Every form that changes data must include this as a hidden

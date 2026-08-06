@@ -112,11 +112,17 @@ final class BookService
     /**
      * Upload rules live in the media configuration. The covers
      * entry (config/media.php) drives the MediaService.
+     *
+     * The optional $covers service (Phase 10.4) deletes DOWNLOADED
+     * cache files when an admin replaces or removes a cover (or soft
+     * deletes a book) - the uploads pipeline alone cannot touch files
+     * it did not write.
      */
     public function __construct(
         private readonly Book $books,
         private readonly Author $authors,
         private readonly Category $categories,
+        private readonly ?CoverDownloadService $covers = null,
     ) {
         $this->media = new MediaService((array) config('media.covers', []));
     }
@@ -499,9 +505,11 @@ final class BookService
             // New cover: store it, then drop the previous file.
             $coverPath = $this->media->store($cover);
             $this->media->delete($existing['cover_image']);
+            $this->covers?->deleteLocal($existing['cover_image']);
         } elseif (!empty($data['remove_cover'])) {
             // Remove flag: delete the stored file and clear the column.
             $this->media->delete($existing['cover_image']);
+            $this->covers?->deleteLocal($existing['cover_image']);
             $coverPath = null;
         }
 
@@ -532,6 +540,7 @@ final class BookService
 
         if ($deleted) {
             $this->media->delete($existing['cover_image']);
+            $this->covers?->deleteLocal($existing['cover_image']);
         }
 
         return $deleted;

@@ -17,14 +17,18 @@ declare(strict_types=1);
  * session user's own (the controller never trusts a submitted id).
  *
  * Available variables (from UserController::following):
- *     $authors  - the followed-author rows (author_id, author_name,
- *                 author_book_count, created_at) newest first
- *     $followed - true (the whole list belongs to the session user)
+ *     $authors    - the followed-author rows (author_id, author_name,
+ *                   author_book_count, created_at) newest first
+ *     $followed   - true (the whole list belongs to the session user)
+ *     $total      - the HONEST total count of followed authors (the
+ *                   lead text; the rows are the current page)
+ *     $pagination - the shared pager (base / page / pages / total /
+ *                   perPage / perPages / label / pagerLabel)
  */
 
 $authors  = $authors ?? [];
 $followed = (bool) ($followed ?? false);
-$count    = count($authors);
+$count    = (int) ($total ?? count($authors));
 
 ?>
 <div class="page-intro">
@@ -81,4 +85,6 @@ $count    = count($authors);
             </div>
         <?php endforeach; ?>
     </div>
+
+    <?php require root_path('app/Views/components/review-pagination.php'); ?>
 <?php endif; ?>

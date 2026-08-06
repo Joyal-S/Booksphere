@@ -172,6 +172,21 @@ final class Validator
     }
 
     /**
+     * Attach a custom error message to a field.
+     *
+     * Additive escape hatch for rules that need logic beyond the
+     * declarative table (e.g. an ISBN checksum). The Google Books
+     * search request composes it into the same validator so every
+     * field error travels in one map.
+     */
+    public function error(string $field, string $message): self
+    {
+        $this->add($field, $message);
+
+        return $this;
+    }
+
+    /**
      * Whether every rule passed.
      */
     public function passes(): bool

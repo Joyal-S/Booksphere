@@ -71,13 +71,43 @@ final class MediaService
             return 'The file could not be read.';
         }
 
-        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+        return $this->validateFile((string) $file['tmp_name']);
+    }
+
+    /**
+     * Validate a file ALREADY on disk (an upload's temp file or a
+     * downloaded cover) against this media type's rules. The upload
+     * checks of validate() (upload error, size, is_uploaded_file)
+     * have no meaning here - the file was written by us or by the
+     * downloader, not submitted through a form.
+     *
+     * The checks (in order):
+     *     - not over the size limit
+     *     - MIME type sniffed from CONTENT, not the file extension
+     *     - for images: decodable (not corrupted) + within
+     *       the configured width/height bounds
+     *     - structurally complete (PNG chunk checksums, JPEG marker
+     *       pair, WebP container) - a truncated download cannot pass
+     *
+     * Returns a user-friendly message, or null when the file is OK.
+     */
+    public function validateFile(string $path): ?string
+    {
+        if (!is_file($path)) {
+            return 'The file could not be read.';
+        }
+
+        if ((int) filesize($path) > $this->maxBytes()) {
+            return 'The file must not exceed ' . $this->humanBytes($this->maxBytes()) . '.';
+        }
+
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($path);
 
         if (!isset($this->mimeExtensions()[$mime])) {
             return 'The file type is not allowed.';
         }
 
-        $dimensionError = $this->validateDimensions($file['tmp_name']);
+        $dimensionError = $this->validateDimensions($path);
         if ($dimensionError !== null) {
             return $dimensionError;
         }
@@ -87,7 +117,7 @@ final class MediaService
         // correct dimensions. Each format is verified by decoding its
         // container below (PNG chunk checksums, JPEG markers, WebP
         // container), which catches corruption past the header.
-        if (!$this->isStructurallyValid($file['tmp_name'], $mime)) {
+        if (!$this->isStructurallyValid($path, $mime)) {
             return 'The file appears to be corrupted or is not a valid image.';
         }
 

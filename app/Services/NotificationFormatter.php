@@ -126,6 +126,21 @@ final class NotificationFormatter
      * @param array<string, mixed> $context The event's values, e.g.
      *                                      ['author' => 'George Orwell',
      *                                       'author_id' => 2]
+     * Turn a type key + event context into the content row the
+     * repository stores. The action_url collapses to null when the
+     * substitution left it empty (no jump).
+     *
+     * Phase 9.6 hardening: the action URL is an IN-APP PATH or
+     * nothing. Any value that is not root-relative (starting with a
+     * single "/") is dropped - an admin-facing template that passes
+     * "{action_url}" verbatim can never produce a "javascript:…" or
+     * "data:…" link that would later render in the browser of a
+     * reader.
+     *
+     * @param string              $type    A TEMPLATES key
+     * @param array<string, mixed> $context The event's values, e.g.
+     *                                      ['author' => 'George Orwell',
+     *                                       'author_id' => 2]
      * @return array<string, mixed> Keys: title, message, icon, color,
      *                              action_url
      */
@@ -150,7 +165,29 @@ final class NotificationFormatter
             'message'    => $substitute($template['message']),
             'icon'       => $template['icon'],
             'color'      => $template['color'],
-            'action_url' => $action === '' ? null : $action,
+            'action_url' => self::safeActionPath($action),
         ];
+    }
+
+    /**
+     * Only an in-app (root-relative) path survives: '' -> null;
+     * "javascript:…", "//host…", "\host…" and absolute URLs are all
+     * dropped. A lone "/" links home.
+     */
+    public static function safeActionPath(?string $value): ?string
+    {
+        $path = trim((string) $value);
+
+        if ($path === '' || !str_starts_with($path, '/')) {
+            return null;
+        }
+
+        $rest = substr($path, 1);
+
+        if ($rest !== '' && (str_starts_with($rest, '/') || str_starts_with($rest, '\\') || str_contains($path, "\0"))) {
+            return null;
+        }
+
+        return $path;
     }
 }

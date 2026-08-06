@@ -7,6 +7,7 @@ namespace BookSphere\App\Controllers;
 use BookSphere\App\Core\Controller;
 use BookSphere\App\Core\Request;
 use BookSphere\App\Core\Response;
+use BookSphere\App\Core\View;
 use BookSphere\App\Services\NotificationService;
 
 /**
@@ -121,6 +122,46 @@ final class NotificationController extends Controller
     }
 
     /**
+     * The HTML list fragment (Phase 9.4): the center page's
+     * [data-notif-results] region, freshly rendered for the SAME
+     * query (?tab, ?filter, ?page) through the SAME partial the
+     * server-rendered page includes. notifications.js fetches this
+     * when a filter chip or a pager link is pressed, so the list and
+     * the page around it can never drift apart.
+     */
+    public function fragment(Request $request): void
+    {
+        $tab    = (string) ($request->input('tab', 'all') ?: 'all');
+        $filter = (string) ($request->input('filter', '') ?: '');
+        $filter = $filter !== '' && isset(NotificationService::FILTER_GROUPS[$filter]) ? $filter : '';
+        $types  = $filter !== '' ? NotificationService::FILTER_GROUPS[$filter] : [];
+        $userId = (int) auth()->id();
+
+        $payload = $this->notifications->page(
+            $userId,
+            $tab,
+            (int) ($request->input('page', 1) ?: 1),
+            NotificationService::PER_PAGE_DEFAULT,
+            $types,
+        );
+
+        Response::json([
+            'html'   => View::fragment('notifications.partials._list', [
+                'payload' => $payload,
+                'tab'     => $tab,
+                'filter'  => $filter,
+                'base'    => '/notifications/center',
+            ]),
+            // The numbers notifications.js repaints around the list:
+            // the current total (pagination line) and the unread
+            // count (the badge + the "Mark all read" state) - so a
+            // fetched page and the page around it stay in step.
+            'total'  => (int) ($payload['total'] ?? 0),
+            'unread' => $this->notifications->unreadCount($userId),
+        ]);
+    }
+
+    /**
      * Mark ONE notification read. A missing or foreign id is a 404
      * (the findOwnedBy gate); marking an already-read row changes
      * nothing and still answers ok (idempotent on the wire).
@@ -199,6 +240,34 @@ final class NotificationController extends Controller
         $this->answer($request, ['ok' => true, 'deleted' => $deleted]);
     }
 
+    /**
+     * Delete a SET of notifications (the center page's bulk action,
+     * Phase 9.4). The ids arrive as ?ids[]= from the checkbox
+     * selection; they are coerced to positive integers and the OWNER
+     * session clips the set to the user's own rows inside the
+     * repository, so foreign ids in the batch are simply skipped -
+     * never leaked, never an error. An empty/invalid selection is a
+     * 422 (the UI never sends one, but a hand-crafted request is not
+     * an opinionated server error).
+     */
+    public function bulkDestroy(Request $request): void
+    {
+        $ids = array_values(array_unique(array_map(
+            static fn ($id): int => (int) $id,
+            array_filter((array) ($request->input('ids') ?? [])),
+        )));
+        $ids = array_values(array_filter($ids, static fn (int $id): bool => $id > 0));
+
+        if ($ids === []) {
+            $this->failure($request, 422, 'No notifications selected.');
+
+            return;
+        }
+
+        $deleted = $this->notifications->deleteMany($ids, (int) auth()->id());
+        $this->answer($request, ['ok' => true, 'deleted' => $deleted]);
+    }
+
     // --- Internals -------------------------------------------------------
 
     /**
@@ -238,11 +307,37 @@ final class NotificationController extends Controller
     /**
      * The referrer of the request when it is an application path (the
      * no-JS form's natural home), else the app root.
+     *
+     * Phase 9.6 hardening: ONLY root-relative paths are accepted. A
+     * protocol-relative ("//evil.example/"), absolute ("https://…")
+     * or backslash-prefixed referer is refused, so a hostile Referer
+     * header can never turn the post-action redirect into an open
+     * redirect.
      */
     private function back(Request $request): string
     {
-        $referer = (string) ($request->header('Referer') ?? '');
+        return self::safeBackPath((string) ($request->header('Referer') ?? ''));
+    }
 
-        return $referer !== '' && str_starts_with($referer, '/') ? $referer : '/';
+    /**
+     * The safe subset of a referer path: '' or '/' -prefixed paths
+     * that stay inside the app (no second '/', no '\', no NUL). Kept
+     * static so the security test suite can verify the rule directly.
+     */
+    public static function safeBackPath(string $referer): string
+    {
+        $path = trim($referer);
+
+        if ($path === '' || !str_starts_with($path, '/')) {
+            return '/';
+        }
+
+        $rest = substr($path, 1);
+
+        if ($rest === '' || str_starts_with($rest, '/') || str_starts_with($rest, '\\') || str_contains($path, "\0")) {
+            return '/';
+        }
+
+        return $path;
     }
 }

@@ -71,10 +71,16 @@ $sessionUser = auth_user();
             <a class="nav-item<?= $active === 'analytics' ? ' is-active' : '' ?>" href="/analytics" title="Analytics">
                 <i class="fa-solid fa-chart-column" aria-hidden="true"></i><span>Analytics</span>
             </a>
+            <a class="nav-item<?= $active === 'notifications' ? ' is-active' : '' ?>" href="/notifications/center" title="Notifications">
+                <i class="fa-solid fa-bell" aria-hidden="true"></i><span>Notifications</span>
+            </a>
             <a class="nav-item<?= $active === 'settings' ? ' is-active' : '' ?>" href="/settings" title="Settings">
                 <i class="fa-solid fa-gear" aria-hidden="true"></i><span>Settings</span>
             </a>
             <?php if (auth_is_admin()): ?>
+                <a class="nav-item<?= $active === 'google-books' ? ' is-active' : '' ?>" href="/admin/google-books" title="Google Books provider search">
+                    <i class="fa-solid fa-book-open-reader" aria-hidden="true"></i><span>Google Books</span>
+                </a>
                 <a class="nav-item<?= $active === 'admin' ? ' is-active' : '' ?>" href="/admin" title="Administration">
                     <i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span>Administration</span>
                 </a>

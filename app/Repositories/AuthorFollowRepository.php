@@ -142,11 +142,14 @@ final class AuthorFollowRepository
     /**
      * The user's followed authors, newest first - joined with the
      * author display columns (name, photo, book count) so the list
-     * renders without an extra query per row.
+     * renders without an extra query per row. The offset supports
+     * the paginated page read (Phase 9.6: without it a list with
+     * more than $limit rows silently truncated, and the page's
+     * "You follow N authors" lead was only the visible slice).
      *
      * @return array<int, array<string, mixed>>
      */
-    public function findForUser(int $userId, int $limit = 50): array
+    public function findForUser(int $userId, int $limit = 50, int $offset = 0): array
     {
         return db()->query(
             'SELECT ' . self::SELECT_AUTHOR . '
@@ -154,19 +157,35 @@ final class AuthorFollowRepository
              JOIN authors a ON a.id = f.author_id
              WHERE f.user_id = ?
              ORDER BY f.created_at DESC, f.id DESC
-             LIMIT ?',
-            [$userId, $limit],
+             LIMIT ? OFFSET ?',
+            [$userId, $limit, max(0, $offset)],
         );
+    }
+
+    /**
+     * The total number of authors one user follows - the honest
+     * "You follow N authors" lead of the following page (Phase 9.6:
+     * the lead used to count only the returned page).
+     */
+    public function countForUser(int $userId): int
+    {
+        $rows = db()->query(
+            'SELECT COUNT(*) AS count FROM author_follows WHERE user_id = ?',
+            [$userId],
+        );
+
+        return (int) ($rows[0]['count'] ?? 0);
     }
 
     /**
      * The followers of one author, newest first - joined with the
      * user display columns (id, full_name) so the list renders
-     * without an extra query per row.
+     * without an extra query per row. The offset supports the
+     * paginated page read (Phase 9.6).
      *
      * @return array<int, array<string, mixed>>
      */
-    public function findFollowersOf(int $authorId, int $limit = 50): array
+    public function findFollowersOf(int $authorId, int $limit = 50, int $offset = 0): array
     {
         return db()->query(
             'SELECT f.id, f.user_id, f.created_at, u.full_name
@@ -174,9 +193,23 @@ final class AuthorFollowRepository
              JOIN users u ON u.id = f.user_id
              WHERE f.author_id = ?
              ORDER BY f.created_at DESC, f.id DESC
-             LIMIT ?',
-            [$authorId, $limit],
+             LIMIT ? OFFSET ?',
+            [$authorId, $limit, max(0, $offset)],
         );
+    }
+
+    /**
+     * The total number of people following one author - the honest
+     * "N people follow this author" lead of the followers page.
+     */
+    public function countFollowersOf(int $authorId): int
+    {
+        $rows = db()->query(
+            'SELECT COUNT(*) AS count FROM author_follows WHERE author_id = ?',
+            [$authorId],
+        );
+
+        return (int) ($rows[0]['count'] ?? 0);
     }
 
     /**

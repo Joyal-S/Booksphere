@@ -1,0 +1,210 @@
+/* ==========================================================================
+   google-books.css
+   The Google Books search page (Phase 10.2) - admin only.
+
+   All colors, radii and shadows come from the app.css design tokens
+   (--surface, --border, --radius, --shadow-sm, --primary ...), so the
+   light/dark flip of [data-bs-theme="dark"] applies automatically.
+   ========================================================================== */
+
+/* --- Toolbar ------------------------------------------------------------ */
+
+.google-books-toolbar .form-label {
+    font-weight: 600;
+    font-size: 0.8125rem;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+}
+
+.gb-search-wrap {
+    position: relative;
+}
+
+.gb-search-icon {
+    position: absolute;
+    left: 0.875rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+    font-size: 0.9rem;
+}
+
+.gb-search-input {
+    padding-left: 2.4rem;
+}
+
+/* --- Results grid -------------------------------------------------------- */
+
+.google-books-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+    gap: 1rem;
+}
+
+/* --- Result card --------------------------------------------------------- */
+
+.gb-card {
+    display: flex;
+    gap: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    padding: 1rem;
+    transition: box-shadow 200ms ease, border-color 200ms ease, transform 200ms ease;
+}
+
+.gb-card:hover {
+    box-shadow: var(--shadow);
+    border-color: var(--border-strong);
+    transform: translateY(-2px);
+}
+
+.gb-card-cover {
+    flex: 0 0 92px;
+    align-self: flex-start;
+}
+
+.gb-cover {
+    width: 92px;
+    height: 138px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+}
+
+.gb-card .book-cover-fallback {
+    width: 92px;
+    height: 138px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: linear-gradient(150deg, var(--surface-2), var(--border));
+    color: var(--muted);
+    display: grid;
+    place-items: center;
+}
+
+.gb-card-body {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.gb-card-title {
+    font-size: 1.02rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+    margin: 0 0 0.15rem;
+}
+
+.gb-card-title a {
+    color: var(--text);
+    text-decoration: none;
+}
+
+.gb-card-title a:hover {
+    color: var(--primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.gb-card-subtitle {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin: 0 0 0.35rem;
+}
+
+.gb-card-authors {
+    font-weight: 600;
+    color: var(--primary-strong);
+    font-size: 0.875rem;
+    margin: 0 0 0.5rem;
+}
+
+.gb-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem 1rem;
+    margin: 0 0 0.55rem;
+}
+
+.gb-card-meta div {
+    display: flex;
+    gap: 0.35rem;
+    align-items: baseline;
+}
+
+.gb-card-meta dt {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+}
+
+.gb-card-meta dd {
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.gb-card-blurb {
+    color: var(--muted);
+    font-size: 0.85rem;
+    line-height: 1.55;
+    margin: 0 0 0.6rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.gb-card .star-rating {
+    margin-bottom: 0.6rem;
+}
+
+.gb-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+/* --- Import (Phase 10.3) ------------------------------------------------ */
+
+.gb-import-form {
+    display: inline;
+    margin: 0;
+}
+
+.gb-card-feedback {
+    margin-top: 0.6rem;
+}
+
+.gb-feedback {
+    font-size: 0.8rem;
+    line-height: 1.4;
+    border-radius: var(--radius-sm);
+    margin-bottom: 0;
+}
+
+/* ---------- */
+
+/* --- Responsive ---------------------------------------------------------- */
+
+@media (max-width: 575.98px) {
+    .gb-card {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .gb-card-meta {
+        justify-content: center;
+    }
+
+    .gb-card-actions {
+        justify-content: center;
+    }
+}

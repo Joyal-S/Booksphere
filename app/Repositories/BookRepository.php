@@ -425,6 +425,34 @@ final class BookRepository
     }
 
     /**
+     * Update ONLY the cover-cache fields of a book. The generic
+     * update() path stays with the catalogue form columns; the Phase
+     * 10.4 cover pipeline writes this narrow set so the two paths
+     * never overwrite each other's values.
+     *
+     * @param array<string, mixed> $data cover columns for this book:
+     *                                   cover_image, cover_source_url,
+     *                                   cover_downloaded_at, cover_status
+     */
+    public function updateCover(int $id, array $data): bool
+    {
+        return db()->execute(
+            'UPDATE books
+             SET cover_image = ?, cover_source_url = ?, cover_downloaded_at = ?,
+                 cover_status = ?, updated_at = ?
+             WHERE id = ?',
+            [
+                $data['cover_image'],
+                $data['cover_source_url'],
+                $data['cover_downloaded_at'] ?? null,
+                $data['cover_status'],
+                $this->now(),
+                $id,
+            ],
+        ) > 0;
+    }
+
+    /**
      * Replace the author links of a book.
      *
      * Delete-then-insert is simpler than diffing the old selection,
@@ -455,6 +483,175 @@ final class BookRepository
         foreach ($categoryIds as $categoryId) {
             $statement->execute([$bookId, $categoryId]);
         }
+    }
+
+    /**
+     * Find a book by its Google Books volume id, INCLUDING soft-deleted
+     * rows.
+     *
+     * The importer's dedupe check uses this: google_book_id is UNIQUE
+     * at the database level, so a soft-deleted row still blocks a
+     * re-import (INSERT would violate the constraint). Reporting it as
+     * a duplicate - instead of crashing - is the truthful answer.
+     */
+    public function findByGoogleBookId(string $googleBookId): ?array
+    {
+        $rows = db()->query(
+            'SELECT id, title, status, deleted_at
+             FROM books
+             WHERE google_book_id = ?',
+            [$googleBookId],
+        );
+
+        return $rows[0] ?? null;
+    }
+
+    /**
+     * Find a book by any of the given ISBN candidate strings,
+     * INCLUDING soft-deleted rows - same rule as findByGoogleBookId():
+     * the isbn column is UNIQUE, so a deleted row must be detected
+     * before the importer tries to insert.
+     *
+     * The importer passes the record's isbn13 AND isbn10 (plus their
+     * converted mirror forms), because the books table stores ONE
+     * canonical isbn per row - a new record whose ISBN is the other
+     * form of an existing book's ISBN must still be detected as a
+     * duplicate, not just an exact-string match.
+     *
+     * @param array<int, string> $isbns
+     * @return array<string, mixed>|null The matching book row, or null
+     */
+    public function findByIsbns(array $isbns): ?array
+    {
+        $isbns = array_values(array_unique(array_filter($isbns, 'is_string')));
+
+        if ($isbns === []) {
+            return null;
+        }
+
+        $rows = db()->query(
+            'SELECT id, title, status, deleted_at
+             FROM books
+             WHERE isbn IN (' . implode(', ', array_fill(0, count($isbns), '?')) . ')
+             LIMIT 1',
+            $isbns,
+        );
+
+        return $rows[0] ?? null;
+    }
+
+    /**
+     * The title+author dedupe fallback of the importer.
+     *
+     * Matches ACTIVE books only (there is no UNIQUE constraint here,
+     * so nothing forces the lookup to scan deleted rows): same title
+     * case-insensitively AND at least one author name in common. A
+     * record without authors degrades to a plain title match - the
+     * title is the one identity field every record must have.
+     *
+     * @param array<int, string> $authors
+     * @return array<string, mixed>|null The matching book row, or null
+     */
+    public function findByTitleAndAuthors(string $title, array $authors): ?array
+    {
+        $params = [$title];
+        $authorSql = '';
+
+        if ($authors !== []) {
+            $authorSql = ' AND EXISTS (
+                             SELECT 1
+                             FROM book_authors ba
+                             JOIN authors a ON a.id = ba.author_id
+                             WHERE ba.book_id = b.id AND a.name IN (' . implode(', ', array_fill(0, count($authors), '?')) . ')
+                         )';
+
+            array_push($params, ...array_values($authors));
+        }
+
+        $rows = db()->query(
+            'SELECT b.id, b.title
+             FROM books b
+             WHERE b.title = ? COLLATE NOCASE AND b.deleted_at IS NULL'
+                . $authorSql . '
+             LIMIT 1',
+            $params,
+        );
+
+        return $rows[0] ?? null;
+    }
+
+    /**
+     * Insert an IMPORTED book row and return its id.
+     *
+     * Separate from create() (the manual form path) because the
+     * importer writes the provider-owned columns (google_book_id,
+     * preview_link, provider_rating, provider_ratings_count) that the
+     * manual form never sets - one dedicated INSERT keeps both call
+     * sites explicit and leaves the existing path untouched.
+     *
+     * @param array<string, mixed> $data Normalized import column values
+     */
+    public function createImported(array $data): int
+    {
+        db()->execute(
+            'INSERT INTO books
+                (title, subtitle, description, publisher, published_year,
+                 language, page_count, cover_image, status, isbn,
+                 google_book_id, preview_link, provider_rating, provider_ratings_count)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                $data['title'],
+                $data['subtitle'],
+                $data['description'],
+                $data['publisher'],
+                $data['published_year'],
+                $data['language'],
+                $data['page_count'],
+                $data['cover_image'],
+                $data['status'],
+                $data['isbn'],
+                $data['google_book_id'],
+                $data['preview_link'],
+                $data['provider_rating'],
+                $data['provider_ratings_count'],
+            ],
+        );
+
+        return (int) db()->lastInsertId();
+    }
+
+    /**
+     * The local book ids of the given Google volume ids, as a map:
+     * [google_book_id => book id].
+     *
+     * One query for a whole result page (the search cards show "In
+     * library" from this) instead of a lookup per card.
+     *
+     * @param array<int, string> $googleIds
+     * @return array<string, int>
+     */
+    public function importedIds(array $googleIds): array
+    {
+        $googleIds = array_values(array_unique(array_filter($googleIds, 'is_string')));
+
+        if ($googleIds === []) {
+            return [];
+        }
+
+        $rows = db()->query(
+            'SELECT google_book_id, id
+             FROM books
+             WHERE google_book_id IN (' . implode(', ', array_fill(0, count($googleIds), '?')) . ')',
+            $googleIds,
+        );
+
+        $map = [];
+
+        foreach ($rows as $row) {
+            $map[(string) $row['google_book_id']] = (int) $row['id'];
+        }
+
+        return $map;
     }
 
     /**

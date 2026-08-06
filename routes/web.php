@@ -31,16 +31,20 @@ use BookSphere\App\Controllers\AuthController;
 use BookSphere\App\Controllers\BookController;
 use BookSphere\App\Controllers\CategoryController;
 use BookSphere\App\Controllers\DashboardController;
+use BookSphere\App\Controllers\GoogleBooksController;
 use BookSphere\App\Controllers\LibraryController;
 use BookSphere\App\Controllers\NotificationController;
 use BookSphere\App\Controllers\PageController;
 use BookSphere\App\Controllers\RecommendationController;
 use BookSphere\App\Controllers\ReviewController;
+use BookSphere\App\Controllers\SettingsController;
 use BookSphere\App\Controllers\UserController;
 use BookSphere\App\Core\Csrf;
+use BookSphere\App\Core\Logger;
 use BookSphere\App\Core\RateLimiter;
 use BookSphere\App\Core\Request;
 use BookSphere\App\Core\Response;
+use BookSphere\App\Mail\Mailer;
 use BookSphere\App\Middleware\AdminMiddleware;
 use BookSphere\App\Middleware\AuthMiddleware;
 use BookSphere\App\Middleware\CsrfMiddleware;
@@ -50,6 +54,9 @@ use BookSphere\App\Models\Author;
 use BookSphere\App\Models\AuthorFollow;
 use BookSphere\App\Models\Book;
 use BookSphere\App\Models\Category;
+use BookSphere\App\Models\EmailLog;
+use BookSphere\App\Models\EmailPreference;
+use BookSphere\App\Models\EmailQueue;
 use BookSphere\App\Models\Notification;
 use BookSphere\App\Models\Review;
 use BookSphere\App\Models\User;
@@ -64,9 +71,18 @@ use BookSphere\App\Presenters\ReviewListPresenter;
 use BookSphere\App\Repositories\BookRepository;
 use BookSphere\App\Repositories\RecommendationRepository;
 use BookSphere\App\Services\AuthService;
+use BookSphere\App\Services\BookImportService;
 use BookSphere\App\Services\BookService;
+use BookSphere\App\Services\CacheManager;
+use BookSphere\App\Services\CircuitBreaker;
+use BookSphere\App\Services\EmailNotificationService;
 use BookSphere\App\Services\FollowService;
+use BookSphere\App\Services\GoogleBooksClient;
+use BookSphere\App\Services\GoogleBooksProvider;
+use BookSphere\App\Services\GoogleBooksService;
 use BookSphere\App\Services\LibraryService;
+use BookSphere\App\Services\MediaService;
+use BookSphere\App\Services\CoverDownloadService;
 use BookSphere\App\Services\NotificationDispatcher;
 use BookSphere\App\Services\NotificationFormatter;
 use BookSphere\App\Services\NotificationService;
@@ -104,8 +120,23 @@ $pageController = new PageController();
 // recommendation services all share the SAME instance for their event
 // pings - an event can never notify twice because of duplicate
 // dispatcher wiring.
+//
+// Phase 9.5: the email stack is wired into the SAME dispatcher as a
+// purely additive channel. EmailNotificationService reads its settings
+// from config/email.php (EMAIL_ENABLED=false by default), gates every
+// recipient through their email preferences, applies the per-event
+// dedupe key and delivers through the Mailer (log or SMTP transport) -
+// and it NEVER throws, so an unconfigured or broken email setup can
+// never affect the notification flow.
 $notificationFormatter = new NotificationFormatter();
-$notificationDispatcher = new NotificationDispatcher(new Notification(), $notificationFormatter);
+$emailService = new EmailNotificationService(
+    new User(),
+    new EmailPreference(),
+    new EmailLog(),
+    new EmailQueue(),
+    new Mailer(),
+);
+$notificationDispatcher = new NotificationDispatcher(new Notification(), $notificationFormatter, null, $emailService);
 $notificationService = new NotificationService(new Notification(), $notificationDispatcher);
 $notificationController = new NotificationController($notificationService);
 
@@ -172,7 +203,26 @@ $reviewService = new ReviewService(new Review(), new Book(), $recommendationServ
 // leaves a "Library milestone" notification behind.
 $libraryService = new LibraryService(new UserLibrary(), new Book(), $recommendationService, null, $notificationDispatcher);
 
-$bookController = new BookController(new BookService(new Book(), new Author(), new Category()), $recommendationService, $reviewService, $libraryService);
+// Phase 10.4: the cover downloader is created EARLY because it is
+// shared by two consumers - the book service (admin cover removal
+// deletes the cached FILE too) and the Google Books importer. Its
+// config is the module's, so a disabled module means a passive
+// service; the validation rules extend the media "covers" type with
+// the downloader's own size/dimension caps.
+$googleBooksConfig = (array) (config('google_books') ?? []);
+$coverMediaConfig = array_replace(
+    (array) config('media.covers', []),
+    [
+        'max_bytes'  => (int) ($googleBooksConfig['covers']['max_bytes'] ?? 5 * 1024 * 1024),
+        'min_width'  => (int) ($googleBooksConfig['covers']['min_width'] ?? 50),
+        'min_height' => (int) ($googleBooksConfig['covers']['min_height'] ?? 50),
+        'max_width'  => (int) ($googleBooksConfig['covers']['max_source_dimension'] ?? 4000),
+        'max_height' => (int) ($googleBooksConfig['covers']['max_source_dimension'] ?? 4000),
+    ],
+);
+$coverService = new CoverDownloadService(new Book(), new MediaService($coverMediaConfig), $googleBooksConfig);
+
+$bookController = new BookController(new BookService(new Book(), new Author(), new Category(), $coverService), $recommendationService, $reviewService, $libraryService);
 $reviewListPresenter = new ReviewListPresenter($reviewService);
 // Phase 7.7: the review write endpoints get the session-backed
 // throttle (RateLimiter), the same wiring as the recommendation
@@ -254,6 +304,44 @@ $libraryController = new LibraryController(
     $recommendationService,
 );
 
+// Phase 10.2: the Google Books provider search (admin only). The whole
+// module is optional - with GOOGLE_BOOKS_ENABLED=false the service is a
+// pure no-op (no request, no cache write, a friendly notice). The four
+// pieces are composed here, exactly like every other module: client
+// (HTTP + retries), provider (payload mapping), cache + circuit breaker
+// (file-based, the Phase 10.1 strategy), service (orchestration). The
+// shared Logger goes to the application log like every other module.
+// ($googleBooksConfig was hoisted above for the Phase 10.4 cover service.)
+$googleBooksService = new GoogleBooksService(
+    new GoogleBooksClient($googleBooksConfig),
+    new GoogleBooksProvider($googleBooksConfig),
+    new CacheManager(
+        (string) ($googleBooksConfig['cache']['directory'] ?? root_path('database/cache/google_books')),
+        [
+            CacheManager::NS_SEARCH => (int) ($googleBooksConfig['cache']['search_ttl_seconds'] ?? 900),
+            CacheManager::NS_VOLUME => (int) ($googleBooksConfig['cache']['volume_ttl_seconds'] ?? 86400),
+        ],
+        (bool) ($googleBooksConfig['enabled'] ?? false),
+    ),
+    new CircuitBreaker(
+        (string) ($googleBooksConfig['cache']['directory'] ?? root_path('database/cache/google_books')),
+        (array) ($googleBooksConfig['cache']['circuit_breaker'] ?? []),
+    ),
+    new Logger(root_path('storage/logs/application.log')),
+    $googleBooksConfig,
+);
+
+// Phase 10.3: the importer. It owns the local-catalogue writes of the
+// module (dedupe + transactional insert) and is composed with the same
+// shared config, so a disabled provider module leaves imports disabled
+// too. The models are the thin facades every other module uses.
+// Phase 10.4: the SHARED cover service rides along, so a successful
+// import downloads + caches the cover right after the transaction.
+$googleBooksController = new GoogleBooksController(
+    $googleBooksService,
+    new BookImportService(new Book(), new Author(), new Category(), $googleBooksConfig, $coverService),
+);
+
 // Home. The root of the app serves two audiences:
 //     - guests      -> the public cover page (pages.landing inside the
 //                      bare layouts.landing shell) - the project's
@@ -319,6 +407,15 @@ $router->get('/admin', [$adminController, 'index'], [$secure, new AdminMiddlewar
 // so it carries CSRF protection like every other data change.
 $router->get('/admin/recommendations', [$adminController, 'metrics'], [$secure, new AdminMiddleware($auth)]);
 $router->post('/admin/recommendations/cache/flush', [$adminController, 'flushCache'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
+
+// Phase 10.2/10.3: the Google Books provider (admin only). The index
+// shows the search page (renders results server-side for no-JS), the /search
+// route answers the live AJAX endpoint with the results partial, and the
+// /import POST takes one provider result into the local catalogue - identical
+// structure to the browse module's /books, /books/search + the admin CRUD.
+$router->get('/admin/google-books', [$googleBooksController, 'index'], [$secure, new AdminMiddleware($auth)]);
+$router->get('/admin/google-books/search', [$googleBooksController, 'searchJson'], [$secure, new AdminMiddleware($auth)]);
+$router->post('/admin/google-books/import', [$googleBooksController, 'import'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
 
 // --- Book module ------------------------------------------------------
 // Browsing (search, filters, sort, pagination, grid/table) is open
@@ -498,7 +595,15 @@ $router->get('/profile/following', [$userController, 'following'], [$secure, new
 
 $router->get('/wishlist', [$pageController, 'wishlist'], [$secure, new AuthMiddleware($auth)]);
 $router->get('/analytics', [$pageController, 'analytics'], [$secure, new AuthMiddleware($auth)]);
-$router->get('/settings', [$pageController, 'settings'], [$secure, new AuthMiddleware($auth)]);
+
+// Phase 9.5: Settings became a REAL page - the Email notifications
+// section (the five per-user toggles). The write endpoint saves them;
+// it answers JSON for fetch callers (X-Requested-With: fetch) and a
+// redirect + flash for the no-JS form, exactly the dual-answer
+// convention of the other write routes.
+$settingsController = new SettingsController($emailService);
+$router->get('/settings', [$settingsController, 'show'], [$secure, new AuthMiddleware($auth)]);
+$router->post('/settings/email-preferences', [$settingsController, 'emailPreferences'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
 
 // --- Notifications (Phase 9.3: the backend API) ---------------------------
 // The center's UI (page, bell dropdown, badge) is Phase 9.4; these
@@ -514,7 +619,18 @@ $router->get('/settings', [$pageController, 'settings'], [$secure, new AuthMiddl
 // Fetch callers (X-Requested-With: fetch) get JSON; plain forms get a
 // redirect + flash.
 $router->get('/notifications', [$notificationController, 'index'], [$secure, new AuthMiddleware($auth)]);
+// Phase 9.4: the rendered center page (share the JSON feed's query
+// string - ?tab, ?filter, ?page - so the page and the feed agree),
+// the badge number the bell polls, and the two surface reads that
+// complete the read-state toggle (unread) and the bulk delete.
+// The literals (center, unread-count, read-all, bulk) are checked
+// before the parameterized patterns, so none can collide.
+$router->get('/notifications/center', [$notificationController, 'center'], [$secure, new AuthMiddleware($auth)]);
+$router->get('/notifications/unread-count', [$notificationController, 'unreadCount'], [$secure, new AuthMiddleware($auth)]);
+$router->get('/notifications/fragment', [$notificationController, 'fragment'], [$secure, new AuthMiddleware($auth)]);
 $router->patch('/notifications/read-all', [$notificationController, 'markAllRead'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
 $router->patch('/notifications/{id}/read', [$notificationController, 'markRead'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->patch('/notifications/{id}/unread', [$notificationController, 'markUnread'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/notifications/bulk', [$notificationController, 'bulkDestroy'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
 $router->delete('/notifications', [$notificationController, 'deleteAll'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
 $router->delete('/notifications/{id}', [$notificationController, 'destroy'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);

@@ -340,11 +340,14 @@ $notifications->updatePreference($adminId, 'author_followed', true);
 
 echo $section('5. DTO: FollowDTO');
 
+// The 9.6 contract: the ACTOR id NEVER comes from the submitted
+// payload (a crafted "user_id" field must not let user A act for
+// user B) - it is always the session value handed to fromArray().
 $dto = FollowDTO::fromArray(['user_id' => '5', 'author_id' => '7'], $riyaId);
-$check('fromArray() keeps valid ids', $dto->userId === 5 && $dto->authorId === 7);
+$check('fromArray() ignores a payload user_id (session wins)', $dto->userId === $riyaId && $dto->authorId === 7);
 
 $dto = FollowDTO::fromArray(['user_id' => 'junk', 'author_id' => '7'], $riyaId);
-$check('A junk user_id falls back to the session id', $dto->userId === $riyaId);
+$check('A junk actor id is ignored, never a fallback', $dto->userId === $riyaId);
 $check('The author_id survives', $dto->authorId === 7);
 
 $dto = FollowDTO::fromArray(['author_id' => '0'], $riyaId);

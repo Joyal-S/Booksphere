@@ -64,17 +64,42 @@ if ($sessionUser !== null) {
         </button>
 
         <?php if (auth_check()): ?>
-            <div class="dropdown">
-                <button class="icon-button position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications">
+            <div class="dropdown" data-notif-bell>
+                <button class="icon-button position-relative" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" data-notif-trigger aria-expanded="false" aria-haspopup="true" aria-label="Notifications">
                     <i class="fa-regular fa-bell" aria-hidden="true"></i>
-                    <span class="notif-dot" aria-hidden="true"></span>
+                    <span class="notif-badge" data-notif-badge hidden aria-hidden="true">0</span>
+                    <span class="visually-hidden" data-notif-live aria-live="polite"></span>
                 </button>
                 <div class="dropdown-menu dropdown-menu-end notif-menu">
-                    <div class="notif-menu-header">Notifications</div>
-                    <div class="notif-menu-empty">
-                        <i class="fa-regular fa-bell" aria-hidden="true"></i>
-                        <p>No notifications yet.<br>Alerts arrive in a later phase.</p>
+                    <div class="notif-menu-header">
+                        <span>Notifications</span>
+                        <form method="post" action="/notifications/read-all" data-notif-mark-all>
+                            <input type="hidden" name="_token" value="<?= e(csrf_token()) ?>">
+                            <input type="hidden" name="_method" value="PATCH">
+                            <button type="submit" class="notif-menu-action" data-notif-mark-all-btn>Mark all read</button>
+                        </form>
                     </div>
+                    <div class="notif-menu-panel" data-notif-panel>
+                        <div class="notif-skeleton-stack" aria-hidden="true">
+                            <div class="notif-skeleton-item">
+                                <span class="notif-skeleton-icon skeleton"></span>
+                                <span class="notif-skeleton-body">
+                                    <span class="notif-skeleton-line skeleton"></span>
+                                    <span class="notif-skeleton-line notif-skeleton-line--sm skeleton"></span>
+                                </span>
+                            </div>
+                            <div class="notif-skeleton-item">
+                                <span class="notif-skeleton-icon skeleton"></span>
+                                <span class="notif-skeleton-body">
+                                    <span class="notif-skeleton-line skeleton"></span>
+                                    <span class="notif-skeleton-line notif-skeleton-line--sm skeleton"></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <a class="notif-menu-footer" href="/notifications/center">
+                        View all notifications <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
                 </div>
             </div>
 

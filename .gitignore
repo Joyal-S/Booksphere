@@ -17,6 +17,11 @@
 /storage/uploads/*
 !/storage/uploads/.gitkeep
 
+# Downloaded book covers (Phase 10.4) - keep the folder, ignore files
+/public/assets/covers/*
+!/public/assets/covers/.gitkeep
+!/public/assets/covers/google/.gitkeep
+
 # Logs
 *.log
 

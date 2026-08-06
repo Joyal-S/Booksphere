@@ -17,9 +17,13 @@ declare(strict_types=1);
  * in the same state as the author page.
  *
  * Available variables (from AuthorController::followers):
- *     $author    - the author row (id, name)
- *     $followers - the follower rows (user_id, full_name, created_at)
- *     $following - whether the session user follows the author
+ *     $author     - the author row (id, name)
+ *     $followers  - the follower rows (user_id, full_name, created_at)
+ *     $following  - whether the session user follows the author
+ *     $total      - the HONEST total follower count (the lead text;
+ *                   the rows are the current page)
+ *     $pagination - the shared pager (base / page / pages / total /
+ *                   perPage / perPages / label / pagerLabel)
  *
  * The list is snapshotted into $people BEFORE the follow-button
  * component is included: the component runs in the same scope and
@@ -36,7 +40,7 @@ $people = (array) ($followers ?? []);
 
 $authorId   = (int) ($author['id'] ?? 0);
 $authorName = (string) ($author['name'] ?? 'this author');
-$count      = count($people);
+$count      = (int) ($total ?? count($people));
 
 ?>
 <div class="page-intro d-flex flex-wrap align-items-end justify-content-between gap-3">
@@ -83,5 +87,7 @@ $count      = count($people);
                 </li>
             <?php endforeach; ?>
         </ul>
+
+        <?php require root_path('app/Views/components/review-pagination.php'); ?>
     <?php endif; ?>
 </div>

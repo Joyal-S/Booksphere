@@ -173,4 +173,74 @@ final class Book
     {
         return $this->repository->isbnExists($isbn, $exceptId);
     }
+
+    /**
+     * Find a book by its Google Books volume id (including soft-deleted
+     * rows - google_book_id is UNIQUE, so a deleted row still blocks a
+     * re-import). Used by the import dedupe.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findByGoogleBookId(string $googleBookId): ?array
+    {
+        return $this->repository->findByGoogleBookId($googleBookId);
+    }
+
+    /**
+     * Find a book by any of the given ISBN candidates (including
+     * soft-deleted rows - isbn is UNIQUE, same rule as google_book_id).
+     * Used by the import dedupe.
+     *
+     * @param array<int, string> $isbns
+     * @return array<string, mixed>|null
+     */
+    public function findByIsbns(array $isbns): ?array
+    {
+        return $this->repository->findByIsbns($isbns);
+    }
+
+    /**
+     * The title+author dedupe fallback (active books only).
+     *
+     * @param array<int, string> $authors
+     * @return array<string, mixed>|null
+     */
+    public function findByTitleAndAuthors(string $title, array $authors): ?array
+    {
+        return $this->repository->findByTitleAndAuthors($title, $authors);
+    }
+
+    /**
+     * Insert an imported book row (provider-owned columns included).
+     *
+     * @param array<string, mixed> $data normalized import column values
+     */
+    public function createImported(array $data): int
+    {
+        return $this->repository->createImported($data);
+    }
+
+    /**
+     * The [google_book_id => book id] map for a set of volume ids
+     * (one query for a whole search page).
+     *
+     * @param array<int, string> $googleIds
+     * @return array<string, int>
+     */
+    public function importedIds(array $googleIds): array
+    {
+        return $this->repository->importedIds($googleIds);
+    }
+
+    /**
+     * Update ONLY the cover-cache fields of a book (Phase 10.4): the
+     * local cover path, the source URL, the download timestamp and the
+     * cover status. The generic update() stays with the form columns.
+     *
+     * @param array<string, mixed> $data cover columns for this book
+     */
+    public function updateCover(int $id, array $data): bool
+    {
+        return $this->repository->updateCover($id, $data);
+    }
 }

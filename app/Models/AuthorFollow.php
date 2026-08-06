@@ -119,24 +119,44 @@ final class AuthorFollow
 
     /**
      * The user's followed authors, newest first, joined with the
-     * author display columns.
+     * author display columns. The optional offset serves the
+     * followed-authors pages (Phase 9.6).
      *
      * @return array<int, array<string, mixed>>
      */
-    public function findForUser(int $userId, int $limit = 50): array
+    public function findForUser(int $userId, int $limit = 50, int $offset = 0): array
     {
-        return $this->repository->findForUser($userId, $limit);
+        return $this->repository->findForUser($userId, $limit, $offset);
     }
 
     /**
      * The followers of one author, newest first, joined with the
-     * user display columns.
+     * user display columns. The optional offset serves the
+     * followers page (Phase 9.6).
      *
      * @return array<int, array<string, mixed>>
      */
-    public function findFollowersOf(int $authorId, int $limit = 50): array
+    public function findFollowersOf(int $authorId, int $limit = 50, int $offset = 0): array
     {
-        return $this->repository->findFollowersOf($authorId, $limit);
+        return $this->repository->findFollowersOf($authorId, $limit, $offset);
+    }
+
+    /**
+     * The total number of authors a user follows - the honest
+     * denominator of the "Authors I follow" page (Phase 9.6).
+     */
+    public function countForUser(int $userId): int
+    {
+        return $this->repository->countForUser($userId);
+    }
+
+    /**
+     * The total number of followers an author has - the lead figure
+     * of the followers page (Phase 9.6) and the pagination total.
+     */
+    public function countFollowersOf(int $authorId): int
+    {
+        return $this->repository->countFollowersOf($authorId);
     }
 
     /**
