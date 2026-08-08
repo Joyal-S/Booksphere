@@ -1346,6 +1346,14 @@ final class RecommendationRepository
      * annotate each logged book with the user's actions, so the
      * service computes the accuracy from one row set (no N+1).
      *
+     * Attribution rule: an action counts as "acted on" ONLY when it
+     * was created at or after the recommendation's generated_at -
+     * the engine can then establish that the recommendation preceded
+     * (and may have caused) the action. Saves, ratings or wishlist
+     * entries that predate the served recommendation are never
+     * attributed: counting them would inflate the figure with actions
+     * that could not have been caused by it (Phase 12.6 audit).
+     *
      * @return array<int, array<string, mixed>>
      */
     public function recommendationLogs(int $userId, string $cutoff, int $limit): array
@@ -1359,17 +1367,235 @@ final class RecommendationRepository
                     l.signal,
                     l.generated_at,
                     EXISTS(SELECT 1 FROM user_library ul
-                           WHERE ul.user_id = l.user_id AND ul.book_id = l.book_id) AS in_library,
+                           WHERE ul.user_id = l.user_id AND ul.book_id = l.book_id
+                             AND ul.created_at >= l.generated_at) AS in_library,
                     EXISTS(SELECT 1 FROM reviews r
-                           WHERE r.user_id = l.user_id AND r.book_id = l.book_id) AS rated,
+                           WHERE r.user_id = l.user_id AND r.book_id = l.book_id
+                             AND r.created_at >= l.generated_at) AS rated,
                     EXISTS(SELECT 1 FROM wishlist w
-                           WHERE w.user_id = l.user_id AND w.book_id = l.book_id) AS saved
+                           WHERE w.user_id = l.user_id AND w.book_id = l.book_id
+                             AND w.created_at >= l.generated_at) AS saved
              FROM recommendation_logs l
              JOIN books b ON b.id = l.book_id
              WHERE l.user_id = ? AND l.generated_at >= ?
              ORDER BY l.generated_at DESC, l.id DESC
              LIMIT ?',
             [$userId, $cutoff, $limit],
+        );
+    }
+
+    /**
+     * The all-time totals of the recommendation audit trail.
+     *
+     * Input:  nothing
+     * Output: logs (rows served), users (distinct recipients),
+     *         books (distinct titles suggested) and latest (the most
+     *         recent generation timestamp, or null when the table is
+     *         empty)
+     *
+     * Business responsibility: the headline numbers of the Phase 12.4
+     * "Recommendation activity" block of the admin dashboard - one
+     * scan of recommendation_logs tells an administrator how much the
+     * engine has actually served, to how many people, and how fresh
+     * that service is. A null latest is the honest "nothing served
+     * yet" answer, never a fabricated date.
+     *
+     * @return array{logs: int, users: int, books: int, latest: string|null}
+     */
+    public function logTotals(): array
+    {
+        $row = db()->query(
+            'SELECT COUNT(*)                AS logs,
+                    COUNT(DISTINCT user_id) AS users,
+                    COUNT(DISTINCT book_id) AS books,
+                    MAX(generated_at)       AS latest
+             FROM recommendation_logs',
+        );
+
+        $first = $row[0] ?? [];
+
+        return [
+            'logs'   => (int) ($first['logs'] ?? 0),
+            'users'  => (int) ($first['users'] ?? 0),
+            'books'  => (int) ($first['books'] ?? 0),
+            'latest' => $first['latest'] ?? null,
+        ];
+    }
+
+    /**
+     * logTotals() restricted to logs generated at or after $since.
+     *
+     * The Phase 12.5 report layer re-uses the exact same aggregation
+     * the dashboard reads, with a single WHERE on the generated_at
+     * column - the numbers stay identical to the all-time ones when
+     * the range is the whole table, so no analytics diverge.
+     *
+     * Input:  the inclusive lower bound as an ISO date ("Y-m-d")
+     * Output: the same shape as logTotals()
+     *
+     * @param  string $since ISO date the range starts at (inclusive)
+     * @return array{logs: int, users: int, books: int, latest: string|null}
+     */
+    public function logTotalsSince(string $since): array
+    {
+        $row = db()->query(
+            'SELECT COUNT(*)                AS logs,
+                    COUNT(DISTINCT user_id) AS users,
+                    COUNT(DISTINCT book_id) AS books,
+                    MAX(generated_at)       AS latest
+             FROM recommendation_logs
+             WHERE generated_at >= ?',
+            [$since],
+        );
+
+        $first = $row[0] ?? [];
+
+        return [
+            'logs'   => (int) ($first['logs'] ?? 0),
+            'users'  => (int) ($first['users'] ?? 0),
+            'books'  => (int) ($first['books'] ?? 0),
+            'latest' => $first['latest'] ?? null,
+        ];
+    }
+
+    /**
+     * logCountsBySignal() restricted to logs generated at or after
+     * $since - the per-surface picture of a report range.
+     *
+     * @param  string $since ISO date the range starts at (inclusive)
+     * @return array<int, array{signal: string, logs: int}>
+     */
+    public function logCountsBySignalSince(string $since, int $limit): array
+    {
+        return db()->query(
+            'SELECT signal, COUNT(*) AS logs
+             FROM recommendation_logs
+             WHERE generated_at >= ?
+             GROUP BY signal
+             ORDER BY logs DESC, signal ASC
+             LIMIT ?',
+            [$since, max(0, $limit)],
+        );
+    }
+
+    /**
+     * The raw recommendation_logs rows of a report range, newest
+     * first, bounded - the CSV export source of the Phase 12.5 admin
+     * report.
+     *
+     * Input:  inclusive since/until as ISO dates, and a hard row cap
+     * Output: rows of user, title, signal, score, reason and
+     *         generated_at - every field of the log a report is
+     *         allowed to show, flattened for CSV
+     *
+     * @param  string $since inclusive ISO date lower bound
+     * @param  string $until inclusive ISO date upper bound
+     * @param  int    $limit hard cap (defaults to 5000)
+     * @return array<int, array{user: string, title: string, signal: string, score: float|null, reason: string, generated_at: string}>
+     */
+    public function logsForRange(string $since, string $until, int $limit = 5000): array
+    {
+        return db()->query(
+            'SELECT u.full_name AS user, b.title, l.signal, l.score, l.reason, l.generated_at
+             FROM recommendation_logs l
+             JOIN books b ON b.id = l.book_id
+             LEFT JOIN users u ON u.id = l.user_id
+             WHERE l.generated_at >= ? AND l.generated_at < date(?, \'+1 day\')
+             ORDER BY l.generated_at DESC
+             LIMIT ?',
+            [$since, $until, max(1, $limit)],
+        );
+    }
+
+    /**
+     * The recommendation_logs grouped by their section signal.
+     *
+     * Input:  how many surfaces to return
+     * Output: rows of signal (the section key that produced the
+     *         suggestion, e.g. 'dashboard_recommended') and logs
+     *         (the row count of that surface), ordered by volume
+     *         descending, then signal ascending
+     *
+     * Business responsibility: the "which surfaces actually serve"
+     * read of the admin dashboard. The signal is the ONLY marker of
+     * provenance the logs table carries, so this is exactly the
+     * per-surface picture the engine itself records.
+     *
+     * @return array<int, array{signal: string, logs: int}>
+     */
+    public function logCountsBySignal(int $limit): array
+    {
+        return db()->query(
+            'SELECT signal, COUNT(*) AS logs
+             FROM recommendation_logs
+             GROUP BY signal
+             ORDER BY logs DESC, signal ASC
+             LIMIT ?',
+            [max(0, $limit)],
+        );
+    }
+
+    /**
+     * The books the engine has recommended most often, all-time.
+     *
+     * Input:  how many books to return
+     * Output: rows of id, title, cover and logs (the number of times
+     *         the book was suggested), ordered by volume descending,
+     *         then title ascending
+     *
+     * Business responsibility: the "what does the engine keep
+     * suggesting" read of the admin dashboard - the joined title and
+     * cover make the list readable, the count keeps it honest.
+     *
+     * @return array<int, array{id: int, title: string, cover: string|null, logs: int}>
+     */
+    public function topRecommendedBooks(int $limit): array
+    {
+        return db()->query(
+            'SELECT b.id, b.title, b.cover_image AS cover, COUNT(l.id) AS logs
+             FROM recommendation_logs l
+             JOIN books b ON b.id = l.book_id
+             GROUP BY b.id, b.title, b.cover_image
+             ORDER BY logs DESC, b.title ASC
+             LIMIT ?',
+            [max(0, $limit)],
+        );
+    }
+
+    /**
+     * The "slept" books: recommended at least three times and never
+     * acted on by ANYONE - no review, no wishlist save, no library
+     * record.
+     *
+     * Input:  how many books to return
+     * Output: rows of id, title, cover and logs (the number of times
+     *         the book was suggested), ordered like
+     *         topRecommendedBooks()
+     *
+     * Business responsibility: the early-warning list of the admin
+     * dashboard. A book the engine keeps serving that the community
+     * ignores is either a candidate for the engine's category/author
+     * logic or a candidate for removal - either way, an
+     * administrator sees it here instead of guessing. The >= 3
+     * threshold is the documented "repeatedly suggested" rule; a
+     * book with a single log row is never flagged.
+     *
+     * @return array<int, array{id: int, title: string, cover: string|null, logs: int}>
+     */
+    public function sleptBooks(int $limit): array
+    {
+        return db()->query(
+            'SELECT b.id, b.title, b.cover_image AS cover, COUNT(l.id) AS logs
+             FROM recommendation_logs l
+             JOIN books b ON b.id = l.book_id
+             WHERE NOT EXISTS (SELECT 1 FROM reviews r      WHERE r.book_id = b.id)
+               AND NOT EXISTS (SELECT 1 FROM wishlist w     WHERE w.book_id = b.id)
+               AND NOT EXISTS (SELECT 1 FROM user_library u WHERE u.book_id = b.id)
+             GROUP BY b.id, b.title, b.cover_image
+             HAVING COUNT(l.id) >= 3
+             ORDER BY logs DESC, b.title ASC
+             LIMIT ?',
+            [max(0, $limit)],
         );
     }
 

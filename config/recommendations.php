@@ -124,7 +124,10 @@ return [
     // 'hidden_gems' defines the Hidden Gems filter (high rated, few
     // reviews). 'accuracy' is the window the profile's
     // "Recommendation Accuracy" figure measures the user's actions
-    // against their recent logged recommendations.
+    // against their recent logged recommendations; only actions
+    // created at or after the recommendation count (strict
+    // attribution - actions predating the served recommendation
+    // never count).
     'library' => [
         'weights' => [
             'favourite_category' => 35,

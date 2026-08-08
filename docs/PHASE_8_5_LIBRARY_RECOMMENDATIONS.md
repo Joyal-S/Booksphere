@@ -25,7 +25,7 @@ library surfaces. Every requirement from the brief:
 | No duplicate books across the new shelves | cross-section dedupe in `bookRecommendations()` / `libraryPageRecommendations()` |
 | No N+1 | batch category/author links (`categoriesForBooks` / `authorsForBooks`), one-query collaborative reads, annotated `recommendationLogs` |
 | Caching per user / per section | **`PersonalizationCache` per-section files** (`section_{user}_{section}.json`) |
-| Recommendation Accuracy: how many served books were acted on | `recommendation_logs` (migration 0019) + the profile's accuracy figure |
+| Recommendation Accuracy: how many served books were acted on | `recommendation_logs` (migration 0019) + the profile's accuracy figure — strict attribution: an action counts only when created at or after the recommendation was served (an action predating the recommendation is never attributed, so the figure never inflates itself) |
 | Logs table with retention | `recommendation_logs` pruned on write (`retention_per_user`, default 200) |
 | Book page: Readers also enjoyed / Same author / Same category / Similar rating / Similar popularity / Recommended for you | `bookRecommendations()` — six deduped, explained, logged sections |
 | Library page: Because in your library / People also saved / Favourite category / Favourite author / Recently discovered | `libraryPageRecommendations()` — five sections, own-library excluded |

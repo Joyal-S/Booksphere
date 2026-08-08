@@ -71,8 +71,22 @@ $sessionUser = auth_user();
             </a>
 
             <p class="sidebar-group-label">System</p>
-            <a class="nav-item<?= $active === 'analytics' ? ' is-active' : '' ?>" href="/analytics" title="Analytics">
+            <!-- Phase 12.1: the Analytics link now serves the real
+                 user-analytics page (GET /analytics) - the personal
+                 reading statistics of the signed-in user. -->
+            <a class="nav-item<?= $active === 'analytics' ? ' is-active' : '' ?>" href="/analytics" title="My reading analytics">
                 <i class="fa-solid fa-chart-column" aria-hidden="true"></i><span>Analytics</span>
+            </a>
+            <!-- Phase 12.2: the Book Analytics link serves the whole
+                 catalogue's numbers (GET /book-analytics) - shelves,
+                 ratings, rankings, metadata and monthly activity. -->
+            <a class="nav-item<?= $active === 'book-analytics' ? ' is-active' : '' ?>" href="/book-analytics" title="Book analytics">
+                <i class="fa-solid fa-chart-pie" aria-hidden="true"></i><span>Book Analytics</span>
+            </a>
+            <!-- Phase 12.5: the print-only report of the personal
+                 analytics (GET /analytics/report). -->
+            <a class="nav-item<?= $active === 'analytics-report' ? ' is-active' : '' ?>" href="/analytics/report" title="My print-friendly reading report">
+                <i class="fa-solid fa-file-lines" aria-hidden="true"></i><span>My Report</span>
             </a>
             <a class="nav-item<?= $active === 'notifications' ? ' is-active' : '' ?>" href="/notifications/center" title="Notifications">
                 <i class="fa-solid fa-bell" aria-hidden="true"></i><span>Notifications</span>
@@ -86,6 +100,11 @@ $sessionUser = auth_user();
                 </a>
                 <a class="nav-item<?= $active === 'admin' ? ' is-active' : '' ?>" href="/admin" title="Administration">
                     <i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span>Administration</span>
+                </a>
+                <!-- Phase 12.5: the print-only administration report
+                     (GET /admin/analytics/report). -->
+                <a class="nav-item<?= $active === 'admin-analytics-report' ? ' is-active' : '' ?>" href="/admin/analytics/report" title="Print-friendly administration report">
+                    <i class="fa-solid fa-file-arrow-down" aria-hidden="true"></i><span>Analytics Report</span>
                 </a>
             <?php endif; ?>
         </nav>

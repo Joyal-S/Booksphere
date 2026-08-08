@@ -1,0 +1,89 @@
+/**
+ * charts.css — the Charts & Reports layer (Phase 12.5)
+ *
+ * Styles for chart cards, the chart canvas frame, the print report
+ * layout and print-friendly page rules. Colors come from the app.css
+ * design tokens (never hard-coded); dark mode is inherited from the
+ * theme through the same custom properties Chart.js reads.
+ */
+
+/* --- the chart card rhythm ------------------------------------------ */
+
+.chart-card .chart-frame {
+    height: 260px;
+    width: 100%;
+}
+
+.chart-card .chart-canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.chart-card .chart-empty {
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    background: var(--surface-2, #f3f5fa);
+}
+
+.chart-card .chart-trend {
+    white-space: nowrap;
+}
+
+.chart-card .chart-summary {
+    border-top: 1px solid var(--border);
+    padding-top: 0.75rem;
+}
+
+/* Report sheet ------------------------------------------------------ */
+
+.report-sheet .report-meta {
+    color: var(--muted);
+    font-size: 0.875rem;
+}
+
+/* The report toolbar controls keep a touch-friendly height even at
+   the compact sm sizes (Phase 12.6 a11y audit). */
+.report-controls .btn-sm,
+.report-controls .form-control-sm,
+.report-controls .form-select-sm {
+    min-height: 2.125rem;
+}
+
+.report-sheet .report-rules {
+    border-left: 3px solid var(--primary-soft, #eeecff);
+    padding: 0.75rem 1rem;
+    background: var(--surface-2, #f3f5fa);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* Print layout: reports print cleanly without the app chrome ------- */
+/* NOTE: .print-hidden lives ONLY inside the print media query - a    */
+/* standalone display:none would hide toolbar buttons on screen       */
+/* (Phase 12.6 audit finding).                                        */
+
+@media print {
+    body.report-print .navbar-app,
+    body.report-print aside.sidebar,
+    body.report-print footer.footer,
+    body.report-print .print-hidden {
+        display: none !important;
+    }
+
+    body.report-print .app-shell {
+        display: block;
+    }
+
+    body.report-print .app-content {
+        margin: 0;
+        padding: 0;
+    }
+
+    body.report-print .card-base {
+        break-inside: avoid;
+        border: 1px solid var(--border);
+    }
+
+    body.report-print .chart-card .chart-frame {
+        height: 300px;
+    }
+}

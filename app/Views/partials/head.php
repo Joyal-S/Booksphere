@@ -38,4 +38,5 @@ declare(strict_types=1);
     <link rel="stylesheet" href="<?= e(asset('css/settings.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/google-books.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/search.css')) ?>">
+    <link rel="stylesheet" href="<?= e(asset('css/charts.css')) ?>">
 </head>

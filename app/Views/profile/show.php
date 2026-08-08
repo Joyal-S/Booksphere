@@ -436,7 +436,7 @@ $insightInfluencing     = $recommendationInsights['influencing'] ?? [];
             <h4 class="h6 mb-2">Recommendation accuracy</h4>
             <?php if ((int) $insightAccuracy['recommended'] === 0): ?>
                 <p class="text-muted small mb-0">
-                    Keep browsing - once the engine recommends books for you, this shows how many you actually saved, rated or finished.
+                    Keep browsing - once the engine recommends books for you, this shows how many you acted on after being recommended (saved, rated or finished).
                 </p>
             <?php else: ?>
                 <div class="analytics-tile">
@@ -445,7 +445,7 @@ $insightInfluencing     = $recommendationInsights['influencing'] ?? [];
                     </span>
                     <span class="analytics-tile-label">
                         of <?= (int) $insightAccuracy['recommended'] ?> recent recommendations acted on
-                        (<?= (int) $insightAccuracy['acted'] ?> saved, rated or reviewed)
+                        (<?= (int) $insightAccuracy['acted'] ?> only counted after the recommendation)
                     </span>
                 </div>
             <?php endif; ?>

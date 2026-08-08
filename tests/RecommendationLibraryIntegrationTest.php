@@ -564,6 +564,22 @@ $check('Acting on a recommendation raises the acted count', (int) $after['acted'
 $check('The percent climbs above zero', (int) $after['percent'] > 0);
 $check('The recommended set is unchanged by the action', (int) $after['recommended'] === (int) $before['recommended']);
 
+// Strict attribution (Phase 12.6 audit): an action that predates its
+// recommendation must never be counted as "acted on". Re-serve a book
+// the user already owned before the engine ever logged anything, then
+// assert per-row flags and a service-level regression probe.
+$service->logRecommendations($riyaId, [['book_id' => $bHabits, 'reason' => 'attribution probe', 'score' => 50.0, 'signal' => 'attribution_probe']], 'attribution_probe');
+$cutoff = gmdate('Y-m-d\TH:i:s\Z', time() - RecommendationConfig::accuracyWindowDays() * 86400);
+$flagged = $repository->recommendationLogs($riyaId, $cutoff, 100);
+$probeRow = array_values(array_filter($flagged, fn (array $row): bool => str_contains((string) $row['signal'], 'attribution_probe')))[0] ?? [];
+$probeTs = (string) ($probeRow['generated_at'] ?? '');
+db()->execute('UPDATE user_library SET created_at = ? WHERE user_id = ? AND book_id = ?', [gmdate('Y-m-d\TH:i:s\Z', strtotime($probeTs) - 3600), $riyaId, $bHabits]);
+$flagged = $repository->recommendationLogs($riyaId, $cutoff, 100);
+$probeRow = array_values(array_filter($flagged, fn (array $row): bool => str_contains((string) $row['signal'], 'attribution_probe')))[0] ?? [];
+$check('A save backdated before its recommendation is never attributed (in_library = 0)', (int) ($probeRow['in_library'] ?? -1) === 0);
+$goneRows = array_values(array_filter($flagged, fn (array $row): bool => (int) ($row['book_id'] ?? 0) === (int) $bGone));
+$check('An action created after its recommendation IS attributed', isset($goneRows[0]) && (int) ($goneRows[0]['in_library'] ?? -1) === 1);
+
 $influencing = $service->profileRecommendationInsights($riyaId)['influencing'];
 $check('Influencing stays favourites + finished only', !in_array($bGone, array_map(fn (array $row): int => (int) $row['book_id'], $influencing), true));
 $check('The influencing rows carry the renderable shape', isset($influencing[0]['book_id'], $influencing[0]['title'], $influencing[0]['cover_image'], $influencing[0]['categories_list']));

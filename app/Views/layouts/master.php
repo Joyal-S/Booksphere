@@ -22,7 +22,7 @@ declare(strict_types=1);
 <!doctype html>
 <html lang="en" data-bs-theme="light">
     <?php require root_path('app/Views/partials/head.php'); ?>
-    <body>
+    <body class="<?= e((string) ($bodyClass ?? '')) ?>">
         <?php require root_path('app/Views/partials/header.php'); ?>
         <div class="app-shell">
             <?php require root_path('app/Views/partials/sidebar.php'); ?>

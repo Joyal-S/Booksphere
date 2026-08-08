@@ -1615,8 +1615,10 @@ final class RecommendationService
      *     authors       the user's top library authors (id, name,
      *                   kept)
      *     accuracy      recommended (logged recommendations inside
-     *                   the window), acted (how many the user saved /
-     *                   rated / reviewed), percent (0-100 or null when
+     *                   the window), acted (how many the user acted on
+     *                   - saved / rated / reviewed - AT OR AFTER the
+     *                   recommendation was served, the strict
+     *                   attribution rule), percent (0-100 or null when
      *                   nothing was recommended yet)
      *     influencing   the favourite + finished books that shaped
      *                   the shelves (title, cover, categories)

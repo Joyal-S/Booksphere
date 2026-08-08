@@ -210,3 +210,273 @@ $authors           = $analytics['authorAverage'] ?? [];
         </div>
     </div>
 </section>
+
+<?php
+// Phase 12.4: the coordinated analytics dashboard. The payloads were
+// assembled by AdminAnalyticsService - this template only reads them.
+$dashboard = $dashboard ?? [];
+$books = $dashboard['books'] ?? [];
+$bookOverview = $books['overview'] ?? [];
+$bookShelves  = $books['shelves'] ?? [];
+$bookRankings = $books['rankings'] ?? [];
+$recommendation = $dashboard['recommendation'] ?? [];
+$recTotals = $recommendation['totals'] ?? [];
+$engine   = $dashboard['engine'] ?? [];
+$engineScores = $engine['scores'] ?? [];
+?>
+
+<!-- Phase 12.2: catalogue analytics (BookAnalyticsService) -->
+<section class="dash-section" data-animate>
+    <?php $section = ['eyebrow' => 'Catalogue', 'title' => 'Book Analytics', 'icon' => 'fa-book']; ?>
+    <?php require root_path('app/Views/components/section-header.php'); ?>
+
+    <!-- The catalogue tiles (12.2 overview) -->
+    <div class="row g-3 g-xl-4 mb-4">
+        <div class="col-6 col-md-3">
+            <?php $stat = ['icon' => 'fa-book', 'label' => 'Books in catalogue', 'value' => (int) ($bookOverview['books'] ?? 0), 'tone' => 'primary']; ?>
+            <?php require root_path('app/Views/components/stat-card.php'); ?>
+        </div>
+        <div class="col-6 col-md-3">
+            <?php $stat = ['icon' => 'fa-comments', 'label' => 'Approved reviews', 'value' => (int) ($bookOverview['reviews'] ?? 0), 'tone' => 'info']; ?>
+            <?php require root_path('app/Views/components/stat-card.php'); ?>
+        </div>
+        <div class="col-6 col-md-3">
+            <?php $stat = ['icon' => 'fa-images', 'label' => 'Books with covers', 'value' => (int) ($bookOverview['with_covers'] ?? 0), 'tone' => 'success']; ?>
+            <?php require root_path('app/Views/components/stat-card.php'); ?>
+        </div>
+        <div class="col-6 col-md-3">
+            <?php $stat = ['icon' => 'fa-list-check', 'label' => 'Books with pages', 'value' => (int) ($bookOverview['with_pages'] ?? 0), 'tone' => 'warning']; ?>
+            <?php require root_path('app/Views/components/stat-card.php'); ?>
+        </div>
+    </div>
+
+    <div class="row g-3 g-xl-4">
+        <div class="col-12 col-md-6 col-xl-4">
+            <div class="card-base h-100 p-4">
+                <h3 class="section-title">Popular &middot; by community signal</h3>
+                <?php if (($bookRankings['popular'] ?? []) === []): ?><p class="text-muted mb-0">No signal yet - the ranking fills as the community rates and saves.</p><?php endif; ?>
+                <ol class="analytics-list mb-0">
+                    <?php foreach (array_slice($bookRankings['popular'] ?? [], 0, 5) as $book): ?>
+                        <li>
+                            <a href="/books/<?= (int) $book['id'] ?>"><?= e($book['title']) ?></a>
+                            <span class="text-muted"><?= e(number_format((float) $book['score'] * 100, 1)) ?>%</span>
+                        </li>
+                    <?php endforeach; ?>
+                </ol>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl-4">
+            <div class="card-base h-100 p-4">
+                <h3 class="section-title">Trending &middot; last window period</h3>
+                <?php if (($bookRankings['trending'] ?? []) === []): ?><p class="text-muted mb-0">No activity in the trending window yet.</p><?php endif; ?>
+                <ol class="analytics-list mb-0">
+                    <?php foreach (array_slice($bookRankings['trending'] ?? [], 0, 5) as $book): ?>
+                        <li>
+                            <a href="/books/<?= (int) $book['id'] ?>"><?= e($book['title']) ?></a>
+                            <span class="text-muted"><?= e(number_format((float) $book['score'] * 100, 1)) ?>%</span>
+                        </li>
+                    <?php endforeach; ?>
+                </ol>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl-4">
+            <div class="card-base h-100 p-4">
+                <h3 class="section-title">Community shelves</h3>
+                <?php $shelfLabels = [
+                    'finished'          => 'Finished',
+                    'currently_reading' => 'Reading now',
+                    'want_to_read'      => 'Wishlist',
+                    'on_hold'           => 'On hold',
+                    'dropped'           => 'Dropped',
+                ]; ?>
+                <?php if ($bookShelves === []): ?><p class="text-muted mb-0">No library records yet.</p><?php endif; ?>
+                <ul class="analytics-list mb-0">
+                    <?php foreach ($bookShelves as $status => $count): ?>
+                        <li>
+                            <span><?= e($shelfLabels[$status] ?? $status) ?></span>
+                            <span class="text-muted"><?= (int) $count ?></span>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Phase 12.5: the visual layer - the dashboards' own numbers, re-shaped -->
+<?php
+$cp = '\BookSphere\App\Presenters\ChartPresenter';
+
+$shelfOrder = ['finished', 'currently_reading', 'want_to_read', 'on_hold', 'dropped'];
+$shelfLabels = [
+    'finished'          => 'Finished',
+    'currently_reading' => 'Reading now',
+    'want_to_read'      => 'Wishlist',
+    'on_hold'           => 'On hold',
+    'dropped'           => 'Dropped',
+];
+$shelfChart = '';
+$shelfValues = array_map(static fn (string $status): int => (int) ($bookShelves[$status] ?? 0), $shelfOrder);
+$shelfSummary = array_sum($shelfValues) > 0
+    ? 'Community shelves: ' . implode(', ', array_map(
+        static fn (string $status, int $count): string => $count . ' ' . strtolower((string) $shelfLabels[$status]),
+        $shelfOrder,
+        $shelfValues,
+    )) . '.'
+    : '';
+if ($shelfSummary !== '') {
+    $shelfChart = (string) $cp::doughnut('shelves', array_values($shelfLabels), $shelfValues, $shelfSummary);
+}
+
+$categoryChart = '';
+$categoryRows = array_slice(array_values($categories ?? []), 0, 8);
+$categorySummary = $categoryRows !== []
+    ? 'Approved-review rating by category: ' . implode(', ', array_map(
+        static fn (array $r): string => ($r['category'] ?? '?') . ' ' . number_format((float) ($r['average'] ?? 0), 2),
+        $categoryRows,
+    )) . '.'
+    : '';
+if ($categorySummary !== '') {
+    $categoryChart = (string) $cp::bar('categories',
+        array_map(static fn (array $r): string => (string) ($r['category'] ?? 'Category'), $categoryRows),
+        [['label' => 'Average rating', 'tone' => 'warning', 'values' => array_map(static fn (array $r): float => (float) ($r['average'] ?? 0), $categoryRows)]],
+        $categorySummary);
+}
+
+$reviewerChart = '';
+$reviewerRows = array_slice($topReviewers ?? [], 0, 6);
+$reviewerSummary = $reviewerRows !== []
+    ? 'Most active reviewers: ' . implode(', ', array_map(
+        static fn (array $r): string => ($r['name'] ?? $r['user'] ?? '?') . ' ' . (int) ($r['count'] ?? ($r['reviews'] ?? 0)),
+        $reviewerRows,
+    )) . '.'
+    : '';
+if ($reviewerSummary !== '') {
+    $reviewerChart = (string) $cp::hbar('reviewers',
+        array_map(static fn (array $r): string => (string) ($r['name'] ?? $r['user'] ?? 'Reviewer'), $reviewerRows),
+        array_map(static fn (array $r): int => (int) ($r['count'] ?? ($r['reviews'] ?? 0)), $reviewerRows),
+        $reviewerSummary);
+}
+
+$signalChart = '';
+$signalRows = array_slice($recommendation['signals'] ?? [], 0, 6);
+$signalSummary = $signalRows !== []
+    ? 'Where recommendations were served: ' . implode(', ', array_map(
+        static fn (array $r): string => ($r['signal'] !== '' ? $r['signal'] : 'unnamed surface') . ' ' . (int) ($r['logs'] ?? 0),
+        $signalRows,
+    )) . '.'
+    : '';
+if ($signalSummary !== '') {
+    $signalChart = (string) $cp::doughnut('signals',
+        array_map(static fn (array $r): string => (string) ($r['signal'] !== '' ? $r['signal'] : 'unnamed surface'), $signalRows),
+        array_map(static fn (array $r): int => (int) ($r['logs'] ?? 0), $signalRows),
+        $signalSummary);
+}
+?>
+<section class="dash-section" data-animate>
+    <div class="d-flex justify-content-between align-items-end mb-3">
+        <div>
+            <p class="eyebrow mb-1">Visuals &middot; the dashboards as pictures</p>
+            <h2 class="h3 mb-0">Platform at a glance</h2>
+        </div>
+        <a class="btn btn-outline-secondary btn-sm print-hidden" href="/admin/analytics/report">
+            <i class="fa-solid fa-print me-1" aria-hidden="true"></i> Print-friendly report
+        </a>
+    </div>
+    <div class="row g-3 g-xl-4">
+        <div class="col-12 col-md-6 col-xl-3">
+            <?php $chartEyebrow = 'Community shelves'; $chartTitle = 'Where books sit'; $chartTrend = ''; $chart = $shelfChart; $chartSummary = $shelfSummary; ?>
+            <?php require root_path('app/Views/components/chart-card.php'); ?>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            <?php $chartEyebrow = 'Approved reviews'; $chartTitle = 'Rating by category'; $chartTrend = ''; $chart = $categoryChart; $chartSummary = $categorySummary; ?>
+            <?php require root_path('app/Views/components/chart-card.php'); ?>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            <?php $chartEyebrow = 'Top reviewers'; $chartTitle = 'Who contributes'; $chartTrend = ''; $chart = $reviewerChart; $chartSummary = $reviewerSummary; ?>
+            <?php require root_path('app/Views/components/chart-card.php'); ?>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3">
+            <?php $chartEyebrow = 'Engine surfaces'; $chartTitle = 'Where served'; $chartTrend = ''; $chart = $signalChart; $chartSummary = $signalSummary; ?>
+            <?php require root_path('app/Views/components/chart-card.php'); ?>
+        </div>
+    </div>
+    <p class="muted small mt-3 mb-0 report-rules">
+        Every chart re-uses the aggregates of this page &mdash; no analytics are recomputed. The engine currently has no
+        click or conversion tracking, so CTR-style charts are deliberately absent rather than fabricated.
+    </p>
+</section>
+<section class="dash-section" data-animate>
+    <?php $section = ['eyebrow' => 'Engine', 'title' => 'Recommendation Analytics', 'icon' => 'fa-wand-magic-sparkles']; ?>
+    <?php require root_path('app/Views/components/section-header.php'); ?>
+
+    <!-- The recommendation-log totals -->
+    <div class="row g-3 g-xl-4 mb-4">
+        <div class="col-6 col-md-3">
+            <?php $stat = ['icon' => 'fa-bullhorn', 'label' => 'Recommendations served', 'value' => (int) ($recTotals['logs'] ?? 0), 'tone' => 'primary']; ?>
+            <?php require root_path('app/Views/components/stat-card.php'); ?>
+        </div>
+        <div class="col-6 col-md-3">
+            <?php $stat = ['icon' => 'fa-users', 'label' => 'Users served', 'value' => (int) ($recTotals['users'] ?? 0), 'tone' => 'info']; ?>
+            <?php require root_path('app/Views/components/stat-card.php'); ?>
+        </div>
+        <div class="col-6 col-md-3">
+            <?php $stat = ['icon' => 'fa-book', 'label' => 'Books suggested', 'value' => (int) ($recTotals['books'] ?? 0), 'tone' => 'success']; ?>
+            <?php require root_path('app/Views/components/stat-card.php'); ?>
+        </div>
+        <div class="col-6 col-md-3">
+            <?php $stat = [
+                'icon'  => 'fa-gauge-high',
+                'label' => 'Engine health',
+                'value' => ($recTotals['latest'] ?? null) ? 'live' : 'no data',
+                'tone'  => 'warning',
+            ]; ?>
+            <?php require root_path('app/Views/components/stat-card.php'); ?>
+        </div>
+    </div>
+
+    <div class="row g-3 g-xl-4">
+        <div class="col-12 col-md-6 col-xl-4">
+            <div class="card-base h-100 p-4">
+                <h3 class="section-title">Surfaces serving recommendations</h3>
+                <?php if (($recommendation['signals'] ?? []) === []): ?><p class="text-muted mb-0">No recommendation has been served yet.</p><?php endif; ?>
+                <ul class="analytics-list mb-0">
+                    <?php foreach ($recommendation['signals'] ?? [] as $signalRow): ?>
+                        <li>
+                            <span><?= e($signalRow['signal'] !== '' ? $signalRow['signal'] : 'unnamed surface') ?></span>
+                            <span class="text-muted"><?= (int) $signalRow['logs'] ?> served</span>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl-4">
+            <div class="card-base h-100 p-4">
+                <h3 class="section-title">Most recommended books</h3>
+                <?php if (($recommendation['top'] ?? []) === []): ?><p class="text-muted mb-0">Nothing recommended yet.</p><?php endif; ?>
+                <ol class="analytics-list mb-0">
+                    <?php foreach ($recommendation['top'] ?? [] as $book): ?>
+                        <li>
+                            <a href="/books/<?= (int) $book['id'] ?>"><?= e($book['title']) ?></a>
+                            <span class="text-muted"><?= (int) $book['logs'] ?> &times; suggested</span>
+                        </li>
+                    <?php endforeach; ?>
+                </ol>
+            </div>
+        </div>
+        <div class="col-12 col-md-6 col-xl-4">
+            <div class="card-base h-100 p-4">
+                <h3 class="section-title">Sleeping suggestions</h3>
+                <?php if (($recommendation['slept'] ?? []) === []): ?><p class="text-muted mb-0">Every repeatedly recommended book has community interaction. Good engine.</p><?php endif; ?>
+                <ul class="analytics-list mb-0">
+                    <?php foreach ($recommendation['slept'] ?? [] as $book): ?>
+                        <li>
+                            <a href="/books/<?= (int) $book['id'] ?>"><?= e($book['title']) ?></a>
+                            <span class="text-muted">recommended <?= (int) $book['logs'] ?>x, never acted on</span>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>

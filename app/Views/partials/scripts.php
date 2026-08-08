@@ -16,6 +16,7 @@ declare(strict_types=1);
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="<?= e(asset('js/charts.js')) ?>"></script>
 <script src="<?= e(asset('js/app.js')) ?>"></script>
 <script src="<?= e(asset('js/rating.js')) ?>"></script>
 <script src="<?= e(asset('js/reviews.js')) ?>"></script>

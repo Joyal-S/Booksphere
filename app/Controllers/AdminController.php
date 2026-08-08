@@ -9,6 +9,7 @@ use BookSphere\App\Core\Request;
 use BookSphere\App\Core\Response;
 use BookSphere\App\Exceptions\ReviewException;
 use BookSphere\App\Policies\ReviewPolicy;
+use BookSphere\App\Services\AdminAnalyticsService;
 use BookSphere\App\Services\RecommendationMetrics;
 use BookSphere\App\Services\ReviewService;
 
@@ -26,7 +27,11 @@ use BookSphere\App\Services\ReviewService;
  *                        now with the live rating analytics
  *                        (overall average, distribution, the highest
  *                        and lowest rated books and the books that
- *                        have no reviews yet)
+ *                        have no reviews yet). Phase 12.4: the page
+ *                        also carries the coordinated analytics
+ *                        dashboard (the 12.2 catalogue payload, the
+ *                        12.3 recommendation activity and engine
+ *                        health) assembled by AdminAnalyticsService.
  *     - metrics()     -> /admin/recommendations: the read-only
  *                        health picture of the recommendation engine
  *                        (cache, config, data and score metrics from
@@ -60,6 +65,7 @@ final class AdminController extends Controller
         private readonly ?RecommendationMetrics $metrics = null,
         private readonly ?ReviewService $reviews = null,
         private readonly ?ReviewPolicy $policy = null,
+        private readonly ?AdminAnalyticsService $analytics = null,
     ) {}
 
     public function index(Request $request, array $params = []): void
@@ -68,7 +74,132 @@ final class AdminController extends Controller
             'title'        => 'Administration',
             'active'       => 'admin',
             'ratingAnalytics' => $this->reviews?->adminAnalytics() ?? [],
+            // Phase 12.4: the coordinated analytics dashboard - the
+            // 12.2 catalogue payload, the 12.3 recommendation
+            // activity and the engine health block, assembled by
+            // AdminAnalyticsService (the controller only renders).
+            'dashboard'    => $this->analytics?->dashboard() ?? [],
         ]);
+    }
+
+    /**
+     * /admin/analytics/report - the print-only ADMINISTRATION REPORT
+     * (Phase 12.5): the coordinated dashboard payload re-rendered as
+     * a printable sheet, with an optional date range that scopes the
+     * recommendation numbers (same groupings, one generated_at
+     * filter) and, with ?format=csv, a streaming export of the raw
+     * recommendation log rows inside that range.
+     *
+     * Ranges are whitelisted presets plus a validated custom pair -
+     * anything unknown falls back to the default and never reaches
+     * the SQL layer.
+     */
+    public function analyticsReport(Request $request, array $params = []): void
+    {
+        $presets = ['7d', '30d', '90d', 'year'];
+        $range   = (string) $request->input('range', '30d');
+
+        $since      = null;
+        $until      = null;
+        $rangeLabel = 'Last 30 days';
+
+        if ($range === 'all') {
+            $rangeLabel = 'All time';
+        } elseif (in_array($range, $presets, true)) {
+            // '-30d' style units are NOT stable across strtotime
+            // builds - use the long relative forms for every preset.
+            $since = gmdate('Y-m-d', strtotime(match ($range) {
+                '7d'   => '-7 days',
+                '30d'  => '-30 days',
+                '90d'  => '-90 days',
+                'year' => '-1 year',
+            }));
+            $rangeLabel = match ($range) {
+                '7d'   => 'Last 7 days',
+                '30d'  => 'Last 30 days',
+                '90d'  => 'Last 90 days',
+                'year' => 'Last 12 months',
+            };
+        } elseif ($range === 'custom') {
+            $since = trim((string) $request->input('since', ''));
+            $until = trim((string) $request->input('until', ''));
+            $isDate = static fn (string $value): bool =>
+                preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1 && strtotime($value) !== false;
+
+            if ($since === '' || $until === '' || ! $isDate($since) || ! $isDate($until) || $until < $since) {
+                session()->flash('error', 'The report range needs a valid since/until pair.');
+                Response::redirect('/admin/analytics/report');
+            }
+            $rangeLabel = $since . ' to ' . $until;
+        } else {
+            session()->flash('error', 'Unknown report range - falling back to the default.');
+            Response::redirect('/admin/analytics/report');
+        }
+
+        $dashboard = $this->analytics?->dashboard($since) ?? [];
+
+        if ($request->input('format') === 'csv') {
+            $this->streamRecommendationCsv($since ?? '1970-01-01', $until ?? (string) gmdate('Y-m-d'));
+        }
+
+        $this->view('admin.analytics-report', [
+            'title'       => 'Analytics Report',
+            'active'      => 'admin',
+            'bodyClass'   => 'report-print',
+            'dashboard'   => $dashboard,
+            'range'       => $range,
+            'rangeSince'  => $since,
+            'rangeUntil'  => $until,
+            'rangeLabel'  => $rangeLabel,
+            'generatedAt' => gmdate('Y-m-d H:i') . ' UTC',
+        ]);
+    }
+
+    /**
+     * Stream the recommendation log rows of a range as a CSV download.
+     * The report tables and this export always show the same rows,
+     * because both read logsForRange() with the same since/until.
+     *
+     * Every free-text cell is passed through csvSafe(): a cell whose
+     * first character is a spreadsheet meta character (=, +, -, @)
+     * is prefixed with an apostrophe so Excel/Sheets treat it as
+     * TEXT, never as a live formula (CSV formula injection, Phase
+     * 12.6 audit).
+     */
+    private function streamRecommendationCsv(string $since, string $until): never
+    {
+        $rows = $this->analytics?->recommendationLogsForRange($since, $until) ?? [];
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="booksphere-recommendations-' . $since . '-' . $until . '.csv"');
+
+        $out = fopen('php://output', 'w');
+        fputcsv($out, ['user', 'title', 'signal', 'score', 'reason', 'generated_at']);
+        foreach ($rows as $row) {
+            fputcsv($out, [
+                self::csvSafe((string) ($row['user'] ?? '')),
+                self::csvSafe((string) ($row['title'] ?? '')),
+                self::csvSafe((string) ($row['signal'] ?? '')),
+                ($row['score'] ?? null) === null ? '' : number_format((float) $row['score'], 4),
+                self::csvSafe((string) ($row['reason'] ?? '')),
+                (string) ($row['generated_at'] ?? ''),
+            ]);
+        }
+        fclose($out);
+        exit;
+    }
+
+    /**
+     * Neutralize spreadsheet formula injection in a CSV text cell:
+     * a leading formula character (=, +, -, @) gets an apostrophe
+     * prefix, so spreadsheet applications read the cell as a string
+     * instead of evaluating it.
+     */
+    private static function csvSafe(string $value): string
+    {
+        return $value === '' || in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)
+            ? "'" . $value
+            : $value;
     }
 
     /**

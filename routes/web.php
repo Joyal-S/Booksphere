@@ -29,6 +29,7 @@ use BookSphere\App\Controllers\AdminController;
 use BookSphere\App\Controllers\AuthorController;
 use BookSphere\App\Controllers\AuthController;
 use BookSphere\App\Controllers\BookController;
+use BookSphere\App\Controllers\BookAnalyticsController;
 use BookSphere\App\Controllers\CategoryController;
 use BookSphere\App\Controllers\DashboardController;
 use BookSphere\App\Controllers\GoogleBooksController;
@@ -39,6 +40,7 @@ use BookSphere\App\Controllers\RecommendationController;
 use BookSphere\App\Controllers\ReviewController;
 use BookSphere\App\Controllers\SearchController;
 use BookSphere\App\Controllers\SettingsController;
+use BookSphere\App\Controllers\UserAnalyticsController;
 use BookSphere\App\Controllers\UserController;
 use BookSphere\App\Core\Csrf;
 use BookSphere\App\Core\Logger;
@@ -70,8 +72,10 @@ use BookSphere\App\Policies\ReviewPolicy;
 use BookSphere\App\Presenters\RecommendationDashboardPresenter;
 use BookSphere\App\Presenters\ReviewListPresenter;
 use BookSphere\App\Repositories\BookRepository;
+use BookSphere\App\Repositories\BookAnalyticsRepository;
 use BookSphere\App\Repositories\RecommendationRepository;
 use BookSphere\App\Repositories\SearchRepository;
+use BookSphere\App\Repositories\UserAnalyticsRepository;
 use BookSphere\App\Builders\SearchQueryBuilder;
 use BookSphere\App\Services\SearchProviderFactory;
 use BookSphere\App\Services\SearchResultFormatter;
@@ -79,9 +83,11 @@ use BookSphere\App\Services\SearchHistoryService;
 use BookSphere\App\Services\SearchService;
 use BookSphere\App\Services\SearchSuggestionService;
 use BookSphere\App\Services\AuthService;
+use BookSphere\App\Services\AdminAnalyticsService;
 use BookSphere\App\Services\BookImportService;
 use BookSphere\App\Services\BulkImportService;
 use BookSphere\App\Services\BookService;
+use BookSphere\App\Services\BookAnalyticsService;
 use BookSphere\App\Services\CacheManager;
 use BookSphere\App\Services\CircuitBreaker;
 use BookSphere\App\Services\EmailNotificationService;
@@ -101,6 +107,7 @@ use BookSphere\App\Services\RecommendationFactory;
 use BookSphere\App\Services\RecommendationMetrics;
 use BookSphere\App\Services\RecommendationService;
 use BookSphere\App\Services\ReviewService;
+use BookSphere\App\Services\UserAnalyticsService;
 use BookSphere\App\Strategies\HighestRatedStrategy;
 use BookSphere\App\Strategies\PopularBooksStrategy;
 use BookSphere\App\Strategies\RecentlyAddedStrategy;
@@ -249,12 +256,23 @@ $reviewController = new ReviewController($reviewService, new ReviewPolicy(), $re
 // the SHARED RecommendationService (the personalized shelf, the
 // trending shelf and the library-based "Because you read" section).
 $dashboardController = new DashboardController($reviewService, $libraryService, $recommendationService);
+// Phase 12.4: the admin analytics dashboard coordinator reuses the
+// SHARED book analytics service and the SAME RecommendationMetrics
+// instance the engine-health page uses, so /admin and
+// /admin/recommendations can never disagree about the engine state.
+$recommendationAdminMetrics = new RecommendationMetrics($recommendationRepository, $personalizationCache);
+$adminAnalyticsService = new AdminAnalyticsService(
+    new BookAnalyticsService(new BookAnalyticsRepository(), (array) config('book_analytics', [])),
+    $recommendationRepository,
+    $recommendationAdminMetrics,
+);
 $adminController = new AdminController(
-    new RecommendationMetrics($recommendationRepository, $personalizationCache),
+    $recommendationAdminMetrics,
     $reviewService,
     // Phase 7.5: the fine per-action gate of the moderation actions
     // (defence in depth behind AdminMiddleware).
     new ReviewPolicy(),
+    $adminAnalyticsService,
 );
 
 // Phase 9.2: the Follow Authors module. The service and its policy
@@ -408,6 +426,20 @@ $suggestionService = new SearchSuggestionService(
 $historyService = new SearchHistoryService(new SearchRepository(), $searchConfig);
 
 $searchController = new SearchController($searchService, $suggestionService, $historyService, new RateLimiter(session()));
+
+// Phase 12.1: the user analytics service - one composition point for
+// the personal statistics page. Its limits and the activity window
+// come from config('analytics'); the page itself is a plain GET
+// render (analytics never change anything, so nothing posts here).
+$analyticsService = new UserAnalyticsService(new UserAnalyticsRepository(), (array) (config('analytics') ?? []));
+$userAnalyticsController = new UserAnalyticsController($analyticsService);
+
+// Phase 12.2: the book analytics service - one composition point for
+// the catalogue-analytics page. Its limits, weights and windows come
+// from config('book_analytics'); the page is a plain GET render
+// (read-only, nothing posts here).
+$bookAnalyticsService = new BookAnalyticsService(new BookAnalyticsRepository(), (array) (config('book_analytics') ?? []));
+$bookAnalyticsController = new BookAnalyticsController($bookAnalyticsService);
 
 // Home. The root of the app serves two audiences:
 //     - guests      -> the public cover page (pages.landing inside the
@@ -608,6 +640,12 @@ $router->post('/reviews/{id}/report', [$reviewController, 'report'], [$secure, n
 // dismissed | resolved); the four write routes move reports along
 // their lifecycle and hide / restore reviews. All admin-only.
 $router->get('/admin/reviews', [$adminController, 'reports'], [$secure, new AdminMiddleware($auth)]);
+
+// Phase 12.5: the print-only ADMINISTRATION REPORT. GET serves the
+// ranged report sheet (?range= / ?since / ?until); ?format=csv
+// streams the recommendation log rows of the same range. Admin-only
+// like every /admin route, below.
+$router->get('/admin/analytics/report', [$adminController, 'analyticsReport'], [$secure, new AdminMiddleware($auth)]);
 $router->post('/admin/reports/{id}/resolve', [$adminController, 'resolveReport'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
 $router->post('/admin/reports/{id}/dismiss', [$adminController, 'dismissReport'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
 $router->post('/admin/reviews/{id}/hide', [$adminController, 'hideReview'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
@@ -696,7 +734,24 @@ $router->get('/categories/{id}', [$categoryController, 'show'], [$secure, new Au
 $router->get('/profile/following', [$userController, 'following'], [$secure, new AuthMiddleware($auth)]);
 
 $router->get('/wishlist', [$pageController, 'wishlist'], [$secure, new AuthMiddleware($auth)]);
-$router->get('/analytics', [$pageController, 'analytics'], [$secure, new AuthMiddleware($auth)]);
+
+// Phase 12.1: Analytics is now the REAL user-analytics page - the
+// placeholder (PageController::analytics) retires. The route is
+// signed-in only, and the user id comes exclusively from the
+// session inside the controller - the route takes no parameters, so
+// analytics can never be addressed for anyone but the caller.
+$router->get('/analytics', [$userAnalyticsController, 'show'], [$secure, new AuthMiddleware($auth)]);
+
+// Phase 12.5: the print-only READING REPORT - the same 12.1 payload
+// rendered as a portrait sheet (charts + tables) for paper/PDF.
+// Same authorization as /analytics: signed-in only, no parameters.
+$router->get('/analytics/report', [$userAnalyticsController, 'report'], [$secure, new AuthMiddleware($auth)]);
+
+// Phase 12.2: Book Analytics - the catalogue-wide counterpart of the
+// personal page. Signed-in only (like /analytics); the page never
+// takes parameters, so it can never be addressed against anything
+// but the live catalogue.
+$router->get('/book-analytics', [$bookAnalyticsController, 'index'], [$secure, new AuthMiddleware($auth)]);
 
 // Phase 9.5: Settings became a REAL page - the Email notifications
 // section (the five per-user toggles). The write endpoint saves them;

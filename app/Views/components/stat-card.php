@@ -20,7 +20,10 @@ declare(strict_types=1);
  *     ];
  *
  * The value counts up on load via app.js (skipped for users who
- * prefer reduced motion).
+ * prefer reduced motion). The server renders the FINAL value as the
+ * baseline text - a no-JS visitor or a reduced-motion user never
+ * sees a permanent zero (Phase 12.6 audit); the count-up in app.js
+ * only animates FROM that same number.
  */
 
 $stat = array_merge([
@@ -33,6 +36,14 @@ $stat = array_merge([
 
 $isNumber = is_numeric($stat['value']);
 
+if ($isNumber) {
+    $raw      = (string) $stat['value'];
+    $decimals = str_contains($raw, '.') ? strlen(substr($raw, strpos($raw, '.') + 1)) : 0;
+    $display  = number_format((float) $stat['value'], $decimals, '.', ',');
+} else {
+    $display = (string) $stat['value'];
+}
+
 ?>
 <div class="stat-card">
     <div class="stat-card-top">
@@ -44,7 +55,7 @@ $isNumber = is_numeric($stat['value']);
         <?php endif; ?>
     </div>
     <div class="stat-value" <?= $isNumber ? 'data-count="' . e((string) $stat['value']) . '"' : '' ?>>
-        <?= $isNumber ? '0' : e((string) $stat['value']) ?>
+        <?= e($display) ?>
     </div>
     <div class="stat-label"><?= e($stat['label']) ?></div>
 </div>
