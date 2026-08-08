@@ -1,6 +1,6 @@
 /* ==========================================================================
    google-books.css
-   The Google Books search page (Phase 10.2) - admin only.
+   The Google Books search page (Phase 10.2 + 10.5) - admin only.
 
    All colors, radii and shadows come from the app.css design tokens
    (--surface, --border, --radius, --shadow-sm, --primary ...), so the
@@ -53,6 +53,7 @@
     border-radius: var(--radius);
     box-shadow: var(--shadow-sm);
     padding: 1rem;
+    position: relative;
     transition: box-shadow 200ms ease, border-color 200ms ease, transform 200ms ease;
 }
 
@@ -189,6 +190,249 @@
     margin-bottom: 0;
 }
 
+/* --- Bulk import (Phase 10.5) ------------------------------------------ */
+
+/* The selection toolbar: sits above the results grid, always visible,
+   and only ever enabled once something is ticked. */
+
+.gb-bulk {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    padding: 0.65rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.gb-bulk-select-all {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin: 0;
+}
+
+.gb-bulk-select-all input {
+    accent-color: var(--primary);
+    margin: 0;
+}
+
+.gb-bulk-count {
+    color: var(--muted);
+    font-size: 0.8125rem;
+}
+
+.gb-bulk-import {
+    margin-left: auto;
+}
+
+/* Phase 10.6: the "Sync providers" bulk action sits next to Import
+   (margin-left:auto moves only the first action to the far end). */
+
+.gb-bulk-sync {
+    white-space: nowrap;
+}
+
+/* The Sync All strip: its own small bar under the selection toolbar. */
+
+.gb-sync-all {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.gb-sync-all-note {
+    color: var(--muted);
+    font-size: 0.8125rem;
+}
+
+/* The per-card last-sync status line (Phase 10.6). */
+
+.gb-card-sync-status {
+    margin: 0.6rem 0 0;
+    font-size: 0.78rem;
+}
+
+.gb-sync-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.gb-sync-chip--in_sync  { color: var(--success); border-color: var(--success); background: color-mix(in srgb, var(--success) 10%, var(--surface)); }
+.gb-sync-chip--updated  { color: var(--info);    border-color: var(--info);    background: color-mix(in srgb, var(--info) 10%, var(--surface)); }
+.gb-sync-chip--failed   { color: var(--danger);  border-color: var(--danger);  background: color-mix(in srgb, var(--danger) 10%, var(--surface)); }
+.gb-sync-chip--pending  { color: var(--muted); }
+
+/* The card checkbox badge: pinned to the top-left of the cover, so
+   the selection control never reflows the card layout. */
+
+.gb-card-select {
+    position: absolute;
+    top: 0.55rem;
+    left: 0.55rem;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    margin: 0;
+}
+
+.gb-card-select input {
+    width: 1.05rem;
+    height: 1.05rem;
+    margin: 0;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+/* The streaming progress panel. */
+
+.gb-progress {
+    margin-bottom: 1rem;
+    border-left: 3px solid var(--primary);
+}
+
+.gb-progress-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.gb-progress-track {
+    height: 0.75rem;
+    background: var(--surface-2);
+}
+
+.gb-progress-count {
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.gb-progress-current {
+    margin: 0.15rem 0 0.6rem;
+    font-size: 0.8125rem;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gb-progress-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.25rem;
+    font-size: 0.8125rem;
+}
+
+.gb-stat {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    color: var(--muted);
+}
+
+.gb-stat strong {
+    font-size: 1rem;
+    color: var(--text);
+}
+
+.gb-stat--imported i { color: var(--success); }
+.gb-stat--dup i      { color: var(--warning); }
+.gb-stat--fail i     { color: var(--danger); }
+.gb-stat--remaining i { color: var(--info); }
+
+/* The final report modal. */
+
+.gb-summary-message {
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.gb-summary-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.gb-summary-stat {
+    text-align: center;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.6rem 0.4rem;
+}
+
+.gb-summary-stat strong {
+    display: block;
+    font-size: 1.35rem;
+    line-height: 1.2;
+}
+
+.gb-summary-stat small {
+    color: var(--muted);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.gb-summary-stat--imported strong { color: var(--success); }
+.gb-summary-stat--duplicates strong { color: var(--warning); }
+.gb-summary-stat--updated strong { color: var(--success); }
+.gb-summary-stat--unchanged strong { color: var(--info); }
+.gb-summary-stat--failed strong { color: var(--danger); }
+.gb-summary-stat--skipped strong { color: var(--muted); }
+.gb-summary-stat--total strong { color: var(--primary); }
+
+.gb-summary-elapsed {
+    color: var(--muted);
+    font-size: 0.8125rem;
+    margin-bottom: 0;
+}
+
+.gb-summary-failures {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+}
+
+.gb-summary-failures h3 {
+    color: var(--danger);
+}
+
+.gb-summary-failure-list {
+    max-height: 10rem;
+    overflow-y: auto;
+    margin: 0.4rem 0 0;
+    padding-left: 1.1rem;
+    font-size: 0.85rem;
+}
+
 /* ---------- */
 
 /* --- Responsive ---------------------------------------------------------- */
@@ -206,5 +450,19 @@
 
     .gb-card-actions {
         justify-content: center;
+    }
+
+    .gb-bulk {
+        justify-content: center;
+        text-align: center;
+    }
+
+    .gb-bulk-import {
+        margin-left: 0;
+    }
+
+    .gb-sync-all {
+        justify-content: center;
+        text-align: center;
     }
 }

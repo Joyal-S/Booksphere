@@ -12,7 +12,9 @@ declare(strict_types=1);
  *     - collapse toggle   -> shrinks the sidebar on desktop
  *     - brand             -> shown on small screens only (the
  *                            sidebar holds the brand on desktop)
- *     - search bar        -> placeholder input, no logic yet
+ *     - search bar        -> quick search: Enter jumps to /search
+ *                            (app.js); typing opens live autocomplete
+ *                            suggestions (Phase 11.4, search.js)
  *     - theme toggle      -> light/dark, handled by app.js
  *     - notification bell -> placeholder dropdown only
  *     - user dropdown     -> profile, password, settings, log out
@@ -52,7 +54,9 @@ if ($sessionUser !== null) {
         <?php if (auth_check()): ?>
             <div class="search-bar" role="search">
                 <i class="fa-solid fa-magnifying-glass search-bar-icon" aria-hidden="true"></i>
-                <input type="search" class="search-bar-input" placeholder="Search books, authors, genres…" aria-label="Search" data-search-input>
+                <input type="search" class="search-bar-input" placeholder="Search books, authors, genres…" aria-label="Search"
+                       data-search-input data-autocomplete data-autocomplete-endpoint="/search/suggest"
+                       data-autocomplete-min="<?= (int) (config('search.suggestions.min_length') ?? 2) ?>">
                 <kbd class="search-bar-hint">Ctrl K</kbd>
             </div>
         <?php endif; ?>

@@ -145,6 +145,28 @@ final class Book
     }
 
     /**
+     * The author rows (id + name) of one book, in name order. The
+     * sync change detection reads the CURRENT relation names through
+     * this instead of loading the whole joined row.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function authorsFor(int $bookId): array
+    {
+        return $this->repository->authorsFor($bookId);
+    }
+
+    /**
+     * The category rows (id + name) of one book, in name order.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function categoriesFor(int $bookId): array
+    {
+        return $this->repository->categoriesFor($bookId);
+    }
+
+    /**
      * Replace the full author selection of a book.
      *
      * @param array<int, int> $authorIds
@@ -242,5 +264,61 @@ final class Book
     public function updateCover(int $id, array $data): bool
     {
         return $this->repository->updateCover($id, $data);
+    }
+
+    /**
+     * Update ONLY the changed provider-metadata columns of a book
+     * (Phase 10.6). The repository restricts the change set to the
+     * sync whitelist, so a sync run can never write a column it does
+     * not own.
+     *
+     * @param array<string, mixed> $changes only the changed columns
+     */
+    public function updateMetadata(int $id, array $changes): bool
+    {
+        return $this->repository->updateMetadata($id, $changes);
+    }
+
+    /**
+     * Stamp the outcome of one sync run on a book (Phase 10.6).
+     */
+    public function updateSynced(int $id, string $status, ?string $message): bool
+    {
+        return $this->repository->updateSynced($id, $status, $message);
+    }
+
+    /**
+     * Every active catalogue row that carries a google_book_id - the
+     * books a Google Books sync may touch (Phase 10.6).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function importedBooks(): array
+    {
+        return $this->repository->importedBooks();
+    }
+
+    /**
+     * The full rows of the books matching the given google ids, keyed
+     * by google_book_id (Phase 10.6).
+     *
+     * @param array<int, string> $googleIds
+     * @return array<string, array<string, mixed>>
+     */
+    public function metadataFor(array $googleIds): array
+    {
+        return $this->repository->metadataFor($googleIds);
+    }
+
+    /**
+     * The slim sync-state map for a page of google ids: id -> [local
+     * book id, synced_at, sync_status, sync_message] (Phase 10.6).
+     *
+     * @param array<int, string> $googleIds
+     * @return array<string, array<string, mixed>>
+     */
+    public function syncOf(array $googleIds): array
+    {
+        return $this->repository->syncOf($googleIds);
     }
 }

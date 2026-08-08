@@ -18,12 +18,41 @@ declare(strict_types=1);
  * (intercepted by google-books.js) AND without it (plain submit ->
  * redirect + flash). Fields are escaped with e() because they arrive
  * from a third-party API.
+ *
+ * Phase 10.5 (bulk import): every card carries a checkbox that belongs
+ * to the page's bulk form via the form="google-books-bulk-form"
+ * attribute - the notification center's pattern - so the no-JavaScript
+ * form natively collects the checked ids.
+ *
+ * Phase 10.6 (synchronization): the checkbox is open to imported rows
+ * TOO (flagged data-gb-in-library) - the "Sync providers" bulk submit
+ * targets the library subset of the selection. An imported card also
+ * gains a "Sync now" affordance: the last-sync status chip comes from
+ * $syncInfo and the button posts its own form to /admin/google-books/sync,
+ * the same dual answer as every other data change.
  */
 
 $book     = $gbBook;
 $existing = (array) ($existing ?? []);
+$syncInfo = (array) ($syncInfo ?? []);
 
 $inLibrary = isset($existing[(string) $book->externalId]);
+
+$syncState  = (array) ($syncInfo[(string) $book->externalId] ?? []);
+$syncStatus = (string) ($syncState['sync_status'] ?? 'pending');
+$syncedAt   = $syncState['synced_at'] ?? null;
+$syncTone   = match ($syncStatus) {
+    'in_sync'                                                      => 'success',
+    'updated'                                                      => 'info',
+    'failed'                                                       => 'danger',
+    default                                                        => 'secondary',
+};
+$syncLabel = match ($syncStatus) {
+    'in_sync'  => 'In sync'  . ($syncedAt !== null ? ' &middot; ' . date('M j, Y H:i', strtotime((string) $syncedAt)) : ''),
+    'updated'  => 'Updated'  . ($syncedAt !== null ? ' &middot; ' . date('M j, Y H:i', strtotime((string) $syncedAt)) : ''),
+    'failed'   => 'Last sync failed',
+    default    => 'Not synchronized yet',
+};
 
 $hasCover  = $book->thumbnail !== null && $book->thumbnail !== '';
 $year      = $book->publishedYear !== null ? (string) $book->publishedYear : ($book->publishedDate ?? '');
@@ -32,7 +61,19 @@ $blurb     = $book->description !== null ? $book->description : '';
 $detailUrl = (string) ($book->previewLink ?? $book->infoLink ?? '#');
 
 ?>
-<article class="gb-card">
+<article class="gb-card" data-gb-card>
+    <label class="gb-card-select" data-gb-card-select>
+        <input type="checkbox"
+               class="form-check-input"
+               name="google_book_id[]"
+               value="<?= e($book->externalId) ?>"
+               form="google-books-bulk-form"
+               data-gb-check
+               data-gb-check-id="<?= e($book->externalId) ?>"
+               <?= $inLibrary ? 'data-gb-in-library="true"' : '' ?>>
+        <span class="visually-hidden"><?= $inLibrary ? e('Select "' . $book->title . '" for synchronization') : e('Select "' . $book->title . '" for bulk import') ?></span>
+    </label>
+
     <div class="gb-card-cover">
         <?php $cover = [
             'src'   => $hasCover ? $book->thumbnail : '',
@@ -102,6 +143,18 @@ $detailUrl = (string) ($book->previewLink ?? $book->infoLink ?? '#');
                 </button>
             </form>
 
+            <?php if ($inLibrary): ?>
+                <form class="gb-sync-form" method="post" action="/admin/google-books/sync" data-gb-sync-form>
+                    <input type="hidden" name="_token" value="<?= e(csrf_token()) ?>">
+                    <input type="hidden" name="google_book_id" value="<?= e($book->externalId) ?>">
+                    <button type="submit" class="btn btn-sm btn-outline-info" data-gb-sync
+                            data-gb-sync-id="<?= e($book->externalId) ?>"
+                            title="Refresh this book's metadata from Google Books">
+                        <i class="fa-solid fa-rotate me-1" aria-hidden="true"></i>Sync now
+                    </button>
+                </form>
+            <?php endif; ?>
+
             <?php if ($book->previewLink !== null): ?>
                 <a class="btn btn-sm btn-primary" href="<?= e($book->previewLink) ?>" target="_blank" rel="noopener noreferrer">
                     <i class="fa-solid fa-book-open me-1" aria-hidden="true"></i>Preview
@@ -112,6 +165,14 @@ $detailUrl = (string) ($book->previewLink ?? $book->infoLink ?? '#');
                 <i class="fa-solid fa-up-right-from-square me-1" aria-hidden="true"></i>Google Books
             </a>
         </div>
+
+        <?php if ($inLibrary): ?>
+            <p class="gb-card-sync-status" data-gb-sync-status>
+                <span class="gb-sync-chip gb-sync-chip--<?= e($syncStatus) ?>" data-gb-sync-chip>
+                    <i class="fa-solid <?= $syncStatus === 'failed' ? 'fa-triangle-exclamation' : 'fa-rotate' ?> me-1" aria-hidden="true"></i><?= $syncLabel ?>
+                </span>
+            </p>
+        <?php endif; ?>
 
         <div class="gb-card-feedback" data-gb-feedback aria-live="polite"></div>
     </div>

@@ -79,13 +79,27 @@
         item.addEventListener('click', closeSidebar);
     });
 
-    /* ---------- 3. Search shortcut (visual only) ---------- */
+    /* ---------- 3. Search shortcut + header search ---------- */
     const searchInput = document.querySelector('[data-search-input]');
 
     document.addEventListener('keydown', (event) => {
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
             event.preventDefault();
             searchInput?.focus();
+        }
+    });
+
+    // Phase 11.2: the header search box now leads to the global
+    // search page. Pressing Enter (or the Escape key once to clear,
+    // twice to blur) navigates to /search?q=... - a real search,
+    // not a visual-only box. The shortcut hint in the page's own
+    // search field (search.js) keeps the same Ctrl+K affordance.
+    searchInput?.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            const term = searchInput.value.trim();
+            event.preventDefault();
+            const query = term ? '?q=' + encodeURIComponent(term) : '';
+            window.location.assign('/search' + query);
         }
     });
 

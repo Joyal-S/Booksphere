@@ -45,6 +45,9 @@ $sessionUser = auth_user();
             <a class="nav-item<?= $active === 'books' ? ' is-active' : '' ?>" href="/books" title="Browse Books">
                 <i class="fa-solid fa-book-open" aria-hidden="true"></i><span>Browse Books</span>
             </a>
+            <a class="nav-item<?= $active === 'search' ? ' is-active' : '' ?>" href="/search" title="Search everything">
+                <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span>Search</span>
+            </a>
             <a class="nav-item<?= $active === 'categories' ? ' is-active' : '' ?>" href="/categories" title="Categories">
                 <i class="fa-solid fa-tags" aria-hidden="true"></i><span>Categories</span>
             </a>

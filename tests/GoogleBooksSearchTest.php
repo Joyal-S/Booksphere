@@ -48,6 +48,7 @@ use BookSphere\App\Models\User;
 use BookSphere\App\Requests\SearchBooksRequest;
 use BookSphere\App\Services\AuthService;
 use BookSphere\App\Services\BookImportService;
+use BookSphere\App\Services\BulkImportService;
 use BookSphere\App\Services\CacheManager;
 use BookSphere\App\Services\CircuitBreaker;
 use BookSphere\App\Services\GoogleBooksClient;
@@ -454,9 +455,13 @@ section('6. CONTROLLER + VIEW SMOKE TEST');
 Database::instance(':memory:');
 (new Migrator(db(), root_path('database/migrations')))->run();
 
+$bulkImporter = new BookImportService(new Book(), new Author(), new Category(), $config);
+
 $controller = new GoogleBooksController(
     $service,
-    new BookImportService(new Book(), new Author(), new Category(), $config),
+    $bulkImporter,
+    new BulkImportService($service, $bulkImporter, new Book(), new Logger($temp . '/test.log'), $config),
+    new \BookSphere\App\Services\GoogleBooksSyncService($service, $bulkImporter, new Book(), null, new Logger($temp . '/test.log'), $config),
 );
 $session->put('auth_user', ['id' => 1, 'full_name' => 'Admin', 'email' => 'admin@booksphere.test', 'role' => 'admin']);
 

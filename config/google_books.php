@@ -156,11 +156,65 @@ return [
         'fetch_covers' => (bool) env('GOOGLE_BOOKS_FETCH_COVERS', true),
     ],
 
-    // --- Synchronization (Phase 10.5+) --------------------------------
+    // --- Bulk import (Phase 10.5) --------------------------------------
+    // Importing many selected search results in one operation. Each book
+    // is still fetched, deduped and inserted through the SAME single-book
+    // importer (BookImportService), one own transaction at a time, so the
+    // batch survives one bad record without a rollback of the rest.
+    'bulk' => [
+        // The hard cap on how many volume ids ONE bulk request may carry.
+        // Kept deliberately finite so an oversized/paste-happy form can
+        // never trigger an unbounded server-side run.
+        'max_batch' => (int) env('GOOGLE_BOOKS_BULK_MAX_BATCH', 200),
+        // The batch checkpoint size: the service logs a marker and lets
+        // progress flush every <batch_size> books. It does NOT change the
+        // transaction strategy (every book keeps its own all-or-nothing
+        // commit - see the service docblock) - it is the reporting
+        // cadence for very large runs.
+        'batch_size' => (int) env('GOOGLE_BOOKS_BULK_BATCH_SIZE', 40),
+    ],
+
+    // --- Synchronization (Phase 10.6) ------------------------------------
+    // The MANUAL metadata synchronizer: an admin can refresh one
+    // imported book, a selection or the whole imported catalogue from
+    // the provider. Only provider metadata is written - the app's own
+    // review-derived rating columns and user activity are never
+    // touched. No scheduled/automatic sync exists yet: the "enabled"
+    // flag below gates the WHOLE feature (manual + the future Phase
+    // 10.7 job), the "fields" map is the configurable rule set that
+    // already allows per-field toggling (Task 6 of the phase spec).
     'sync' => [
-        // Whether the periodic metadata re-fetch job is allowed to run.
-        'enabled' => (bool) env('GOOGLE_BOOKS_SYNC_ENABLED', false),
-        // How many books one sync job run processes per batch.
+        // Master switch of the synchronization feature.
+        'enabled' => (bool) env('GOOGLE_BOOKS_SYNC_ENABLED', true),
+        // The hard cap on how many books ONE bulk sync request may
+        // carry (the same ceiling philosophy as the bulk importer).
+        'max_batch' => (int) env('GOOGLE_BOOKS_SYNC_MAX_BATCH', 200),
+        // The checkpoint size: a marker log + progress flush every
+        // <batch_size> books (reporting cadence, not transaction size).
         'batch_size' => (int) env('GOOGLE_BOOKS_SYNC_BATCH', 25),
+        // Per-field rules. Each key maps a provider metadata field to
+        // a local books column (or relation); false disables the field
+        // for EVERY sync run. This is the future field-level settings
+        // surface - today it is config-driven, not per-book.
+        //
+        // Never synchronized, by design: books.average_rating and
+        // books.ratings_count (derived from the app's OWN reviews),
+        // book status, ISBN, google_book_id and every user-generated
+        // table (reviews, wishlist, library, notifications, ...).
+        'fields' => [
+            'title'                 => true,
+            'subtitle'              => true,
+            'description'           => true,
+            'publisher'             => true,
+            'published_year'        => true,
+            'language'              => true,
+            'page_count'            => true,
+            'preview_link'          => true,
+            'provider_rating'       => true,
+            'provider_ratings_count' => true,
+            'authors'               => true,
+            'categories'            => true,
+            'cover'                 => true,
+        ],
     ],
 ];

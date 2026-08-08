@@ -131,7 +131,7 @@ class GoogleBooksService
      * message and HTTP status. Returns null only when the record
      * exists but maps to nothing usable (no title).
      */
-    public function volume(string $id): ?ProviderBookDTO
+    public function volume(string $id, bool $refresh = false): ?ProviderBookDTO
     {
         $id = trim($id);
 
@@ -144,11 +144,15 @@ class GoogleBooksService
         }
 
         // 1. Fresh cache first: a volume looked up within the TTL is
-        //    served without touching the provider.
-        $cached = $this->cache->get(CacheManager::NS_VOLUME, $id);
+        //    served without touching the provider. A refresh (the sync
+        //    path) deliberately skips this window - it must detect
+        //    provider-side changes, not re-serve what it just imported.
+        if (!$refresh) {
+            $cached = $this->cache->get(CacheManager::NS_VOLUME, $id);
 
-        if ($cached !== null) {
-            return $this->provider->mapVolume($cached['volume'] ?? []);
+            if ($cached !== null) {
+                return $this->provider->mapVolume($cached['volume'] ?? []);
+            }
         }
 
         // 2. Circuit open: refuse live calls, serve whatever is cached

@@ -24,3 +24,4 @@ declare(strict_types=1);
 <script src="<?= e(asset('js/notifications.js')) ?>"></script>
 <script src="<?= e(asset('js/settings.js')) ?>"></script>
 <script src="<?= e(asset('js/google-books.js')) ?>"></script>
+<script src="<?= e(asset('js/search.js')) ?>"></script>

@@ -37,6 +37,7 @@ use BookSphere\App\Controllers\NotificationController;
 use BookSphere\App\Controllers\PageController;
 use BookSphere\App\Controllers\RecommendationController;
 use BookSphere\App\Controllers\ReviewController;
+use BookSphere\App\Controllers\SearchController;
 use BookSphere\App\Controllers\SettingsController;
 use BookSphere\App\Controllers\UserController;
 use BookSphere\App\Core\Csrf;
@@ -70,8 +71,16 @@ use BookSphere\App\Presenters\RecommendationDashboardPresenter;
 use BookSphere\App\Presenters\ReviewListPresenter;
 use BookSphere\App\Repositories\BookRepository;
 use BookSphere\App\Repositories\RecommendationRepository;
+use BookSphere\App\Repositories\SearchRepository;
+use BookSphere\App\Builders\SearchQueryBuilder;
+use BookSphere\App\Services\SearchProviderFactory;
+use BookSphere\App\Services\SearchResultFormatter;
+use BookSphere\App\Services\SearchHistoryService;
+use BookSphere\App\Services\SearchService;
+use BookSphere\App\Services\SearchSuggestionService;
 use BookSphere\App\Services\AuthService;
 use BookSphere\App\Services\BookImportService;
+use BookSphere\App\Services\BulkImportService;
 use BookSphere\App\Services\BookService;
 use BookSphere\App\Services\CacheManager;
 use BookSphere\App\Services\CircuitBreaker;
@@ -80,6 +89,7 @@ use BookSphere\App\Services\FollowService;
 use BookSphere\App\Services\GoogleBooksClient;
 use BookSphere\App\Services\GoogleBooksProvider;
 use BookSphere\App\Services\GoogleBooksService;
+use BookSphere\App\Services\GoogleBooksSyncService;
 use BookSphere\App\Services\LibraryService;
 use BookSphere\App\Services\MediaService;
 use BookSphere\App\Services\CoverDownloadService;
@@ -335,12 +345,69 @@ $googleBooksService = new GoogleBooksService(
 // module (dedupe + transactional insert) and is composed with the same
 // shared config, so a disabled provider module leaves imports disabled
 // too. The models are the thin facades every other module uses.
-// Phase 10.4: the SHARED cover service rides along, so a successful
+// Phase 10.4: the shared cover service rides along, so a successful
 // import downloads + caches the cover right after the transaction.
+// Phase 10.5: the SAME importer instance also feeds the bulk importer -
+// one importer, one dedupe rule, whether a run imports 1 book or 200.
+// Phase 10.6: the SAME importer instance feeds the synchronizer too -
+// one provider metadata map, one field rule, whether it is written at
+// import time or re-checked by a sync run.
+$googleBooksImporter = new BookImportService(new Book(), new Author(), new Category(), $googleBooksConfig, $coverService);
+
+$googleBooksSyncService = new GoogleBooksSyncService(
+    $googleBooksService,
+    $googleBooksImporter,
+    new Book(),
+    $coverService,
+    new Logger(root_path('storage/logs/application.log')),
+    $googleBooksConfig,
+);
+
 $googleBooksController = new GoogleBooksController(
     $googleBooksService,
-    new BookImportService(new Book(), new Author(), new Category(), $googleBooksConfig, $coverService),
+    $googleBooksImporter,
+    new BulkImportService(
+        $googleBooksService,
+        $googleBooksImporter,
+        new Book(),
+        new Logger(root_path('storage/logs/application.log')),
+        $googleBooksConfig,
+    ),
+    $googleBooksSyncService,
 );
+
+// Phase 11.2: the global search module. One wired SearchService is
+// shared by the page and the live endpoint (the same pipeline both
+// answer), composed from the architecture's pieces exactly like every
+// other module: builder + provider (resolved by the factory from
+// config('search.provider')) + repository + formatter. The RateLimiter
+// is the same session-backed throttle every write endpoint already
+// uses, guarding the search bucket from config('search').
+$searchConfig = (array) (config('search') ?? []);
+$searchService = new SearchService(
+    (new SearchProviderFactory($searchConfig))->create(),
+    new SearchQueryBuilder($searchConfig),
+    new SearchResultFormatter(),
+    $searchConfig,
+);
+
+// Phase 11.4: the suggestion service shares the SAME provider and
+// builder (one tokenizer, one WHERE vocabulary), so a type-ahead
+// pool and a full search can never disagree about a term.
+$suggestionService = new SearchSuggestionService(
+    (new SearchProviderFactory($searchConfig))->create(),
+    new SearchQueryBuilder($searchConfig),
+    $searchConfig,
+);
+
+// Phase 11.5: the history service owns the search_history table
+// (the module's one SQL layer, SearchRepository - the same
+// repository every other search read uses). Its caps/TTL come from
+// config('search.history'), so the operator tunes the storage
+// without touching a class.
+$historyService = new SearchHistoryService(new SearchRepository(), $searchConfig);
+
+$searchController = new SearchController($searchService, $suggestionService, $historyService, new RateLimiter(session()));
 
 // Home. The root of the app serves two audiences:
 //     - guests      -> the public cover page (pages.landing inside the
@@ -408,14 +475,49 @@ $router->get('/admin', [$adminController, 'index'], [$secure, new AdminMiddlewar
 $router->get('/admin/recommendations', [$adminController, 'metrics'], [$secure, new AdminMiddleware($auth)]);
 $router->post('/admin/recommendations/cache/flush', [$adminController, 'flushCache'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
 
-// Phase 10.2/10.3: the Google Books provider (admin only). The index
-// shows the search page (renders results server-side for no-JS), the /search
-// route answers the live AJAX endpoint with the results partial, and the
+// Phase 10.2/10.3/10.5: the Google Books provider (admin only). The
+// index shows the search page (renders results server-side for no-JS), the
+// /search route answers the live AJAX endpoint with the results partial, and the
 // /import POST takes one provider result into the local catalogue - identical
 // structure to the browse module's /books, /books/search + the admin CRUD.
+// Phase 10.5: /bulk-import takes the SELECTION (google_book_id[]) and streams
+// the run's progress as Server-Sent Events for fetch callers, or flashes the
+// summary + redirects for the no-JavaScript form.
+// Phase 10.6: the three synchronization POSTs - /sync (one imported
+// book), /sync-bulk (the selection) and /sync-all (every imported book) -
+// refresh provider metadata with change detection; the fetch callers get
+// the same SSE stream the bulk importer uses. All carry CSRF like every
+// other data change.
 $router->get('/admin/google-books', [$googleBooksController, 'index'], [$secure, new AdminMiddleware($auth)]);
 $router->get('/admin/google-books/search', [$googleBooksController, 'searchJson'], [$secure, new AdminMiddleware($auth)]);
 $router->post('/admin/google-books/import', [$googleBooksController, 'import'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/admin/google-books/bulk-import', [$googleBooksController, 'importBulk'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/admin/google-books/sync', [$googleBooksController, 'sync'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/admin/google-books/sync-bulk', [$googleBooksController, 'syncBulk'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/admin/google-books/sync-all', [$googleBooksController, 'syncAll'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
+
+// Phase 11.2: the global search. ONE route answers both consumers -
+// a fetch() request (X-Requested-With: fetch) gets the live JSON
+// results partial, a plain GET renders the full search page
+// server-side. Behind the same signed-in stack as the browse module,
+// with the module's own session-backed rate limit inside the
+// controller.
+$router->get('/search', [$searchController, 'index'], [$secure, new AuthMiddleware($auth)]);
+
+// Phase 11.4: the type-ahead endpoint of the search boxes. A literal
+// GET - the router's exact-match-first order keeps it clear of any
+// future parameterized /search sub-route.
+$router->get('/search/suggest', [$searchController, 'suggest'], [$secure, new AuthMiddleware($auth)]);
+
+// Phase 11.5: the search-history writes. DELETE semantics via the
+// _method spoof (the no-JS UI posts forms with a hidden _method =
+// DELETE, the same idiom the notification center uses), with the
+// exact-match-first literals (/search/history) ordered before the
+// parameterized pattern. Both require the signed-in stack plus CSRF,
+// and ownership is re-gated from the session inside the controller
+// (the history service, in fact - foreign rows are never touched).
+$router->delete('/search/history', [$searchController, 'clearHistory'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->delete('/search/history/{id}', [$searchController, 'deleteHistory'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
 
 // --- Book module ------------------------------------------------------
 // Browsing (search, filters, sort, pagination, grid/table) is open

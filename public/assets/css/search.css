@@ -1,0 +1,564 @@
+/* ==========================================================================
+   search.css
+   The global search page (Phase 11.2) - books, authors, categories,
+   publishers and reviews through one box + scope tabs.
+
+   All colors, radii and shadows come from the app.css design tokens
+   (--surface, --surface-2, --border, --radius, --shadow-sm, --primary,
+   --muted ...), so the light/dark flip of [data-bs-theme="dark"]
+   applies automatically.
+   ========================================================================== */
+
+/* --- Search toolbar ------------------------------------------------------ */
+
+.search-toolbar {
+    padding: 1rem;
+}
+
+.search-row {
+    display: flex;
+    gap: 0.625rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.search-field {
+    position: relative;
+    flex: 1;
+    min-width: 220px;
+}
+
+.search-field-icon {
+    position: absolute;
+    left: 0.875rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+    font-size: 0.9rem;
+}
+
+.search-field-input {
+    padding-left: 2.5rem;
+    padding-right: 4.25rem;
+}
+
+.search-field-kbd {
+    position: absolute;
+    right: 0.625rem;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 2px 7px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-2);
+    color: var(--muted);
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    line-height: 1.4;
+    pointer-events: none;
+}
+
+/* --- Scope tabs (radio group) -------------------------------------------- */
+
+.search-scopes {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    flex-wrap: wrap;
+    margin-top: 0.875rem;
+}
+
+.search-scopes-label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+    margin-right: 0.25rem;
+}
+
+.search-scope {
+    cursor: pointer;
+    margin: 0;
+}
+
+.search-scope-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.4;
+    transition: border-color 0.18s ease, background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.search-scope:hover .search-scope-btn {
+    border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+    color: var(--primary);
+}
+
+.search-scope input:focus-visible + .search-scope-btn {
+    outline: none;
+    box-shadow: 0 0 0 4px var(--bs-focus-ring-color);
+    border-color: var(--primary);
+}
+
+.search-scope.is-active .search-scope-btn {
+    background: var(--primary) !important;
+    border-color: var(--primary) !important;
+    color: #fff;
+    box-shadow: var(--shadow-primary);
+}
+
+/* --- Result list ---------------------------------------------------------- */
+
+.search-results-summary {
+    color: var(--muted);
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+}
+
+.search-hit-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+/* A hit is either the reuse of the book-card module component or the
+   generic row built in _hit.php. Keep both breathing the same card
+   language (--surface, --radius, --border, --shadow-sm). */
+.search-hit .book-card-module {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+}
+
+.search-hit--authors,
+.search-hit--categories,
+.search-hit--publishers,
+.search-hit--reviews {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 0.875rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    color: var(--text);
+    text-decoration: none;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.search-hit--authors:hover,
+.search-hit--categories:hover,
+.search-hit--publishers:hover,
+.search-hit--reviews:hover {
+    border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+    box-shadow: var(--shadow);
+    transform: translateY(-1px);
+    color: var(--text);
+}
+
+.search-hit-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    border-radius: var(--radius-sm);
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-size: 0.95rem;
+}
+
+.search-hit-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.search-hit-title {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.search-hit-meta {
+    color: var(--muted);
+    font-size: 0.8125rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.search-hit-go {
+    color: var(--muted);
+    flex: 0 0 auto;
+    transition: color 0.18s ease, transform 0.18s ease;
+}
+
+.search-hit--authors:hover .search-hit-go,
+.search-hit--categories:hover .search-hit-go,
+.search-hit--publishers:hover .search-hit-go,
+.search-hit--reviews:hover .search-hit-go {
+    color: var(--primary);
+    transform: translateX(2px);
+}
+
+/* --- Small screens --------------------------------------------------------- */
+
+@media (max-width: 575.98px) {
+    .search-field-kbd {
+        display: none;
+    }
+
+    .search-field-input {
+        padding-right: 1rem;
+    }
+}
+
+/* --- Active-filter chips (Phase 11.3) -------------------------------------- */
+
+.search-chips {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 0.875rem;
+    padding-top: 0.875rem;
+    border-top: 1px solid var(--border);
+}
+
+.search-chips-label {
+    color: var(--muted);
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.search-chips-empty {
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+
+/* --- Autocomplete (Phase 11.4) ------------------------------------------- */
+
+/* The positioned wrapper the dropdown anchors to (the live code wraps each
+   [data-autocomplete] input in it). In the header .search-bar the wrapper
+   becomes the flex column that carries the box's width. */
+.autocomplete {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.autocomplete-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 100%;
+    max-width: 26rem;
+    z-index: 1050;
+    max-height: min(340px, 60vh);
+    overflow-y: auto;
+    padding: 0.375rem;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    animation: autocomplete-in 0.15s ease-out;
+}
+
+/* One suggestion row: icon + (highlighted label / subtitle). */
+.autocomplete-option {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.autocomplete-option.is-active {
+    background: var(--primary-soft);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 28%, transparent);
+}
+
+.autocomplete-option-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    color: var(--primary);
+    font-size: 0.85rem;
+}
+
+.autocomplete-option-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.autocomplete-option-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.autocomplete-option-label mark {
+    background: color-mix(in srgb, var(--primary) 16%, transparent);
+    color: var(--text);
+    border-radius: 3px;
+    padding: 0 1px;
+}
+
+.autocomplete-option-subtitle {
+    font-size: 0.75rem;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Status (no results / searching) and the footer row. */
+.autocomplete-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.625rem;
+    color: var(--muted);
+    font-size: 0.8125rem;
+}
+
+.autocomplete-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+    padding: 0.5rem 0.625rem 0.375rem;
+    border-top: 1px solid var(--border);
+}
+
+.autocomplete-footer button {
+    background: none;
+    border: 0;
+    padding: 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.autocomplete-footer-link {
+    color: var(--primary);
+}
+
+.autocomplete-footer-link:hover {
+    color: var(--primary-strong);
+}
+
+.autocomplete-footer-clear {
+    color: var(--muted);
+}
+
+.autocomplete-footer-clear:hover {
+    color: var(--text);
+}
+
+@keyframes autocomplete-in {
+    from { opacity: 0; transform: translateY(-3px); }
+    to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .autocomplete-menu {
+        animation: none;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .autocomplete-menu {
+        max-width: none;
+        max-height: 50vh;
+    }
+
+    .autocomplete-option {
+        min-height: 44px;
+    }
+}
+
+/* --- Search history (Phase 11.5) ---------------------------------------- */
+
+.search-history {
+    padding: 1rem;
+}
+
+.search-history-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.625rem;
+}
+
+.search-history-title {
+    font-size: 0.8125rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0;
+}
+
+.search-history-empty {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.search-history-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.25rem;
+    border-top: 1px solid var(--border);
+}
+
+.history-item:first-child {
+    border-top: 0;
+}
+
+.history-item-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.history-item-link {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-height: 44px;
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.history-item-link:hover {
+    color: var(--primary);
+}
+
+.history-item-icon {
+    color: var(--muted);
+    font-size: 0.875rem;
+    flex: 0 0 auto;
+}
+
+.history-item-term {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.history-item-link:hover .history-item-term {
+    color: var(--primary);
+}
+
+.history-item-filters {
+    font-size: 0.68rem;
+    font-weight: 700;
+    flex: 0 0 auto;
+}
+
+.history-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--muted);
+    font-size: 0.75rem;
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+.history-item-count {
+    color: var(--primary);
+    font-weight: 700;
+    background: var(--primary-soft);
+    border-radius: var(--radius-full);
+    padding: 1px 8px;
+}
+
+.history-item-delete {
+    margin: 0;
+    flex: 0 0 auto;
+}
+
+.history-item-delete-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+    padding: 0;
+    color: var(--muted);
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: transparent;
+}
+
+.history-item-delete-btn:hover {
+    color: var(--danger, #dc3545);
+    background: color-mix(in srgb, var(--danger, #dc3545) 10%, transparent);
+    border-color: color-mix(in srgb, var(--danger, #dc3545) 35%, transparent);
+}
+
+.history-item-delete-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px var(--bs-focus-ring-color);
+    border-color: var(--primary);
+}
+
+@media (max-width: 575.98px) {
+    .history-item {
+        flex-wrap: wrap;
+    }
+
+    .history-item-meta {
+        flex-basis: 100%;
+        padding-left: 2.125rem;
+        white-space: normal;
+    }
+}

@@ -52,6 +52,7 @@ use BookSphere\App\Models\User;
 use BookSphere\App\Services\AuthService;
 use BookSphere\App\Services\BookImportService;
 use BookSphere\App\Services\BookService;
+use BookSphere\App\Services\BulkImportService;
 use BookSphere\App\Services\CacheManager;
 use BookSphere\App\Services\CircuitBreaker;
 use BookSphere\App\Services\GoogleBooksClient;
@@ -272,7 +273,12 @@ $service = new GoogleBooksService(
 $importer = new BookImportService(new Book(), new Author(), new Category(), $config);
 $books    = new Book();
 
-$controller = new GoogleBooksController($service, $importer);
+$controller = new GoogleBooksController(
+    $service,
+    $importer,
+    new BulkImportService($service, $importer, new Book(), new Logger($temp . '/test.log'), $config),
+    new \BookSphere\App\Services\GoogleBooksSyncService($service, $importer, new Book(), null, new Logger($temp . '/test.log'), $config),
+);
 
 // ---------------------------------------------------------------------
 // Test harness
@@ -591,6 +597,7 @@ $probeHead = '<?php' . PHP_EOL
     . 'use BookSphere\\App\\Models\\User;' . PHP_EOL
     . 'use BookSphere\\App\\Services\\AuthService;' . PHP_EOL
     . 'use BookSphere\\App\\Services\\BookImportService;' . PHP_EOL
+    . 'use BookSphere\\App\\Services\\BulkImportService;' . PHP_EOL
     . 'use BookSphere\\App\\Services\\CacheManager;' . PHP_EOL
     . 'use BookSphere\\App\\Services\\CircuitBreaker;' . PHP_EOL
     . 'use BookSphere\\App\\Services\\GoogleBooksClient;' . PHP_EOL
@@ -641,7 +648,9 @@ $probeFetch = $probeHead
     . '    new Logger(' . var_export($temp . '/fetch_probe.log', true) . '),' . PHP_EOL
     . '    $config,' . PHP_EOL
     . ');' . PHP_EOL
-    . '$probeController = new GoogleBooksController($probeService, new BookImportService(new Book(), new Author(), new Category(), $config));' . PHP_EOL
+    . '$probeImporter = new BookImportService(new Book(), new Author(), new Category(), $config);' . PHP_EOL
+    . '$probeBulk = new BulkImportService($probeService, $probeImporter, new Book(), new Logger(' . var_export($temp . '/fetch_probe.log', true) . '), $config);' . PHP_EOL
+    . '$probeController = new GoogleBooksController($probeService, $probeImporter, $probeBulk, new BookSphere\App\Services\GoogleBooksSyncService($probeService, $probeImporter, new Book(), null, new Logger(' . var_export($temp . '/fetch_probe.log', true) . '), $config));' . PHP_EOL
     . '$_SERVER[\'HTTP_X_REQUESTED_WITH\'] = \'fetch\';' . PHP_EOL
     . '$cases = [];' . PHP_EOL
     . '$runCase = function (array $post) use ($probeController, &$cases): void {' . PHP_EOL
@@ -707,9 +716,12 @@ $probeRedirect = $probeHead
     . '    new Logger(' . var_export($temp . '/probe.log', true) . '),' . PHP_EOL
     . '    $config,' . PHP_EOL
     . ');' . PHP_EOL
+    . '$gbImporter = new BookImportService(new Book(), new Author(), new Category(), $config);' . PHP_EOL
     . '$controller = new GoogleBooksController(' . PHP_EOL
     . '    $service,' . PHP_EOL
-    . '    new BookImportService(new Book(), new Author(), new Category(), $config),' . PHP_EOL
+    . '    $gbImporter,' . PHP_EOL
+    . '    new BulkImportService($service, $gbImporter, new Book(), new Logger(' . var_export($temp . '/probe.log', true) . '), $config),' . PHP_EOL
+    . '    new BookSphere\App\Services\GoogleBooksSyncService($service, $gbImporter, new Book(), null, new Logger(' . var_export($temp . '/probe.log', true) . '), $config),' . PHP_EOL
     . ');' . PHP_EOL
     . 'register_shutdown_function(function (): void {' . PHP_EOL
     . '    echo (string) session()->getFlash(\'success\', \'\');' . PHP_EOL

@@ -453,6 +453,165 @@ final class BookRepository
     }
 
     /**
+     * The books columns the Phase 10.6 synchronizer is allowed to
+     * write. Anything else (status, isbn, google_book_id, the
+     * review-derived rating columns, cover_image) is deliberately
+     * absent: user/admin-managed values must never be overwritten by
+     * a provider refresh. The whitelist doubles as the security gate -
+     * a malformed field map can never reach the SET clause.
+     */
+    private const SYNC_META_COLUMNS = [
+        'title', 'subtitle', 'description', 'publisher', 'published_year',
+        'language', 'page_count', 'preview_link',
+        'provider_rating', 'provider_ratings_count',
+    ];
+
+    /**
+     * Update ONLY the changed provider-metadata columns of a book
+     * (Phase 10.6). The narrow SET clause is built from the caller's
+     * change set but restricted to the SYNC_META_COLUMNS whitelist, so
+     * the synchronizer can never write a column it does not own. The
+     * row's updated_at is bumped so "Recently updated" reflects the
+     * refresh, exactly like every other real metadata change.
+     *
+     * @param array<string, mixed> $changes Only the changed columns
+     * @return bool Whether any column was written
+     */
+    public function updateMetadata(int $id, array $changes): bool
+    {
+        $changes = array_intersect_key($changes, array_flip(self::SYNC_META_COLUMNS));
+
+        if ($changes === []) {
+            return false;
+        }
+
+        $sets = [];
+        $params = [];
+
+        foreach ($changes as $column => $value) {
+            $sets[]    = "$column = ?";
+            $params[]  = $value;
+        }
+
+        $params[] = $this->now();
+        $params[] = $id;
+
+        return db()->execute(
+            'UPDATE books
+             SET ' . implode(', ', $sets) . ', updated_at = ?
+             WHERE id = ? AND deleted_at IS NULL',
+            $params,
+        ) > 0;
+    }
+
+    /**
+     * Stamp the outcome of a sync run on a book (Phase 10.6): the
+     * attempt time and the resulting status/message. The narrow path
+     * keeps the sync bookkeeping separate from the catalogue form
+     * columns, like updateCover() before it.
+     */
+    public function updateSynced(int $id, string $status, ?string $message): bool
+    {
+        return db()->execute(
+            'UPDATE books
+             SET synced_at = ?, sync_status = ?, sync_message = ?
+             WHERE id = ? AND deleted_at IS NULL',
+            [$this->now(), $status, $message, $id],
+        ) > 0;
+    }
+
+    /**
+     * Every catalogue row that carries a google_book_id (the books the
+     * synchronizer may touch) and is NOT soft-deleted. Used by the
+     * "sync all imported books" action - one query for the whole run,
+     * never a lookup per book.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function importedBooks(): array
+    {
+        return db()->query(
+            'SELECT *
+             FROM books
+             WHERE google_book_id IS NOT NULL AND google_book_id != \'\' AND deleted_at IS NULL
+             ORDER BY id ASC',
+        );
+    }
+
+    /**
+     * The full rows of the books matching the given google ids, keyed
+     * by google_book_id. The sync service reads the CURRENT local
+     * values from this one map (instead of a lookup per book) before
+     * diffing them against the provider record.
+     *
+     * @param array<int, string> $googleIds
+     * @return array<string, array<string, mixed>>
+     */
+    public function metadataFor(array $googleIds): array
+    {
+        $googleIds = array_values(array_unique(array_filter($googleIds, 'is_string')));
+
+        if ($googleIds === []) {
+            return [];
+        }
+
+        $rows = db()->query(
+            'SELECT *
+             FROM books
+             WHERE google_book_id IN (' . implode(', ', array_fill(0, count($googleIds), '?')) . ')
+               AND deleted_at IS NULL',
+            $googleIds,
+        );
+
+        $map = [];
+
+        foreach ($rows as $row) {
+            $map[(string) $row['google_book_id']] = $row;
+        }
+
+        return $map;
+    }
+
+    /**
+     * The slim sync-state map for a page of search results: every
+     * imported google id -> [local book id, last sync stamp, status,
+     * message]. ONE query for the whole page - the cards render
+     * "last synchronized" from this instead of a lookup per card.
+     *
+     * @param array<int, string> $googleIds
+     * @return array<string, array<string, mixed>>
+     */
+    public function syncOf(array $googleIds): array
+    {
+        $googleIds = array_values(array_unique(array_filter($googleIds, 'is_string')));
+
+        if ($googleIds === []) {
+            return [];
+        }
+
+        $rows = db()->query(
+            'SELECT id, google_book_id, synced_at, sync_status, sync_message
+             FROM books
+             WHERE google_book_id IN (' . implode(', ', array_fill(0, count($googleIds), '?')) . ')
+               AND deleted_at IS NULL',
+            $googleIds,
+        );
+
+        $map = [];
+
+        foreach ($rows as $row) {
+            $map[(string) $row['google_book_id']] = [
+                'book_id'      => (int) $row['id'],
+                'synced_at'    => $row['synced_at'] ?? null,
+                'sync_status'  => (string) ($row['sync_status'] ?? 'pending'),
+                'sync_message' => $row['sync_message'] ?? null,
+            ];
+        }
+
+        return $map;
+    }
+
+    /**
      * Replace the author links of a book.
      *
      * Delete-then-insert is simpler than diffing the old selection,

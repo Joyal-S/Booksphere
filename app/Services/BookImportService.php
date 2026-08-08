@@ -241,6 +241,37 @@ final class BookImportService
      */
     private function columnsFor(ProviderBookDTO $book): array
     {
+        $meta = $this->providerMetadata($book);
+
+        return [
+            'title'                  => $meta['title'],
+            'subtitle'               => $meta['subtitle'],
+            'description'            => $meta['description'],
+            'publisher'              => $meta['publisher'],
+            'published_year'         => $meta['published_year'],
+            'language'               => $meta['language'],
+            'page_count'             => $meta['page_count'],
+            'cover_image'            => $meta['cover_image'],
+            'status'                 => (string) ($this->config['import']['default_status'] ?? 'published'),
+            'isbn'                   => $book->isbn(),
+            'google_book_id'         => $book->externalId,
+            'preview_link'           => $meta['preview_link'],
+            'provider_rating'        => $meta['provider_rating'],
+            'provider_ratings_count' => $meta['provider_ratings_count'],
+        ];
+    }
+
+    /**
+     * The provider-OWNED metadata of one record, in ONE canonical
+     * shape. Both the importer (columnsFor) and the Phase 10.6
+     * synchronizer read from this single map, so an import and a
+     * refresh can never disagree about what a field should be - the
+     * sync only ever writes the columns this map feeds.
+     *
+     * @return array<string, mixed>
+     */
+    public function providerMetadata(ProviderBookDTO $book): array
+    {
         return [
             'title'                  => $book->title,
             'subtitle'               => $book->subtitle,
@@ -250,29 +281,56 @@ final class BookImportService
             'language'               => $book->language ?? 'en',
             'page_count'             => $book->pageCount,
             'cover_image'            => $book->thumbnail,
-            'status'                 => (string) ($this->config['import']['default_status'] ?? 'published'),
-            'isbn'                   => $book->isbn(),
-            'google_book_id'         => $book->externalId,
             'preview_link'           => $book->previewLink ?? $book->infoLink,
             'provider_rating'        => $book->averageRating,
             'provider_ratings_count' => $book->ratingsCount,
+            'authors'                => $this->normalizedNames($book->authors),
+            'categories'             => $this->normalizedNames($book->categories),
         ];
+    }
+
+    /**
+     * The normalized display-name list of a relation field: trimmed,
+     * de-duplicated, empty entries dropped, order kept. The ONE list
+     * rule for both the author/category naming and the sync change
+     * detection (a provider list with a stray space must not ping as
+     * "changed").
+     *
+     * @param array<int, string> $names
+     * @return array<int, string>
+     */
+    public function normalizedNames(array $names): array
+    {
+        $clean = [];
+
+        foreach (array_values($names) as $name) {
+            if (!is_string($name) || trim($name) === '') {
+                continue;
+            }
+
+            $name = trim($name);
+
+            if (in_array($name, $clean, true)) {
+                continue;
+            }
+
+            $clean[] = $name;
+        }
+
+        return $clean;
     }
 
     /**
      * Find-or-create every author name into its id, in order.
      *
-     * @param array<int, string> $names
      * @return array<int, int>
      */
-    private function authorIds(array $names): array
+    public function authorIds(array $names): array
     {
         $ids = [];
 
-        foreach (array_values(array_unique(array_filter($names, 'is_string'))) as $name) {
-            if (trim($name) !== '') {
-                $ids[] = $this->authors->findOrCreate($name);
-            }
+        foreach ($this->normalizedNames($names) as $name) {
+            $ids[] = $this->authors->findOrCreate($name);
         }
 
         return $ids;
@@ -281,17 +339,14 @@ final class BookImportService
     /**
      * Find-or-create every category name into its id, in order.
      *
-     * @param array<int, string> $names
      * @return array<int, int>
      */
-    private function categoryIds(array $names): array
+    public function categoryIds(array $names): array
     {
         $ids = [];
 
-        foreach (array_values(array_unique(array_filter($names, 'is_string'))) as $name) {
-            if (trim($name) !== '') {
-                $ids[] = $this->categories->findOrCreate($name);
-            }
+        foreach ($this->normalizedNames($names) as $name) {
+            $ids[] = $this->categories->findOrCreate($name);
         }
 
         return $ids;

@@ -258,7 +258,7 @@ class CoverDownloadService
     {
         $timeout      = (int) ($this->config['covers']['timeout_seconds'] ?? 10);
         $maxBytes     = (int) ($this->config['covers']['max_bytes'] ?? 5 * 1024 * 1024);
-        $maxRedirects = (int) ($this->config['covers']['max_redirects'] ?? 5);
+        $maxRedirects = max(0, (int) ($this->config['covers']['max_redirects'] ?? 5));
 
         $temp   = $this->tempPath();
         $handle = @fopen($temp, 'wb');
@@ -270,65 +270,139 @@ class CoverDownloadService
         $bytes   = 0;
         $aborted = false;
 
-        $ch = curl_init();
+        // Follow redirects MANUALLY so every hop re-passes the SSRF
+        // guard: an attacker can point the first URL anywhere, but a
+        // redirect into a private network is stopped here. The number
+        // of hops is still capped by covers.max_redirects.
+        $current  = $url;
+        $redirects = 0;
 
-        curl_setopt_array($ch, [
-            CURLOPT_URL            => $url,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS      => $maxRedirects,
-            CURLOPT_CONNECTTIMEOUT => $timeout,
-            CURLOPT_TIMEOUT        => $timeout,
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_USERAGENT      => (string) ($this->config['client']['user_agent'] ?? 'BookSphere/1.0'),
-            CURLOPT_WRITEFUNCTION  => function ($ch, string $data) use (&$bytes, $handle, $maxBytes, &$aborted): int {
-                $bytes += strlen($data);
+        while (true) {
+            if (!$this->validSourceUrl($current)) {
+                @fclose($handle);
+                @unlink($temp);
+                throw GoogleBooksException::invalidResponse('invalid cover URL');
+            }
 
-                if ($bytes > $maxBytes) {
-                    $aborted = true;
+            $ch = curl_init();
 
-                    return 0; // curl stops the transfer (CURLE_WRITE_ERROR)
+            curl_setopt_array($ch, [
+                CURLOPT_URL            => $current,
+                CURLOPT_FOLLOWLOCATION => false,
+                CURLOPT_CONNECTTIMEOUT => $timeout,
+                CURLOPT_TIMEOUT        => $timeout,
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_USERAGENT      => (string) ($this->config['client']['user_agent'] ?? 'BookSphere/1.0'),
+                CURLOPT_HEADER         => false,
+                CURLOPT_WRITEFUNCTION  => function ($ch, string $data) use (&$bytes, &$aborted, $handle, $maxBytes): int {
+                    $bytes += strlen($data);
+
+                    if ($bytes > $maxBytes) {
+                        $aborted = true;
+
+                        return 0; // curl stops the transfer (CURLE_WRITE_ERROR)
+                    }
+
+                    return (int) fwrite($handle, $data);
+                },
+            ]);
+
+            $body   = curl_exec($ch);
+            $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+            $errno  = curl_errno($ch);
+            $error  = curl_error($ch);
+
+            $location = trim((string) curl_getinfo($ch, CURLINFO_REDIRECT_URL));
+
+            curl_close($ch);
+
+            if ($aborted) {
+                @fclose($handle);
+                @unlink($temp);
+                throw GoogleBooksException::invalidResponse('cover exceeds the size limit');
+            }
+
+            // A redirect (301/302/303/307/308) with a Location hops to
+            // the next URL and is re-validated; relative targets are
+            // resolved against the previous hop.
+            if (in_array($status, [301, 302, 303, 307, 308], true) && $location !== '') {
+                if ($redirects >= $maxRedirects) {
+                    @fclose($handle);
+                    @unlink($temp);
+                    throw GoogleBooksException::invalidResponse('too many redirects');
                 }
 
-                return (int) fwrite($handle, $data);
-            },
-        ]);
+                $redirects++;
 
-        $body   = curl_exec($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        $errno  = curl_errno($ch);
-        $error  = curl_error($ch);
+                $next = $this->resolveLocation($current, $location);
 
-        curl_close($ch);
-        fclose($handle);
+                if ($next === '') {
+                    @fclose($handle);
+                    @unlink($temp);
+                    throw GoogleBooksException::invalidResponse('invalid redirect URL');
+                }
 
-        if ($aborted) {
-            @unlink($temp);
-            throw GoogleBooksException::invalidResponse('cover exceeds the size limit');
+                $current = $next;
+
+                continue;
+            }
+
+            if ($body === false) {
+                @fclose($handle);
+                @unlink($temp);
+                throw $errno === CURLE_OPERATION_TIMEOUTED
+                    ? GoogleBooksException::timeout($timeout)
+                    : GoogleBooksException::networkFailure($error !== '' ? $error : null);
+            }
+
+            if ($status === 404) {
+                @fclose($handle);
+                @unlink($temp);
+                throw GoogleBooksException::notFound();
+            }
+
+            if ($status === 429) {
+                @fclose($handle);
+                @unlink($temp);
+                throw GoogleBooksException::rateLimited();
+            }
+
+            if ($status >= 400 || $status === 0) {
+                @fclose($handle);
+                @unlink($temp);
+                throw GoogleBooksException::invalidResponse("HTTP {$status}");
+            }
+
+            @fclose($handle);
+
+            return $temp;
+        }
+    }
+
+    /**
+     * Resolve a Location header against the URL it came from (relative
+     * redirects included); '' when the result is unusable.
+     */
+    private function resolveLocation(string $base, string $location): string
+    {
+        if ($location !== '' && preg_match('~^[a-z][a-z0-9+.\-]*://~i', $location)) {
+            return $location;
         }
 
-        if ($body === false) {
-            @unlink($temp);
-            throw $errno === CURLE_OPERATION_TIMEOUTED
-                ? GoogleBooksException::timeout($timeout)
-                : GoogleBooksException::networkFailure($error !== '' ? $error : null);
+        $parts = (array) parse_url($base);
+
+        if (empty($parts['scheme']) || empty($parts['host'])) {
+            return '';
         }
 
-        if ($status === 404) {
-            @unlink($temp);
-            throw GoogleBooksException::notFound();
-        }
+        $leads = str_starts_with($location, '/');
 
-        if ($status === 429) {
-            @unlink($temp);
-            throw GoogleBooksException::rateLimited();
-        }
+        $path = $location !== '' && !$leads ? rtrim((string) ($parts['path'] ?? ''), '/') . '/' . ltrim($location, '/') : ($location !== '' ? $location : (string) ($parts['path'] ?? '/'));
 
-        if ($status >= 400 || $status === 0) {
-            @unlink($temp);
-            throw GoogleBooksException::invalidResponse("HTTP {$status}");
-        }
+        $scheme   = isset($parts['scheme']) ? $parts['scheme'] . '://' : '//';
+        $append   = isset($parts['port']) && $parts['port'] !== '' ? ':' . $parts['port'] : '';
 
-        return $temp;
+        return $scheme . $parts['host'] . $append . $path . (isset($parts['query']) && $parts['query'] !== '' && $path === (string) ($parts['path'] ?? '/') ? '?' . $parts['query'] : '');
     }
 
     /**
@@ -578,13 +652,106 @@ class CoverDownloadService
     // Small config/format helpers
     // -----------------------------------------------------------------
 
-    /** Whether a URL may be fetched at all (http/https only). */
+    /**
+     * Whether a URL may be fetched at all. http/https ONLY, and never
+     * a loopback / private / link-local / CGNAT / reserved address or
+     * an internal hostname - the cover URL travels straight from the
+     * provider, so an SSRF guard must sit at the fetch gate (Task 11:
+     * security). Pure string/IP math keeps this warning-free and
+     * deterministic - no DNS, no sockets.
+     */
     private function validSourceUrl(string $url): bool
     {
         $parts  = (array) parse_url($url);
         $scheme = strtolower((string) ($parts['scheme'] ?? ''));
+        $host   = strtolower((string) ($parts['host'] ?? ''));
 
-        return ($scheme === 'http' || $scheme === 'https') && !empty($parts['host']);
+        if (($scheme !== 'http' && $scheme !== 'https') || $host === '') {
+            return false;
+        }
+
+        // Literal addresses get the numeric range check (an attacker
+        // cannot smuggle a private network address past it with a
+        // TLD trick). Non-literal hostnames are matched by name.
+        return $this->isIpLiteral($host)
+            ? !$this->isBlockedIpv4($host) && !$this->isBlockedIpv6($host)
+            : !$this->isBlockedHostname($host);
+    }
+
+    private function isIpLiteral(string $host): bool
+    {
+        return filter_var($host, FILTER_VALIDATE_IP) !== false;
+    }
+
+    /**
+     * Blocked hostnames: the loopback name, DNS suffixes reserved for
+     * internal use, and the cloud-metadata host the server itself
+     * would resolve to.
+     */
+    private function isBlockedHostname(string $host): bool
+    {
+        return $host === 'localhost'
+            || str_ends_with($host, '.localhost')
+            || str_ends_with($host, '.local')
+            || str_ends_with($host, '.internal')
+            || $host === 'metadata.google.internal'
+            || $host === 'metadata';
+    }
+
+    /**
+     * Blocked IPv4 ranges: 0/8, loopback 127/8, RFC1918 (10/8,
+     * 172.16/12, 192.168/16), link-local 169.254/16, CGNAT 100.64/10,
+     * benchmark/docs 192.0.2/24 198.51.100/24 203.0.113/24,
+     * multicast 224/4 and reserved 240/4.
+     */
+    private function isBlockedIpv4(string $host): bool
+    {
+        if (!filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            return false;
+        }
+
+        $long = (int) sprintf('%u', (int) ip2long($host));
+
+        return $long < 0x01000000                                  // 0.0.0.0/8
+            || $long >= 0x0A000000 && $long <= 0x0AFFFFFF          // 10.0.0.0/8
+            || $long >= 0x64400000 && $long <= 0x647FFFFF          // 100.64.0.0/10
+            || $long >= 0x7F000000 && $long <= 0x7FFFFFFF          // 127.0.0.0/8
+            || $long >= 0xA9FE0000 && $long <= 0xA9FEFFFF          // 169.254.0.0/16
+            || $long >= 0xAC100000 && $long <= 0xAC1FFFFF          // 172.16.0.0/12
+            || $long >= 0xC0000000 && $long <= 0xC00000FF          // 192.0.0.0/24
+            || $long >= 0xC0A80000 && $long <= 0xC0A8FFFF          // 192.168.0.0/16
+            || $long >= 0xC6120000 && $long <= 0xC633FFFF          // 198.18.0.0/15
+            || $long >= 0xC6336400 && $long <= 0xC63364FF          // 198.51.100.0/24
+            || $long >= 0xCB007100 && $long <= 0xCB0071FF          // 203.0.113.0/24
+            || $long >= 0xE0000000                                 // 224.0.0.0/4 + 240/4
+        ;
+    }
+
+    /**
+     * Blocked IPv6: :: and ::1, IPv4-mapped (::ffff:a.b.c.d),
+     * link-local fe80::/10 and ULA fc00::/7.
+     */
+    private function isBlockedIpv6(string $host): bool
+    {
+        $addr = @inet_pton($host);
+
+        if ($addr === false || strlen($addr) !== 16) {
+            return false;
+        }
+
+        // ::1 / :: (unspecified / loopback).
+        if (strspn($addr, "\x00") >= 15) {
+            return true;
+        }
+
+        // ::ffff:0:0/96 - run the embedded v4 through the v4 checks.
+        if (strncmp($addr, "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff", 12) === 0) {
+            return $this->isBlockedIpv4(inet_ntop((string) substr($addr, 12, 4)));
+        }
+
+        // fe80::/10 (link-local) and fc00::/7 (unique local).
+        return (ord($addr[0]) & 0xFE) === 0xFC
+            || (ord($addr[0]) === 0xFE && (ord($addr[1]) & 0xC0) === 0x80);
     }
 
     /** The MIME type -> extension map for what the downloader stores. */

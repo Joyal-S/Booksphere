@@ -28,6 +28,9 @@ use BookSphere\App\DTO\ProviderSearchResult;
  *     $existing - [google_book_id => local book id] (Phase 10.3); the
  *                 card buttons use it to show "In library" on records
  *                 that are already in the local catalogue.
+ *     $syncInfo - [google_book_id => sync state] for the imported
+ *                 cards (Phase 10.6), fed by the controller for BOTH
+ *                 the full page and the live endpoint.
  *
  * The grid cards are provider records (ProviderBookDTO) until the
  * admin imports them: the title links OUT to the Google Books detail
@@ -38,6 +41,7 @@ use BookSphere\App\DTO\ProviderSearchResult;
 $result   = $result ?? null;
 $query    = (string) ($query ?? '');
 $existing = (array) ($existing ?? []);
+$syncInfo = (array) ($syncInfo ?? []);
 
 $book = null;
 
