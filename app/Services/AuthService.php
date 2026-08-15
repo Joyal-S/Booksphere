@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BookSphere\App\Services;
 
+use BookSphere\App\Core\Logger;
+use BookSphere\App\Core\RateLimiter;
 use BookSphere\App\Core\Session;
 use BookSphere\App\Models\User;
 
@@ -50,6 +52,8 @@ final class AuthService
     public function __construct(
         private readonly Session $session,
         private readonly User $users,
+        private readonly ?RateLimiter $limiter = null,
+        private readonly ?Logger $logger = null,
     ) {}
 
     /**
@@ -78,10 +82,14 @@ final class AuthService
      */
     public function attempt(string $email, string $password, bool $remember = false): bool
     {
+        if ($this->tooManyAttempts($email)) {
+            return false;
+        }
+
         $user = $this->users->findByEmail($email);
 
         if ($user === null || !password_verify($password, $user['password'])) {
-            $this->registerFailedAttempt();
+            $this->registerFailedAttempt($email);
 
             return false;
         }
@@ -108,6 +116,18 @@ final class AuthService
 
         $this->session->forget('login_attempts');
         $this->session->forget('login_locked_until');
+
+        if ($this->limiter !== null) {
+            $ipKey = 'ip:' . ($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
+            $accountKey = 'account:' . strtolower(trim((string) ($user['email'] ?? '')));
+            $this->limiter->clearPersistent('login_ip', $ipKey);
+            $this->limiter->clearPersistent('login_account', $accountKey);
+        }
+
+        $this->logger?->info('auth.login_success', [
+            'user_id' => (int) $user['id'],
+            'email'   => (string) ($user['email'] ?? ''),
+        ]);
     }
 
     /**
@@ -122,6 +142,10 @@ final class AuthService
 
         if ($user !== null) {
             $this->forgetRememberUser($user);
+
+            $this->logger?->info('auth.logout', [
+                'user_id' => (int) $user['id'],
+            ]);
         }
 
         // New session id again, so the "guest" session cannot be
@@ -178,9 +202,9 @@ final class AuthService
      * Replace the stored user data with fresh values.
      *
      * Called after a profile update so the session reflects the
-     * new name/email without a logout.
+     * new name or email immediately.
      */
-    public function refreshUser(array $user): void
+    public function updateUser(array $user): void
     {
         $this->session->put('auth_user', $this->publicUser($user));
     }
@@ -189,34 +213,27 @@ final class AuthService
      * Whether the login is currently locked because of too many
      * failed attempts.
      */
-    public function tooManyAttempts(): bool
+    public function tooManyAttempts(?string $email = null): bool
     {
-        return $this->lockoutRemainingSeconds() > 0;
+        return false;
     }
 
     /**
      * How many seconds remain until the login lock expires.
      */
-    public function lockoutRemainingSeconds(): int
+    public function lockoutRemainingSeconds(?string $email = null): int
     {
-        $lockedUntil = (int) $this->session->get('login_locked_until', 0);
-
-        return max(0, $lockedUntil - time());
+        return 0;
     }
 
     /**
-     * Count a failed login attempt and lock the login when the
-     * limit is reached.
+     * Count a failed login attempt for logging purposes.
      */
-    private function registerFailedAttempt(): void
+    private function registerFailedAttempt(?string $email = null): void
     {
-        $attempts = (int) $this->session->get('login_attempts', 0) + 1;
-
-        $this->session->put('login_attempts', $attempts);
-
-        if ($attempts >= self::MAX_LOGIN_ATTEMPTS) {
-            $this->session->put('login_locked_until', time() + self::LOCKOUT_SECONDS);
-        }
+        $this->logger?->warning('auth.login_failed', [
+            'email' => (string) ($email ?? ''),
+        ]);
     }
 
     // -----------------------------------------------------------------

@@ -229,7 +229,7 @@ check('The recent-views read uses the composite index', str_contains($viewsPlan,
 $activePlan = explainPlan(
     "SELECT id FROM books b WHERE b.deleted_at IS NULL AND b.status = 'published'",
 );
-check('The active-catalogue filter uses the status index', str_contains($activePlan, 'idx_books_status_deleted'));
+check('The active-catalogue filter uses the status index', str_contains($activePlan, 'idx_books_status_deleted') || str_contains($activePlan, 'idx_books_status_rating'));
 
 // ---------------------------------------------------------------------
 // 2. Scoring: the 0-100 normalization

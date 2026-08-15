@@ -977,7 +977,16 @@ final class LibraryController extends Controller
             return;
         }
 
-        if (!$this->limiter->allow($bucket, $limit, $window)) {
+        $userId = auth()?->id();
+        $persistentKey = $userId !== null ? 'user:' . $userId : 'ip:' . ($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
+
+        if (!$this->limiter->allow($bucket, $limit, $window, $persistentKey)) {
+            $seconds = max(1, $this->limiter->remainingSeconds($bucket, $window, $persistentKey));
+
+            if (!headers_sent()) {
+                header('Retry-After: ' . $seconds);
+            }
+
             Response::error(429, 'Too many requests - please try again in a minute.');
         }
     }

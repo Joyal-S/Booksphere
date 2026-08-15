@@ -22,7 +22,7 @@ declare(strict_types=1);
         <p class="auth-sub">Start your reading journey today.</p>
     </header>
 
-    <form class="auth-form" method="post" action="/register" data-auth-form>
+    <form class="auth-form" method="post" action="/register" autocomplete="off" data-auth-form>
         <input type="hidden" name="_token" value="<?= e(csrf_token()) ?>">
 
         <div class="auth-grid-2">
@@ -32,8 +32,8 @@ declare(strict_types=1);
                 'label'        => 'Full Name',
                 'type'         => 'text',
                 'value'        => $old['full_name'] ?? '',
-                'placeholder'  => 'Jane Smith',
-                'autocomplete' => 'name',
+                'placeholder'  => 'Enter your full name',
+                'autocomplete' => 'off',
                 'maxlength'    => 100,
                 'icon'         => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
                 'error'        => $errors['full_name'][0] ?? null,
@@ -47,8 +47,8 @@ declare(strict_types=1);
                 'label'        => 'Email Address',
                 'type'         => 'email',
                 'value'        => $old['email'] ?? '',
-                'placeholder'  => 'you@example.com',
-                'autocomplete' => 'email',
+                'placeholder'  => 'Enter your email',
+                'autocomplete' => 'off',
                 'maxlength'    => 255,
                 'icon'         => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="15" rx="3"/><path d="m3 6 9 6.5L21 6"/></svg>',
                 'error'        => $errors['email'][0] ?? null,

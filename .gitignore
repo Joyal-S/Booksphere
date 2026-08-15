@@ -26,6 +26,12 @@
 # Logs
 *.log
 
+# Caches & temporary runtime files
+/database/cache/*
+!/database/cache/.gitkeep
+/database/personalization_test_cache/
+/scratch/
+
 # OS / editor noise
 .DS_Store
 Thumbs.db

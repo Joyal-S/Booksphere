@@ -34,7 +34,7 @@ $badge = array_merge([
 
 $label = $badge['label'] !== null
     ? $badge['label']
-    : number_format((float) $badge['rating'], 1);
+    : format_rating($badge['rating']);
 
 ?>
 <span class="rating-badge">

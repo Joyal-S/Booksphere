@@ -23,7 +23,16 @@ final class Author
      */
     public function all(): array
     {
-        return db()->query('SELECT id, name FROM authors ORDER BY name ASC');
+        return db()->query(
+            'SELECT a.id, a.name
+             FROM authors a
+             JOIN book_authors ba ON ba.author_id = a.id
+             JOIN books b ON b.id = ba.book_id
+             WHERE b.status = ? AND b.deleted_at IS NULL
+             GROUP BY a.id, a.name
+             ORDER BY a.name ASC',
+            ['published'],
+        );
     }
 
     /**

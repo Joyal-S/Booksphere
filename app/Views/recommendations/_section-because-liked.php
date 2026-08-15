@@ -65,7 +65,7 @@ $wishlistIds = $wishlistIds ?? [];
                     </div>
                 </div>
 
-                <div class="row g-3 g-xl-4 row-cols-1 row-cols-md-2 row-cols-xl-4" aria-label="Similar to <?= e($anchor['anchor']['title'] ?? '') ?>">
+                <div class="rec-card-grid rec-card-grid-4" aria-label="Similar to <?= e($anchor['anchor']['title'] ?? '') ?>">
                     <?php foreach ($anchor['items'] as $item): ?>
                         <?php $rec = [
                             'book'         => $item['book'] ?? $item,

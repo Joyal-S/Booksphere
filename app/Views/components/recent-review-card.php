@@ -44,11 +44,11 @@ $review = array_merge([
     <a href="/books/<?= (int) $review['book_id'] ?>" class="text-decoration-none flex-shrink-0">
         <?php if (!empty($review['cover_image'])): ?>
             <img src="<?= e($review['cover_image']) ?>" alt="<?= e($review['book_title']) ?> cover"
-                 class="recent-review-cover" loading="lazy">
+                 class="recent-review-cover" loading="lazy"
+                 onerror="this.onerror=null;this.src='/assets/images/cover-placeholder.svg';">
         <?php else: ?>
-            <span class="recent-review-cover book-cover-placeholder">
-                <i class="fa-solid fa-book-open" aria-hidden="true"></i>
-            </span>
+            <img src="/assets/images/cover-placeholder.svg" alt="<?= e($review['book_title']) ?> cover"
+                 class="recent-review-cover" loading="lazy">
         <?php endif; ?>
     </a>
     <div class="flex-grow-1 min-w-0">

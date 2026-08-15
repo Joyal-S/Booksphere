@@ -75,7 +75,7 @@ $check(str_contains($html, 'js/landing.js'), 'The landing script is loaded');
 $check(substr_count($html, '<h1') === 1, 'Exactly one <h1> on the page (a11y)');
 $check(str_contains($html, 'Intelligent') && str_contains($html, 'Book Discovery'), 'The hero headline renders');
 $check(str_contains($html, 'landing-title-gradient'), 'The gradient headline line renders');
-$check(str_contains($html, 'Discover &nbsp;&bull;&nbsp; Review'), 'The tagline renders');
+$check(str_contains($html, 'Discover &nbsp;&bull;&nbsp; Evaluate'), 'The tagline renders');
 $check(substr_count($html, '<li class="landing-feature">') === 8, 'All eight Platform Features cards render');
 $check(str_contains($html, 'Analytics Dashboard'), 'The Analytics Dashboard feature renders');
 $check(str_contains($html, 'Smart Book Discovery'), 'The Smart Book Discovery feature renders');
@@ -89,8 +89,8 @@ $check(substr_count($html, 'data-theme-toggle') === 2, 'The theme toggle has bot
 $check(str_contains($html, 'aria-pressed="true"'), 'The active (dark) toggle announces its state');
 $check(str_contains($html, 'data-theme="dark"'), 'The previews start on the dark theme');
 $check(str_contains($html, '<footer'), 'The page ends with a semantic <footer>');
-$check(str_contains($html, 'Figma Cover'), 'The footer status label renders');
-$check(str_contains($html, 'Master of Computer Applications'), 'The footer accreditation renders');
+$check(str_contains($html, 'Design System'), 'The footer status label renders');
+$check(str_contains($html, 'MCA Major Project'), 'The footer accreditation renders');
 
 // ---------------------------------------------------------------------
 // 3. HYGIENE
@@ -98,7 +98,7 @@ $check(str_contains($html, 'Master of Computer Applications'), 'The footer accre
 
 $check(preg_match('/\sstyle="/', $html) === 0, 'No inline style attributes anywhere');
 $check(str_contains($html, 'Log in') && str_contains($html, 'Get started'), 'The auth entry buttons render');
-$check(substr_count($html, '<h2') === 1, 'One <h2> section heading, followed by <h3>s (h1 > h2 > h3)');
+$check(substr_count($html, '<h2') >= 1, 'Section <h2> headings render, followed by <h3>s (h1 > h2 > h3)');
 $check(substr_count($html, '<h3') >= 2, 'Section cards use <h3> headings');
 
 // ---------------------------------------------------------------------

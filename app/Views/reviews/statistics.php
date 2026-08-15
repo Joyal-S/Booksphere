@@ -59,7 +59,7 @@ $highest   = $highest ?? [];
             <?php
             $myTiles = [
                 ['icon' => 'fa-comments', 'label' => 'Reviews written', 'value' => (int) $mine['total'], 'tone' => 'primary'],
-                ['icon' => 'fa-star', 'label' => 'My average rating', 'value' => $mine['average'] === null ? '—' : number_format((float) $mine['average'], 1), 'tone' => 'success'],
+                ['icon' => 'fa-star', 'label' => 'My average rating', 'value' => $mine['average'] === null ? '—' : format_rating($mine['average']), 'tone' => 'success'],
                 ['icon' => 'fa-arrow-up', 'label' => 'My highest rating', 'value' => $mine['highest'] === null ? '—' : (int) $mine['highest'] . ' ★', 'tone' => 'warning'],
                 ['icon' => 'fa-arrow-down', 'label' => 'My lowest rating', 'value' => $mine['lowest'] === null ? '—' : (int) $mine['lowest'] . ' ★', 'tone' => 'danger'],
                 ['icon' => 'fa-clock', 'label' => 'My latest review', 'value' => $mine['latest'] === null ? '—' : format_review_date((string) $mine['latest']), 'tone' => 'info'],

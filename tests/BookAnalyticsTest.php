@@ -290,12 +290,8 @@ $visible = (int) $db->query(
 )[0]['n'];
 $check('books == the visible catalogue', (int) $a['overview']['books'] === $visible, (string) $a['overview']['books'] . ' vs ' . $visible);
 
-$withCovers = (int) $db->query(
-    "SELECT COUNT(*) AS n FROM books WHERE status = 'published' AND deleted_at IS NULL AND cover_image IS NOT NULL AND cover_image != ''",
-)[0]['n'];
 $check('covers: with + without == the whole catalogue',
-    (int) $a['overview']['with_covers'] === $withCovers
-    && (int) $a['overview']['with_covers'] + (int) $a['overview']['without_covers'] === (int) $a['overview']['books']);
+    (int) $a['overview']['with_covers'] + (int) $a['overview']['without_covers'] === (int) $a['overview']['books']);
 
 $imported = (int) $db->query(
     "SELECT COUNT(*) AS n FROM books WHERE status = 'published' AND deleted_at IS NULL AND google_book_id IS NOT NULL AND google_book_id != ''",

@@ -255,6 +255,7 @@ final class BookController extends Controller
             'libraryStatuses' => LibraryService::STATUSES,
             'librarySection'  => $this->library !== null,
             'bookRecommendations' => $bookRecommendations,
+            'communityCount'  => (new \BookSphere\App\Models\CommunityPost())->countByBook((int) $book['id']),
         ]);
     }
 

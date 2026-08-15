@@ -144,7 +144,7 @@ final class AdminController extends Controller
 
         $this->view('admin.analytics-report', [
             'title'       => 'Analytics Report',
-            'active'      => 'admin',
+            'active'      => 'admin-analytics-report',
             'bodyClass'   => 'report-print',
             'dashboard'   => $dashboard,
             'range'       => $range,

@@ -105,9 +105,9 @@ final class SearchQueryRequest
     /** The chosen entity scope (always one of the enabled scopes). */
     public function scope(): string
     {
-        $scope = (string) ($this->input['scope'] ?? 'books');
+        $scope = (string) ($this->input['scope'] ?? 'all');
 
-        return in_array($scope, $this->enabledScopes(), true) ? $scope : 'books';
+        return in_array($scope, $this->enabledScopes(), true) ? $scope : 'all';
     }
 
     /** The 1-based page to request. */

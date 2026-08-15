@@ -181,8 +181,9 @@ final class RecommendationScoring
         'wishlist'     => 10,
         'rating'       => 10,
         'review_score' => 10,
+        'community'    => 5,
         'trending'     => 0,
-        'popularity'   => 5,
+        'popularity'   => 0,
     ];
 
     /** How many shared favourite categories earn the full category weight. */
@@ -207,6 +208,9 @@ final class RecommendationScoring
      * cap of 1 means the full weight is earned at a perfect 5.0.
      */
     public const REVIEW_SCORE_FACTOR_CAP = 1.0;
+
+    /** How many Community signal points earn the full community weight. */
+    public const COMMUNITY_FACTOR_CAP = 5.0;
 
     /** The popularity score that earns the full (small) popularity weight. */
     public const POPULARITY_NORMALIZER = 3.0;
@@ -250,6 +254,7 @@ final class RecommendationScoring
      *         'review_score' => float  the book's community review quality,
      *                                  approved average rating / 5 (0-1);
      *                                  0 when the book has no reviews
+     *         'community'    => float  the user's community interactions on the book (0-5)
      *         'trending'     => float  the book's trending score (0+)
      *         'popularity'   => float  the book's popularity score (0+)
      *     ]
@@ -263,21 +268,9 @@ final class RecommendationScoring
      *     wishlist     = w.wishlist      x min(shared wishlist categories, 3) / 3
      *     rating       = w.rating        x min(shared rating categories, 3) / 3
      *     review_score = w.review_score  x min(review quality 0-1, 1)  (Phase 7.6)
+     *     community    = w.community     x min(community signal 0-5, 5) / 5 (Phase C6-E)
      *     trending     = w.trending      x 1   (when the book is trending)
      *     popularity   = w.popularity    x min(popularity / 3, 1)  (small bonus)
-     *
-     * The category cap gives PARTIAL credit, so a book sharing one
-     * favourite category earns 20 of the 40 points - the score stays
-     * smooth instead of binary. The author match is BINARY (a book is
-     * or is not by a favourite author), the wishlist/rating caps give
-     * partial credit up to their weights, and the popularity bonus
-     * can never exceed its own small weight - "popularity should
-     * never dominate personalization" by construction. The Phase 7.6
-     * review_score factor is the Reviews module's seat at the
-     * scoring table: a book the community rates well (its approved
-     * average rating) earns up to its own 10 points, and a book
-     * without reviews earns nothing - the factor is community
-     * signal, never the seeded sample columns.
      *
      * @param array<string, int|float> $signals
      */
@@ -305,12 +298,16 @@ final class RecommendationScoring
             * min((float) ($signals['review_score'] ?? 0), self::REVIEW_SCORE_FACTOR_CAP)
             / self::REVIEW_SCORE_FACTOR_CAP;
 
-        $trending = $weights['trending'] * ((float) ($signals['trending'] ?? 0) > 0 ? 1.0 : 0.0);
+        $community = ($weights['community'] ?? 0)
+            * min(max(0.0, (float) ($signals['community'] ?? 0)), self::COMMUNITY_FACTOR_CAP)
+            / self::COMMUNITY_FACTOR_CAP;
 
-        $popularity = $weights['popularity']
+        $trending = ($weights['trending'] ?? 0) * ((float) ($signals['trending'] ?? 0) > 0 ? 1.0 : 0.0);
+
+        $popularity = ($weights['popularity'] ?? 0)
             * min((float) ($signals['popularity'] ?? 0) / self::POPULARITY_NORMALIZER, 1.0);
 
-        return $category + $author + $wishlist + $rating + $reviewScore + $trending + $popularity;
+        return $category + $author + $wishlist + $rating + $reviewScore + $community + $trending + $popularity;
     }
 
     // -----------------------------------------------------------------

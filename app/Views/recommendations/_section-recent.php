@@ -44,7 +44,7 @@ $wishlistIds = $wishlistIds ?? [];
             <?php require root_path('app/Views/components/empty-state.php'); ?>
         </div>
     <?php else: ?>
-        <div class="row g-3 g-xl-4 row-cols-1 row-cols-md-2 row-cols-xl-4" aria-label="Recently added books">
+        <div class="rec-card-grid rec-card-grid-4" aria-label="Recently added books">
             <?php foreach ($shelf['items'] as $item): ?>
                 <?php $rec = [
                     'book'         => $item['book'] ?? $item,

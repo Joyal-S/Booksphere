@@ -54,6 +54,9 @@ $sessionUser = auth_user();
             <a class="nav-item<?= $active === 'authors' ? ' is-active' : '' ?>" href="/authors" title="Authors">
                 <i class="fa-solid fa-user-pen" aria-hidden="true"></i><span>Authors</span>
             </a>
+            <a class="nav-item<?= $active === 'community' ? ' is-active' : '' ?>" href="/community" title="Community discussions">
+                <i class="fa-solid fa-users" aria-hidden="true"></i><span>Community</span>
+            </a>
 
             <p class="sidebar-group-label">Library</p>
             <!-- Phase 8.2: the sidebar Wishlist link now lands on the
@@ -97,6 +100,12 @@ $sessionUser = auth_user();
             <?php if (auth_is_admin()): ?>
                 <a class="nav-item<?= $active === 'google-books' ? ' is-active' : '' ?>" href="/admin/google-books" title="Google Books provider search">
                     <i class="fa-solid fa-book-open-reader" aria-hidden="true"></i><span>Google Books</span>
+                </a>
+                <a class="nav-item<?= $active === 'admin-community' ? ' is-active' : '' ?>" href="/admin/community/reports" title="Community moderation queue">
+                    <i class="fa-solid fa-flag" aria-hidden="true"></i><span>Community Reports</span>
+                </a>
+                <a class="nav-item<?= $active === 'admin-community-analytics' ? ' is-active' : '' ?>" href="/admin/analytics/community" title="Community Analytics dashboard">
+                    <i class="fa-solid fa-chart-line" aria-hidden="true"></i><span>Community Analytics</span>
                 </a>
                 <a class="nav-item<?= $active === 'admin' ? ' is-active' : '' ?>" href="/admin" title="Administration">
                     <i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span>Administration</span>

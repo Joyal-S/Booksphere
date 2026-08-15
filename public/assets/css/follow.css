@@ -104,7 +104,8 @@
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.25rem 0.625rem;
+    min-height: 44px;
+    padding: 0.5rem 0.875rem;
     border-radius: var(--radius-full);
     background: var(--surface-2);
     border: 1px solid var(--border);

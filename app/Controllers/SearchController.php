@@ -76,12 +76,16 @@ final class SearchController extends Controller
             return;
         }
 
+        $ipKey = 'ip:' . ($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
+
         if (!$this->limiter->allow(
             'search',
             (int) ($config['rate_limit']['search']['limit'] ?? 60),
             (int) ($config['rate_limit']['search']['window_seconds'] ?? 60),
+            $ipKey,
         )) {
-            $this->respondRateLimited($isFetch);
+            $seconds = $this->limiter->remainingSeconds('search', (int) ($config['rate_limit']['search']['window_seconds'] ?? 60), $ipKey);
+            $this->respondRateLimited($isFetch, $seconds);
 
             return;
         }
@@ -150,15 +154,26 @@ final class SearchController extends Controller
             return;
         }
 
+        $ipKey = 'ip:' . ($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
+        $windowSeconds = (int) ($config['rate_limit']['suggestions']['window_seconds'] ?? 60);
+
         if (!$this->limiter->allow(
             'suggestions',
             (int) ($config['rate_limit']['suggestions']['limit'] ?? 120),
-            (int) ($config['rate_limit']['suggestions']['window_seconds'] ?? 60),
+            $windowSeconds,
+            $ipKey,
         )) {
+            $seconds = $this->limiter->remainingSeconds('suggestions', $windowSeconds, $ipKey);
+
+            if (!headers_sent()) {
+                header('Retry-After: ' . max(1, $seconds));
+            }
+
             Response::json([
-                'ok'    => false,
-                'error' => 'Too many requests. Please wait a moment, then try again.',
-                'term'  => $term,
+                'ok'          => false,
+                'error'       => 'Too many requests. Please wait a moment, then try again.',
+                'term'        => $term,
+                'retry_after' => $seconds,
             ], 429);
 
             return;
@@ -254,7 +269,7 @@ final class SearchController extends Controller
     {
         return [
             'q'           => $request->input('q', ''),
-            'scope'       => $request->input('scope', 'books'),
+            'scope'       => $request->input('scope', 'all'),
             'page'        => $request->input('page', '1'),
             'per_page'    => $request->input('per_page', '0'),
             'status'      => $request->input('status', ''),
@@ -303,7 +318,7 @@ final class SearchController extends Controller
 
         $this->view('search.index', [
             'result'  => null,
-            'scope'   => 'books',
+            'scope'   => 'all',
             'query'   => '',
             'filters' => [],
             'options' => $this->service->filterOptions(),
@@ -326,7 +341,7 @@ final class SearchController extends Controller
 
         $this->view('search.index', [
             'result'  => null,
-            'scope'   => 'books',
+            'scope'   => 'all',
             'query'   => '',
             'filters' => [],
             'options' => $this->service->filterOptions(),
@@ -367,6 +382,7 @@ final class SearchController extends Controller
     private function enabledScopes(array $config): array
     {
         $labels = [
+            'all'        => 'All',
             'books'      => 'Books',
             'authors'    => 'Authors',
             'categories' => 'Categories',

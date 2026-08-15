@@ -55,7 +55,7 @@ $book = array_merge([
         <h3 class="book-card-title"><?= e($book['title']) ?></h3>
         <p class="book-card-author"><?= e($book['author']) ?><?= $book['year'] !== '' ? ' &middot; ' . e((string) $book['year']) : '' ?></p>
         <div class="book-card-meta">
-            <span class="book-rating"><i class="fa-solid fa-star" aria-hidden="true"></i> <?= e(number_format((float) $book['rating'], 1)) ?></span>
+            <span class="book-rating"><i class="fa-solid fa-star" aria-hidden="true"></i> <?= e(format_rating($book['rating'])) ?></span>
             <?php if ($book['votes'] !== ''): ?>
                 <span class="book-rating-count"><?= e($book['votes']) ?> ratings</span>
             <?php endif; ?>

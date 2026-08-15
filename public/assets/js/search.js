@@ -99,6 +99,23 @@
         let debounceTimer = null;
         let inFlight = null;
 
+        const updateScopeUI = () => {
+            scopeRadios.forEach((radio) => {
+                const label = radio.closest('.search-scope');
+                if (label) {
+                    label.classList.toggle('is-active', radio.checked);
+                }
+            });
+        };
+
+        // Initialize selected scope pill from URL query parameter (default to 'all')
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlScope = urlParams.get('scope') || 'all';
+        scopeRadios.forEach((radio) => {
+            radio.checked = (radio.value === urlScope);
+        });
+        updateScopeUI();
+
         // Keep the address bar in sync with the current search, so a
         // result set can be shared/bookmarked like a normal page URL.
         const syncUrl = () => {
@@ -108,6 +125,7 @@
             });
             const query = params.toString();
             history.replaceState(null, '', '/search' + (query ? '?' + query : ''));
+            updateScopeUI();
         };
 
         const fetchResults = async () => {
@@ -162,6 +180,7 @@
         // full new query - no debounce).
         scopeRadios.forEach((radio) => {
             radio.addEventListener('change', () => {
+                updateScopeUI();
                 pageField.value = '1';
                 window.clearTimeout(debounceTimer);
                 fetchResults();
@@ -209,10 +228,9 @@
             }
 
             scopeRadios.forEach((radio) => {
-                if (radio.value === (detail.scope || 'books')) {
-                    radio.checked = true;
-                }
+                radio.checked = (radio.value === (detail.scope || 'all'));
             });
+            updateScopeUI();
 
             const filters = detail.filters && typeof detail.filters === 'object' ? detail.filters : {};
             const filterControls = form.querySelectorAll('[data-filter-key]');

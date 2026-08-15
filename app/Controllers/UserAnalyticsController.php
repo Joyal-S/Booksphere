@@ -56,7 +56,7 @@ final class UserAnalyticsController extends Controller
     public function report(Request $request, array $params = []): void
     {
         $this->view('analytics.report', [
-            'active'      => 'analytics',
+            'active'      => 'analytics-report',
             'title'       => 'My Reading Report',
             'bodyClass'   => 'report-print',
             'analytics'   => $this->service->build((int) auth()->id())->toArray(),

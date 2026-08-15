@@ -41,11 +41,11 @@ $rank = max(1, (int) ($rank ?? 1));
     <a href="/books/<?= (int) $book['id'] ?>" class="text-decoration-none flex-shrink-0">
         <?php if (!empty($book['cover_image'])): ?>
             <img src="<?= e($book['cover_image']) ?>" alt="<?= e($book['title']) ?> cover"
-                 class="top-rated-cover" loading="lazy">
+                 class="top-rated-cover" loading="lazy"
+                 onerror="this.onerror=null;this.src='/assets/images/cover-placeholder.svg';">
         <?php else: ?>
-            <span class="top-rated-cover book-cover-placeholder">
-                <i class="fa-solid fa-book-open" aria-hidden="true"></i>
-            </span>
+            <img src="/assets/images/cover-placeholder.svg" alt="<?= e($book['title']) ?> cover"
+                 class="top-rated-cover" loading="lazy">
         <?php endif; ?>
     </a>
     <div class="flex-grow-1 min-w-0">

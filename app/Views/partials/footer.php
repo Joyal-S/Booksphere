@@ -10,4 +10,4 @@ declare(strict_types=1);
  */
 
 ?>
-<footer class="footer"><small>BookSphere &middot; MCA Major Project &middot; Phase 4 &mdash; UI Framework</small></footer>
+<footer class="footer"><small>&copy; 2026 BookSphere &middot; MCA Major Project</small></footer>

@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "skills": {
+    "antigravity-workflows": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/antigravity-workflows/SKILL.md",
+      "computedHash": "bfbda0457686fb49fcf519ba2351419ed8651dcca5e828f87ac9d15a9e336f10"
+    },
+    "api-documentation-generator": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/api-documentation-generator/SKILL.md",
+      "computedHash": "e747bc21fd479257bb88f4ad5e144951a69898b100eff3c927a0222257c83b96"
+    },
+    "api-security-best-practices": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/api-security-best-practices/SKILL.md",
+      "computedHash": "665caa1fd86a50c5ed9b9a106e715e7891b8a6e1bdb3fd24f1af305c5e0384d4"
+    },
+    "backend-dev-guidelines": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/backend-dev-guidelines/SKILL.md",
+      "computedHash": "074094e8e4c78e2e767095145b099ffd3a595d7e6898e9f3f62943d03b2ec21c"
+    },
+    "browser-automation": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/browser-automation/SKILL.md",
+      "computedHash": "0cb1ede5f97f01355d0f6276d2128e3eaba82b4b2df2ea89eacb299727d53673"
+    },
+    "clean-code": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/clean-code/SKILL.md",
+      "computedHash": "551e1ac1c416d9df11fce8bc613c3595794f1f5e634d20c5b3e257afded11ed7"
+    },
+    "code-review-checklist": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/code-review-checklist/SKILL.md",
+      "computedHash": "221fe90d65ac38ebd1b0d913a4fdc84c3a192af42432fd36d705fdd48dbe20dd"
+    },
+    "database-design": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/database-design/SKILL.md",
+      "computedHash": "412e8f6c0160ce140c5fe3c6489eb0b7c6fa265807e03c6b0d56a9f3ef69a925"
+    },
+    "frontend-design": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "7d16aa5a3703f4aefc3fd6b213421879a7cd61c4ba387f1bf787f1ea172182e8"
+    },
+    "security-auditor": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/security-auditor/SKILL.md",
+      "computedHash": "7f618562271cbd667bb9998b73d68c8a25ab1b866c00d045e21281cbec6468d9"
+    },
+    "ui-ux-designer": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/ui-ux-designer/SKILL.md",
+      "computedHash": "7051bce861581a88407970edf78fc3f448fd3f0d176566cdfbc16abe7fff8211"
+    },
+    "web-performance-optimization": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/web-performance-optimization/SKILL.md",
+      "computedHash": "0436fd1d91b08f5b183181019a0d82d4bac259e90ecd0bd213343e12b12d1b60"
+    }
+  }
+}

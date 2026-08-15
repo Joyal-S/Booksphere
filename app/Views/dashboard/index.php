@@ -276,11 +276,11 @@ if ($libraryCounts !== []) {
                         <a href="/books/<?= (int) $book['id'] ?>" class="text-decoration-none">
                             <?php if (!empty($book['cover_image'])): ?>
                                 <img src="<?= e($book['cover_image']) ?>" alt="<?= e($book['title']) ?> cover"
-                                     class="card-img-top book-cover" loading="lazy">
+                                     class="card-img-top book-cover" loading="lazy"
+                                     onerror="this.onerror=null;this.src='/assets/images/cover-placeholder.svg';">
                             <?php else: ?>
-                                <div class="book-cover-placeholder">
-                                    <i class="fa-solid fa-book-open" aria-hidden="true"></i>
-                                </div>
+                                <img src="/assets/images/cover-placeholder.svg" alt="<?= e($book['title']) ?> cover"
+                                     class="card-img-top book-cover" loading="lazy">
                             <?php endif; ?>
                         </a>
                         <div class="card-body p-3">
@@ -323,11 +323,11 @@ if ($libraryCounts !== []) {
                         <a href="/books/<?= (int) $book['id'] ?>" class="text-decoration-none">
                             <?php if (!empty($book['cover_image'])): ?>
                                 <img src="<?= e($book['cover_image']) ?>" alt="<?= e($book['title']) ?> cover"
-                                     class="card-img-top book-cover" loading="lazy">
+                                     class="card-img-top book-cover" loading="lazy"
+                                     onerror="this.onerror=null;this.src='/assets/images/cover-placeholder.svg';">
                             <?php else: ?>
-                                <div class="book-cover-placeholder">
-                                    <i class="fa-solid fa-book-open" aria-hidden="true"></i>
-                                </div>
+                                <img src="/assets/images/cover-placeholder.svg" alt="<?= e($book['title']) ?> cover"
+                                     class="card-img-top book-cover" loading="lazy">
                             <?php endif; ?>
                         </a>
                         <div class="card-body p-3">
@@ -431,7 +431,8 @@ if ($libraryCounts !== []) {
                     <a href="/books/<?= (int) $myHighestRatedBook['id'] ?>" class="text-decoration-none">
                         <?php if (!empty($myHighestRatedBook['cover_image'])): ?>
                             <img src="<?= e($myHighestRatedBook['cover_image']) ?>" alt="<?= e($myHighestRatedBook['title']) ?> cover"
-                                 class="card-img-top book-cover" loading="lazy">
+                                 class="card-img-top book-cover" loading="lazy"
+                                 onerror="this.onerror=null;this.src='/assets/images/cover-placeholder.svg';">
                         <?php else: ?>
                             <div class="book-cover-placeholder">
                                 <i class="fa-solid fa-book-open" aria-hidden="true"></i>

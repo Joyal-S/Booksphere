@@ -97,7 +97,7 @@ $reviewSection = $reviewSection ?? false;
                 <div class="book-stat">
                     <i class="fa-solid fa-star" aria-hidden="true"></i>
                     <div>
-                        <strong><?= e(number_format((float) ($book['average_rating'] ?? 0), 1)) ?></strong>
+                        <strong><?= e(format_rating($book['average_rating'] ?? 0)) ?></strong>
                         <span>Average rating</span>
                     </div>
                 </div>
@@ -132,7 +132,14 @@ $reviewSection = $reviewSection ?? false;
                 <?php if ($authors !== []): ?>
                     <div class="book-meta-item">
                         <dt><?= count($authors) === 1 ? 'Author' : 'Authors' ?></dt>
-                        <dd><?= e(implode(', ', array_column($authors, 'name'))) ?></dd>
+                        <dd>
+                            <?php foreach ($authors as $i => $author): ?>
+                                <?= $i > 0 ? ', ' : '' ?>
+                                <a href="/authors/<?= (int) $author['id'] ?>" class="text-decoration-none fw-semibold">
+                                    <?= e($author['name']) ?>
+                                </a>
+                            <?php endforeach; ?>
+                        </dd>
                     </div>
                 <?php endif; ?>
                 <?php if ($categories !== []): ?>
@@ -195,7 +202,35 @@ $reviewSection = $reviewSection ?? false;
                 <a class="btn btn-outline-secondary" href="/books">
                     <i class="fa-solid fa-arrow-left me-1" aria-hidden="true"></i>Back to catalogue
                 </a>
+</div>
+
+<!-- Phase C4-D: Community Discussions link -->
+<?php
+$commCount = $communityCount ?? (new \BookSphere\App\Models\CommunityPost())->countByBook((int) $book['id']);
+$bookId    = (int) $book['id'];
+?>
+<div class="card-base p-4 mt-4 mb-4">
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="d-flex align-items-center justify-content-center rounded bg-primary-subtle text-primary p-2" style="width: 44px; height: 44px; font-size: 1.25rem;">
+                <i class="fa-solid fa-users" aria-hidden="true"></i>
             </div>
+            <div>
+                <h2 class="h6 mb-1 text-dark fw-bold">Community Discussions</h2>
+                <p class="text-muted small mb-0">
+                    <?php if ($commCount > 0): ?>
+                        <?= $commCount ?> discussion<?= $commCount === 1 ? '' : 's' ?> about this book. Join the conversation with other readers!
+                    <?php else: ?>
+                        No discussions yet for this book. Be the first to start a conversation!
+                    <?php endif; ?>
+                </p>
+            </div>
+        </div>
+        <div>
+            <a href="/community/book/<?= $bookId ?>" class="btn btn-outline-primary btn-sm px-3">
+                <i class="fa-solid fa-comments me-1" aria-hidden="true"></i>
+                <?= $commCount > 0 ? 'Join Discussion' : 'View Discussions' ?>
+            </a>
         </div>
     </div>
 </div>
@@ -212,6 +247,35 @@ $reviewSection = $reviewSection ?? false;
          only presents the user's own record. -->
     <?php require root_path('app/Views/library/partials/_book-panel.php'); ?>
 <?php endif; ?>
+
+<!-- Phase C7-C: Community Discussion Hub Card on Book Details -->
+<?php
+$hubBookId = (int) ($book['id'] ?? 0);
+$hubCommCount = (int) (db()->query("SELECT COUNT(*) AS n FROM community_posts WHERE book_id = ? AND status = 'active'", [$hubBookId])[0]['n'] ?? 0);
+?>
+<section class="card-base p-4 mb-4">
+    <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
+        <div>
+            <div class="text-uppercase text-primary fw-semibold small tracking-wide mb-1">
+                <i class="fa-solid fa-comments me-1" aria-hidden="true"></i> Community Discussion
+            </div>
+            <h2 class="h5 mb-1 text-dark fw-bold">Join readers discussing <?= e($book['title'] ?? '') ?></h2>
+            <p class="text-muted small mb-0">
+                <?= $hubCommCount === 1 ? '1 discussion' : "{$hubCommCount} discussions" ?> by the BookSphere reading community.
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+            <a href="/community/book/<?= $hubBookId ?>" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                <i class="fa-solid fa-comments me-1" aria-hidden="true"></i> View Community Hub
+            </a>
+            <?php if (auth_check()): ?>
+                <a href="/community/create?book_id=<?= $hubBookId ?>" class="btn btn-primary btn-sm rounded-pill px-3">
+                    <i class="fa-solid fa-plus me-1" aria-hidden="true"></i> Start Discussion
+                </a>
+            <?php endif; ?>
+        </div>
+    </div>
+</section>
 
 <?php if ($reviewSection): ?>
     <?php

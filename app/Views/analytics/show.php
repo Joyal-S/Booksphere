@@ -97,7 +97,7 @@ $dash  = '&mdash;';
                 ['icon' => 'fa-flag-checkered',     'label' => 'Completion Rate',     'value' => number_format((float) ($summary['completionRate'] ?? 0), 1) . '%', 'tone' => 'primary'],
                 ['icon' => 'fa-calendar-check',     'label' => 'Active Reading Days', 'value' => (int) ($summary['activeDays'] ?? 0), 'tone' => 'info'],
                 ['icon' => 'fa-star',               'label' => 'Reviews Written',     'value' => (int) ($summary['reviews'] ?? 0),   'tone' => 'warning'],
-                ['icon' => 'fa-star-half-stroke',   'label' => 'Average Rating',      'value' => $summary['averageRating'] === null ? $dash : number_format((float) $summary['averageRating'], 1), 'tone' => 'danger'],
+                ['icon' => 'fa-star-half-stroke',   'label' => 'Average Rating',      'value' => $summary['averageRating'] === null ? $dash : format_rating($summary['averageRating']), 'tone' => 'danger'],
             ];
             foreach ($cards as $stat):
                 require root_path('app/Views/components/stat-card.php');
@@ -364,7 +364,7 @@ $dash  = '&mdash;';
                         </div>
                         <div class="col-6">
                             <div class="analytics-tile h-100">
-                                <span class="analytics-tile-value"><?= $reviews['average'] === null ? $dash : number_format((float) $reviews['average'], 1) ?></span>
+                                <span class="analytics-tile-value"><?= $reviews['average'] === null ? $dash : format_rating($reviews['average']) ?></span>
                                 <span class="analytics-tile-label">Average rating given <?= $reviews['average'] === null ? '&mdash; no ratings yet' : '&middot; of 5' ?></span>
                             </div>
                         </div>

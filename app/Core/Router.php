@@ -118,8 +118,6 @@ final class Router
         $method = $this->request->method();
         $path   = $this->request->path();
 
-        file_put_contents(sys_get_temp_dir() . '/router_debug.log', date('H:i:s') . " method=$method raw=" . ($_SERVER['REQUEST_METHOD'] ?? '') . " path=$path post=" . json_encode($_POST) . "\n", FILE_APPEND);
-
         // 1. Fast path: exact lookup in the route table.
         $route  = $this->routes[$method][$path] ?? null;
         $params = [];

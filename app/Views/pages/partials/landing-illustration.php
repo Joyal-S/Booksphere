@@ -5,11 +5,9 @@ declare(strict_types=1);
 /**
  * pages/partials/landing-illustration.php
  *
- * The hero illustration of the cover page: the glowing shelf of
- * books with the open-book, the search / author-profile / AI cards
- * and the recommendation network. Pure decorative SVG, reproduced 1:1
- * from the approved cover design; it is hidden from assistive
- * technology (the prose on the left already says everything).
+ * The hero SVG illustration of the cover page: glowing shelf of books,
+ * open book presentation, recommendation match chip, search card,
+ * author follow pill, and category affinity network.
  */
 
 ?>
@@ -113,12 +111,12 @@ declare(strict_types=1);
             <rect x="-52" y="-32" width="104" height="64" rx="12" fill="#1a1550"/>
             <rect x="-52" y="-32" width="104" height="64" rx="12" fill="url(#landingCardGrad1)"/>
             <rect x="-52" y="-32" width="104" height="64" rx="12" stroke="rgba(155,121,216,0.3)" stroke-width="1"/>
-            <text x="-40" y="-12" font-size="7.5" fill="#a78bfa" font-family="Inter,sans-serif" font-weight="600" letter-spacing="0.8">RECOMMENDED FOR YOU</text>
+            <text x="-40" y="-12" font-size="7.5" fill="#a78bfa" font-family="Inter,sans-serif" font-weight="600" letter-spacing="0.8">RECOMMENDED</text>
             <rect x="-40" y="-6" width="62" height="2.5" rx="1.5" fill="rgba(255,255,255,0.12)"/>
             <rect x="-40" y="1" width="48" height="2" rx="1" fill="rgba(255,255,255,0.08)"/>
             <text x="-40" y="20" font-size="8.5" fill="#22d3ee" font-family="Inter,sans-serif" font-weight="500">✦ 98% match</text>
             <circle cx="34" cy="8" r="12" fill="rgba(34,211,238,0.15)" stroke="rgba(34,211,238,0.3)" stroke-width="1"/>
-            <text x="30" y="12.5" font-size="13" fill="#67e8f9">🤖</text>
+            <path d="M34,2 L36,6 L40,8 L36,10 L34,14 L32,10 L28,8 L32,6 Z" fill="#67e8f9"/>
         </g>
 
         <!-- Search card -->
@@ -135,14 +133,15 @@ declare(strict_types=1);
         <g transform="translate(90 115)" filter="url(#landingCardShadow)">
             <rect x="-44" y="-24" width="88" height="48" rx="10" fill="#12104a" stroke="rgba(91,63,166,0.3)" stroke-width="1"/>
             <circle cx="-26" cy="0" r="13" fill="#2e278a" stroke="rgba(155,121,216,0.4)" stroke-width="1.5"/>
-            <text x="-30" y="5" font-size="14">👤</text>
-            <text x="-8" y="-6" font-size="8" fill="#e2e8f0" font-family="Inter,sans-serif" font-weight="600">Sarah M.</text>
+            <circle cx="-26" cy="-4" r="4.5" fill="#c4b5fd"/>
+            <path d="M-33,6 C-33,2 -29,1 -26,1 C-23,1 -19,2 -19,6 Z" fill="#c4b5fd"/>
+            <text x="-8" y="-6" font-size="8" fill="#e2e8f0" font-family="Inter,sans-serif" font-weight="600">Author Profile</text>
             <text x="-8" y="3" font-size="7" fill="#a78bfa" font-family="Inter,sans-serif">312 followers</text>
             <rect x="-8" y="8" width="40" height="8" rx="4" fill="rgba(91,63,166,0.35)"/>
             <text x="4" y="14.5" font-size="6.5" fill="#c4b5fd" font-family="Inter,sans-serif">+ Follow</text>
         </g>
 
-        <!-- AI network -->
+        <!-- Affinity Network -->
         <g opacity="0.75">
             <circle cx="440" cy="255" r="6" fill="#22d3ee" filter="url(#landingSoftGlow)"/>
             <circle cx="472" cy="225" r="4" fill="#9b79d8"/>

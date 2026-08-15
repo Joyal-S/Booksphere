@@ -56,7 +56,7 @@ $dash = '&mdash;';
             ['label' => 'Books shelved',     'value' => (int) ($summary['shelved'] ?? 0)],
             ['label' => 'Books finished',    'value' => (int) ($summary['completed'] ?? 0)],
             ['label' => 'Reviews written',   'value' => (int) ($summary['reviews'] ?? 0)],
-            ['label' => 'Average rating',    'value' => $summary['averageRating'] === null ? $dash : number_format((float) $summary['averageRating'], 1)],
+            ['label' => 'Average rating',    'value' => $summary['averageRating'] === null ? $dash : format_rating($summary['averageRating'])],
             ['label' => 'Completion rate',   'value' => number_format((float) ($summary['completionRate'] ?? 0), 1) . '%'],
             ['label' => 'Active reading days','value' => (int) ($summary['activeDays'] ?? 0)],
             ['label' => 'Currently reading', 'value' => (int) ($summary['reading'] ?? 0)],

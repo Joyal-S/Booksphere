@@ -1,4 +1,4 @@
-# BookSphere
+# BookSphere 
 
 **BookSphere – Intelligent Book Discovery & Recommendation System**
 
@@ -6,7 +6,7 @@ A PHP MVC web application that helps readers discover books and get
 personalised recommendations. The codebase is intentionally simple and
 well-commented so it is easy to follow for an MCA student.
 
-> **Current phase: 8.6 – the Personal Library audit & QA pass.**
+> **Current phase: P1-F – Integration & End-to-End QA Complete (13/13 Workflows Verified, 51/51 Test Suites Green, Catalog Frozen at 529 Published Books).**
 > The Book module is feature complete (CRUD, cover
 > upload, search, filters, sorting, pagination, grid/table view).
 > Phases 6.1–6.5 delivered the Recommendation Engine: six explainable

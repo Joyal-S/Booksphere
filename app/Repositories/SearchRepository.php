@@ -38,7 +38,11 @@ final class SearchRepository
              (SELECT GROUP_CONCAT(a.name, ", ")
               FROM book_authors ba
               JOIN authors a ON a.id = ba.author_id
-              WHERE ba.book_id = b.id) AS authors_list';
+              WHERE ba.book_id = b.id) AS authors_list,
+             (SELECT c.name
+              FROM book_categories bc
+              JOIN categories c ON c.id = bc.category_id
+              WHERE bc.book_id = b.id LIMIT 1) AS category_name';
 
     /**
      * Search the books catalogue.
@@ -89,7 +93,9 @@ final class SearchRepository
         )[0]['count'];
 
         $items = $total === 0 ? [] : db()->query(
-            'SELECT a.id, a.name
+            'SELECT a.id, a.name,
+                    (SELECT COUNT(DISTINCT ba.book_id) FROM book_authors ba JOIN books b ON b.id = ba.book_id AND b.deleted_at IS NULL WHERE ba.author_id = a.id) AS book_count,
+                    (SELECT AVG(r.rating) FROM reviews r JOIN books b ON b.id = r.book_id AND b.deleted_at IS NULL JOIN book_authors ba ON ba.book_id = b.id WHERE ba.author_id = a.id AND r.status = \'approved\') AS average_rating
              FROM authors a
              WHERE ' . implode(' AND ', $where) . ' AND a.name != \'\'
              ORDER BY a.name ASC
@@ -115,7 +121,8 @@ final class SearchRepository
         )[0]['count'];
 
         $items = $total === 0 ? [] : db()->query(
-            'SELECT c.id, c.name, c.slug
+            'SELECT c.id, c.name, c.slug,
+                    (SELECT COUNT(DISTINCT bc.book_id) FROM book_categories bc JOIN books b ON b.id = bc.book_id AND b.deleted_at IS NULL WHERE bc.category_id = c.id) AS book_count
              FROM categories c
              WHERE ' . implode(' AND ', $where) . '
              ORDER BY c.name ASC
@@ -154,7 +161,8 @@ final class SearchRepository
         )[0]['count'];
 
         $items = $total === 0 ? [] : db()->query(
-            'SELECT DISTINCT b.publisher AS name
+            'SELECT DISTINCT b.publisher AS name,
+                    (SELECT COUNT(*) FROM books b2 WHERE b2.publisher = b.publisher AND b2.deleted_at IS NULL) AS book_count
              FROM books b
              WHERE ' . $whereSql . '
              ORDER BY b.publisher ASC
@@ -187,7 +195,8 @@ final class SearchRepository
         )[0]['count'];
 
         $items = $total === 0 ? [] : db()->query(
-            'SELECT r.id, r.review, r.rating, r.created_at, b.id AS book_id, b.title AS book_title
+            'SELECT r.id, r.review, r.rating, r.created_at, b.id AS book_id, b.title AS book_title,
+                    (SELECT u.full_name FROM users u WHERE u.id = r.user_id) AS reviewer_name
              FROM reviews r
              JOIN books b ON b.id = r.book_id AND b.deleted_at IS NULL
              WHERE ' . implode(' AND ', $where) . '
@@ -499,8 +508,13 @@ final class SearchRepository
         $filters = $query->filters;
 
         if (isset($filters['status'])) {
+            if ($filters['status'] !== 'all') {
+                $where[]  = "$alias.status = ?";
+                $params[] = (string) $filters['status'];
+            }
+        } else {
             $where[]  = "$alias.status = ?";
-            $params[] = (string) $filters['status'];
+            $params[] = 'published';
         }
 
         if (isset($filters['language'])) {

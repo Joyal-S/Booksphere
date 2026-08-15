@@ -73,9 +73,19 @@ final class CacheManager
             return null;
         }
 
-        $payload = json_decode((string) file_get_contents($file), true);
+        $raw = @file_get_contents($file);
+        if ($raw === false) {
+            return null;
+        }
 
-        return is_array($payload) ? $payload : null;
+        $payload = json_decode($raw, true);
+
+        if (!is_array($payload)) {
+            @unlink($file);
+            return null;
+        }
+
+        return $payload;
     }
 
     /**
@@ -96,13 +106,23 @@ final class CacheManager
             return null;
         }
 
-        $payload = json_decode((string) file_get_contents($file), true);
+        $raw = @file_get_contents($file);
+        if ($raw === false) {
+            return null;
+        }
 
-        return is_array($payload) ? $payload : null;
+        $payload = json_decode($raw, true);
+
+        if (!is_array($payload)) {
+            @unlink($file);
+            return null;
+        }
+
+        return $payload;
     }
 
     /**
-     * Store a payload (atomically).
+     * Store a payload (atomically and gracefully).
      *
      * @param array<string, mixed> $payload
      */
@@ -112,19 +132,25 @@ final class CacheManager
             return;
         }
 
-        $directory = $this->directoryFor($namespace);
+        try {
+            $directory = $this->directoryFor($namespace);
 
-        if (!is_dir($directory) && !mkdir($directory, 0755, true)) {
-            throw new RuntimeException('Cache directory is not writable: ' . $directory);
-        }
+            if (!is_dir($directory) && !@mkdir($directory, 0755, true) && !is_dir($directory)) {
+                return;
+            }
 
-        $file = $this->fileFor($namespace, $key);
-        $temp = $file . '.' . uniqid('', true) . '.tmp';
+            $file = $this->fileFor($namespace, $key);
+            $temp = $file . '.' . uniqid('', true) . '.tmp';
 
-        file_put_contents($temp, (string) json_encode($payload, JSON_UNESCAPED_SLASHES));
+            if (@file_put_contents($temp, (string) json_encode($payload, JSON_UNESCAPED_SLASHES)) === false) {
+                return;
+            }
 
-        if (!rename($temp, $file)) {
-            @unlink($temp);
+            if (!@rename($temp, $file)) {
+                @unlink($temp);
+            }
+        } catch (\Throwable) {
+            // Silently ignore cache write failures so core application request pipeline never crashes
         }
     }
 
@@ -158,6 +184,33 @@ final class CacheManager
         foreach ([self::NS_SEARCH, self::NS_VOLUME] as $namespace) {
             $this->invalidate($namespace);
         }
+    }
+
+    /**
+     * Remove stale/expired cache files across all namespaces.
+     */
+    public function pruneStale(): int
+    {
+        $pruned = 0;
+
+        foreach ([self::NS_SEARCH, self::NS_VOLUME] as $namespace) {
+            $directory = $this->directoryFor($namespace);
+            $ttl = $this->ttl($namespace);
+
+            if ($ttl <= 0 || !is_dir($directory)) {
+                continue;
+            }
+
+            foreach (glob($directory . '/*.json') ?: [] as $file) {
+                if (time() - (int) @filemtime($file) > $ttl) {
+                    if (@unlink($file)) {
+                        $pruned++;
+                    }
+                }
+            }
+        }
+
+        return $pruned;
     }
 
     /**

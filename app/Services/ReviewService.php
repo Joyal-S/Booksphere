@@ -146,13 +146,18 @@ final class ReviewService
     // --- Reads ---------------------------------------------------------
 
     /**
-     * Find a single review.
+     * Find a single review visible to the given actor.
+     *
+     * Phase 13.1 (security audit): only approved reviews are
+     * readable by everyone; a review's own author and admins see
+     * every state (pending/hidden included). Guests default to the
+     * approved-only rule.
      *
      * @return array<string, mixed>|null
      */
-    public function find(int $id): ?array
+    public function find(int $id, int $actorId = 0, bool $actorIsAdmin = false): ?array
     {
-        return $this->reviews->find($id);
+        return $this->reviews->find($id, $actorId, $actorIsAdmin);
     }
 
     /**
@@ -1326,7 +1331,11 @@ final class ReviewService
      */
     private function requireReview(int $reviewId): array
     {
-        $review = $this->reviews->find($reviewId);
+        // findAny(): the write-path re-read. The PUBLIC read gate
+        // (find(), Phase 13.1) already ran in the controller, so a
+        // write flow may touch pending/hidden rows the caller was
+        // explicitly allowed to reach.
+        $review = $this->reviews->findAny($reviewId);
 
         if ($review === null) {
             throw ReviewException::reviewNotFound($reviewId);

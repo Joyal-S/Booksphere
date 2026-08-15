@@ -154,9 +154,51 @@ final class ReviewRepository
     /**
      * Find a single review by primary key.
      *
+     * Phase 13.1 (security audit): a review that is NOT approved is
+     * only visible to its own author or to an admin - everyone else
+     * gets null, so a hidden or pending review can never be read
+     * through a guessed sequential id.
+     *
+     * @param int  $id           The review id
+     * @param int  $actorId      The logged-in user id (0 = guest)
+     * @param bool $actorIsAdmin Whether the actor is an admin
      * @return array<string, mixed>|null The review row, or null
      */
-    public function find(int $id): ?array
+    public function find(int $id, int $actorId = 0, bool $actorIsAdmin = false): ?array
+    {
+        if ($actorIsAdmin) {
+            $where  = 'WHERE r.id = ?';
+            $params = [$id];
+        } else {
+            $where  = $actorId > 0
+                ? 'WHERE r.id = ? AND (r.status = \'' . self::STATUS_APPROVED . '\' OR r.user_id = ?)'
+                : 'WHERE r.id = ? AND r.status = \'' . self::STATUS_APPROVED . '\'';
+            $params = $actorId > 0 ? [$id, $actorId] : [$id];
+        }
+
+        $rows = db()->query(
+            'SELECT r.*
+             FROM reviews r
+             ' . $where,
+            $params,
+        );
+
+        return $rows[0] ?? null;
+    }
+
+    /**
+     * Internal write-path fetch: the review row by primary key,
+     * regardless of moderation state.
+     *
+     * Used only by ReviewService::requireReview() AFTER the caller
+     * has already passed the public read gate (find()), so a write
+     * flow keeps working on the author's own pending/hidden rows.
+     * Public reads must always use find() - moderation states stay
+     * invisible to everyone but the author and admins.
+     *
+     * @return array<string, mixed>|null The review row, or null
+     */
+    public function findAny(int $id): ?array
     {
         $rows = db()->query(
             'SELECT r.*
@@ -1269,10 +1311,12 @@ final class ReviewRepository
      * non-parameter fragment is the hard-coded status literal.
      *
      * The status rule: a list scoped to a user shows all of that
-     * user's reviews (their own rows, matching the existing
-     * findByUser() behaviour); every community read only counts
-     * 'approved' reviews, so moderation states can never leak into
-     * public lists or statistics.
+     * user's reviews to the SAME user (their own rows, matching the
+     * existing findByUser() behaviour) and to admins; a visitor
+     * asking for someone else's list sees only 'approved' rows.
+     * Every community read only counts 'approved' reviews, so
+     * moderation states can never leak into public lists or
+     * statistics.
      *
      * @param array<string, mixed> $options
      * @return array{0: string, 1: array} The WHERE fragment (with the
@@ -1291,11 +1335,19 @@ final class ReviewRepository
             $params[]     = $bookId;
         }
 
-        $userId = (int) ($options['user_id'] ?? 0);
+        $userId     = (int) ($options['user_id'] ?? 0);
+        $actorId    = (int) ($options['actor_id'] ?? 0);
+        $actorAdmin = !empty($options['actor_is_admin']);
 
         if ($userId > 0) {
             $conditions[] = 'r.user_id = ?';
             $params[]     = $userId;
+
+            // Phase 13.1 (security audit): the full (unfiltered)
+            // view of a user's reviews is an OWNER/ADMIN privilege.
+            if (!$actorAdmin && $actorId !== $userId) {
+                $conditions[] = 'r.status = \'' . self::STATUS_APPROVED . '\'';
+            }
         } else {
             $conditions[] = 'r.status = \'' . self::STATUS_APPROVED . '\'';
         }

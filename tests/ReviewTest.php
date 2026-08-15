@@ -1355,7 +1355,7 @@ $service->hideReview((int) $p75Target['id']);
 $p75BookStatsAfter = $repository->ratingStats($p74BookId);
 $check('hideReview() removes the review from the approved set', $p75BookStatsAfter['count'] === $p75BookStatsBefore['count'] - 1 && $p75BookStatsAfter['count'] === 5);
 $check('hideReview() recomputes the average', abs((float) $p75BookStatsAfter['average'] - (19 / 5)) < 0.001);
-$check('hideReview() marks the review hidden', ($repository->find((int) $p75Target['id'])['status'] ?? '') === 'hidden');
+$check('hideReview() marks the review hidden', ($repository->findAny((int) $p75Target['id'])['status'] ?? '') === 'hidden');
 
 $service->hideReview((int) $p75Target['id'], false);
 $check('Unhiding restores the review to the approved set', $repository->ratingStats($p74BookId)['count'] === $p75BookStatsBefore['count']);
@@ -1713,6 +1713,14 @@ $empty = 'Nothing here yet.';
 require root_path('app/Views/reviews/partials/_rating-distribution.php');
 $distEmpty = (string) ob_get_clean();
 $check('The distribution partial honours the custom empty state', str_contains($distEmpty, 'Nothing here yet.'));
+
+$check('format_rating() formats float 5.00 to 5.0', format_rating(5.00) === '5.0');
+$check('format_rating() formats float 4.50 to 4.5', format_rating(4.50) === '4.5');
+$check('format_rating() formats float 4.67 to 4.7', format_rating(4.67) === '4.7');
+$check('format_rating() formats integer 5 to 5.0', format_rating(5) === '5.0');
+$check('format_rating() returns fallback for null', format_rating(null) === '');
+$check('format_rating() returns fallback for empty string', format_rating('', '—') === '—');
+
 
 // ---------------------------------------------------------------------
 // RESULT

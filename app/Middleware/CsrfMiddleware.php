@@ -8,6 +8,8 @@ use BookSphere\App\Core\Csrf;
 use BookSphere\App\Core\Request;
 use BookSphere\App\Core\Response;
 
+use BookSphere\App\Core\Logger;
+
 /**
  * CsrfMiddleware
  *
@@ -20,7 +22,10 @@ use BookSphere\App\Core\Response;
  */
 final class CsrfMiddleware
 {
-    public function __construct(private readonly Csrf $csrf) {}
+    public function __construct(
+        private readonly Csrf $csrf,
+        private readonly ?Logger $logger = null,
+    ) {}
 
     /**
      * Validate the CSRF token, or stop the request with a 419 error.
@@ -31,7 +36,14 @@ final class CsrfMiddleware
      */
     public function handle(Request $request, callable $next): mixed
     {
-        if (!$this->csrf->validate($request->post('_token'))) {
+        $token = $request->post('_token') ?? $request->header('X-CSRF-TOKEN') ?? $request->header('X-CSRF-Token');
+
+        if (!is_string($token) || !$this->csrf->validate($token)) {
+            $this->logger?->warning('csrf.invalid_token', [
+                'route'  => $_SERVER['REQUEST_URI'] ?? '',
+                'method' => $_SERVER['REQUEST_METHOD'] ?? 'POST',
+            ]);
+
             Response::error(419, 'Invalid form token.');
         }
 

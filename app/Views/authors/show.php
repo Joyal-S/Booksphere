@@ -34,27 +34,29 @@ $recent    = $stats['recentReviews'] ?? [];
 $reviewers = $stats['topReviewers'] ?? [];
 
 ?>
-<div class="page-intro d-flex flex-wrap align-items-end justify-content-between gap-3">
+<div class="page-intro d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3 mb-4">
     <div>
         <p class="eyebrow">Author page</p>
-        <h1><?= e($author['name']) ?></h1>
-        <p class="lead">How the community rated the books of this author.</p>
+        <h1 class="mb-1"><?= e($author['name']) ?></h1>
+        <p class="lead mb-0">How the community rated the books of this author.</p>
     </div>
 
-    <?php
-    // Phase 9.2: the Follow / Following control - the button state
-    // comes from the controller (the session user's row) and the
-    // follower count from the shared FollowService, so this control
-    // and the /authors/{id}/followers page always agree. The lead
-    // above stays short; the count lives inside the control itself.
-    $follow = [
-        'author_id' => (int) $author['id'],
-        'author'    => (string) $author['name'],
-        'followed'  => (bool) ($followed ?? false),
-        'followers' => (int) ($followers ?? 0),
-    ];
-    ?>
-    <?php require root_path('app/Views/components/follow-button.php'); ?>
+    <div class="author-header-actions flex-shrink-0">
+        <?php
+        // Phase 9.2: the Follow / Following control - the button state
+        // comes from the controller (the session user's row) and the
+        // follower count from the shared FollowService, so this control
+        // and the /authors/{id}/followers page always agree. The lead
+        // above stays short; the count lives inside the control itself.
+        $follow = [
+            'author_id' => (int) $author['id'],
+            'author'    => (string) $author['name'],
+            'followed'  => (bool) ($followed ?? false),
+            'followers' => (int) ($followers ?? 0),
+        ];
+        ?>
+        <?php require root_path('app/Views/components/follow-button.php'); ?>
+    </div>
 </div>
 
 <?php if ($reviews === 0): ?>
@@ -64,11 +66,11 @@ $reviewers = $stats['topReviewers'] ?? [];
 <?php else: ?>
     <div class="row g-3 g-xl-4 mb-4">
         <div class="col-12 col-md-4">
-            <?php $stat = ['icon' => 'fa-star', 'label' => 'Average author rating', 'value' => number_format($average, 2), 'hint' => 'from ' . $reviews . ' approved review' . ($reviews === 1 ? '' : 's')]; ?>
+            <?php $stat = ['icon' => 'fa-star', 'label' => 'Average author rating', 'value' => format_rating($average), 'hint' => 'from ' . $reviews . ' approved review' . ($reviews === 1 ? '' : 's')]; ?>
             <?php require root_path('app/Views/components/statistics-card.php'); ?>
         </div>
         <div class="col-6 col-md-4">
-            <?php $stat = ['icon' => 'fa-book', 'label' => 'Books reviewed', 'value' => $reviewed]; ?>
+            <?php $stat = ['icon' => 'fa-book', 'label' => 'Books with reviews', 'value' => $reviewed]; ?>
             <?php require root_path('app/Views/components/statistics-card.php'); ?>
         </div>
         <div class="col-6 col-md-4">
@@ -84,7 +86,7 @@ $reviewers = $stats['topReviewers'] ?? [];
         <?php require root_path('app/Views/components/review-summary-card.php'); ?>
     </div>
     <div class="col-12 col-md-6 col-xl-4">
-        <div class="card-base h-100 p-4">
+        <div class="card-base p-4">
             <div class="d-flex align-items-center gap-2 mb-3">
                 <span class="section-icon" aria-hidden="true"><i class="fa-solid fa-trophy"></i></span>
                 <h3 class="section-title mb-0">Top reviewers</h3>
@@ -100,7 +102,7 @@ $reviewers = $stats['topReviewers'] ?? [];
                             </a>
                             <span class="text-muted">
                                 <?= (int) $reviewer['count'] ?> review<?= (int) $reviewer['count'] === 1 ? '' : 's' ?>
-                                &middot; avg <?= e(number_format((float) $reviewer['average'], 1)) ?>
+                                &middot; avg <?= e(format_rating($reviewer['average'])) ?>
                             </span>
                         </li>
                     <?php endforeach; ?>
@@ -109,8 +111,8 @@ $reviewers = $stats['topReviewers'] ?? [];
         </div>
     </div>
     <div class="col-12 col-xl-4">
-        <div class="d-flex flex-column gap-3 h-100">
-            <div class="card-base p-4 flex-grow-1">
+        <div class="d-flex flex-column gap-3">
+            <div class="card-base p-4">
                 <h3 class="section-title">Highest rated book</h3>
                 <?php if ($highest === null): ?>
                     <p class="text-muted mb-0">No rated books yet.</p>
@@ -119,7 +121,7 @@ $reviewers = $stats['topReviewers'] ?? [];
                     <?php require root_path('app/Views/components/top-rated-book-card.php'); ?>
                 <?php endif; ?>
             </div>
-            <div class="card-base p-4 flex-grow-1">
+            <div class="card-base p-4">
                 <h3 class="section-title">Most reviewed book</h3>
                 <?php if ($most === null): ?>
                     <p class="text-muted mb-0">No reviewed books yet.</p>

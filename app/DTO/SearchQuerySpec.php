@@ -43,6 +43,7 @@ namespace BookSphere\App\DTO;
  */
 final readonly class SearchQuerySpec
 {
+    public const SCOPE_ALL        = 'all';
     public const SCOPE_BOOKS      = 'books';
     public const SCOPE_AUTHORS    = 'authors';
     public const SCOPE_CATEGORIES = 'categories';
@@ -55,7 +56,7 @@ final readonly class SearchQuerySpec
      * @param array<string, mixed>         $filters normalized filter map
      */
     public function __construct(
-        public string $entity     = self::SCOPE_BOOKS,
+        public string $entity     = self::SCOPE_ALL,
         public string $term       = '',
         public array $words       = [],
         public bool $exact        = false,

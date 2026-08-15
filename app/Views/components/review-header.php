@@ -48,7 +48,7 @@ $count   = (int) $header['count'];
     <?php if ($average !== null || $count > 0): ?>
         <div class="review-header-summary">
             <?php if ($average !== null): ?>
-                <span class="review-header-average"><?= e(number_format($average, 1)) ?></span>
+                <span class="review-header-average"><?= e(format_rating($average)) ?></span>
             <?php endif; ?>
             <?php $starRating = [
                 'rating' => $average ?? 0.0,

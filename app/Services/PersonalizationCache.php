@@ -79,13 +79,23 @@ final class PersonalizationCache
             return null;
         }
 
-        $payload = json_decode((string) file_get_contents($file), true);
+        $raw = @file_get_contents($file);
+        if ($raw === false) {
+            return null;
+        }
 
-        return is_array($payload) ? $payload : null;
+        $payload = json_decode($raw, true);
+
+        if (!is_array($payload)) {
+            @unlink($file);
+            return null;
+        }
+
+        return $payload;
     }
 
     /**
-     * Store the payload of one user.
+     * Store the payload of one user (atomically and gracefully).
      *
      * Input:  the user id and the serializable payload
      * Output: nothing (the file is written atomically)
@@ -99,17 +109,23 @@ final class PersonalizationCache
             return;
         }
 
-        if (!is_dir($this->directory) && !mkdir($this->directory, 0755, true)) {
-            throw new RuntimeException('Cache directory is not writable: ' . $this->directory);
-        }
+        try {
+            if (!is_dir($this->directory) && !@mkdir($this->directory, 0755, true) && !is_dir($this->directory)) {
+                return;
+            }
 
-        $file = $this->fileFor($userId);
-        $temp = $file . '.' . uniqid('', true) . '.tmp';
+            $file = $this->fileFor($userId);
+            $temp = $file . '.' . uniqid('', true) . '.tmp';
 
-        file_put_contents($temp, (string) json_encode($payload, JSON_UNESCAPED_SLASHES));
+            if (@file_put_contents($temp, (string) json_encode($payload, JSON_UNESCAPED_SLASHES)) === false) {
+                return;
+            }
 
-        if (!rename($temp, $file)) {
-            @unlink($temp);
+            if (!@rename($temp, $file)) {
+                @unlink($temp);
+            }
+        } catch (\Throwable) {
+            // Silently ignore cache write failures so core application request pipeline never crashes
         }
     }
 
@@ -153,13 +169,31 @@ final class PersonalizationCache
             return;
         }
 
-        foreach (glob($this->directory . '/user_*.json') ?: [] as $file) {
+        foreach (glob($this->directory . '/*.json') ?: [] as $file) {
             @unlink($file);
+        }
+    }
+
+    /**
+     * Remove stale/expired cache files in the recommendations cache directory.
+     */
+    public function pruneStale(): int
+    {
+        $pruned = 0;
+
+        if (!is_dir($this->directory) || $this->ttlSeconds <= 0) {
+            return 0;
         }
 
-        foreach (glob($this->directory . '/section_*.json') ?: [] as $file) {
-            @unlink($file);
+        foreach (glob($this->directory . '/*.json') ?: [] as $file) {
+            if (time() - (int) @filemtime($file) > $this->ttlSeconds) {
+                if (@unlink($file)) {
+                    $pruned++;
+                }
+            }
         }
+
+        return $pruned;
     }
 
     /**

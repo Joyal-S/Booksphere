@@ -50,11 +50,13 @@ if ($sessionUser !== null) {
         <a class="brand d-lg-none" href="/" aria-label="BookSphere home">
             <i class="fa-solid fa-book-open-reader" aria-hidden="true"></i><span>BookSphere</span>
         </a>
+    </div>
 
+    <div class="navbar-app-center">
         <?php if (auth_check()): ?>
             <div class="search-bar" role="search">
                 <i class="fa-solid fa-magnifying-glass search-bar-icon" aria-hidden="true"></i>
-                <input type="search" class="search-bar-input" placeholder="Search books, authors, genres…" aria-label="Search"
+                <input type="search" class="search-bar-input" placeholder="Search books, authors, genres" aria-label="Search"
                        data-search-input data-autocomplete data-autocomplete-endpoint="/search/suggest"
                        data-autocomplete-min="<?= (int) (config('search.suggestions.min_length') ?? 2) ?>">
                 <kbd class="search-bar-hint">Ctrl K</kbd>

@@ -54,7 +54,7 @@ declare(strict_types=1);
             <p class="auth-sub">Enter your email address and we'll send you a link to reset your password.</p>
         </header>
 
-        <form class="auth-form" method="post" action="/forgot-password" data-auth-form>
+        <form class="auth-form" method="post" action="/forgot-password" autocomplete="off" data-auth-form>
             <input type="hidden" name="_token" value="<?= e(csrf_token()) ?>">
 
             <?php
@@ -63,8 +63,8 @@ declare(strict_types=1);
                 'label'        => 'Email Address',
                 'type'         => 'email',
                 'value'        => $old['email'] ?? '',
-                'placeholder'  => 'you@example.com',
-                'autocomplete' => 'email',
+                'placeholder'  => 'Enter your email',
+                'autocomplete' => 'off',
                 'maxlength'    => 255,
                 'icon'         => '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="19" height="15" rx="3"/><path d="m3 6 9 6.5L21 6"/></svg>',
                 'error'        => $errors['email'][0] ?? null,

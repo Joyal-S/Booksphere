@@ -47,7 +47,7 @@ $tiles = [
     [
         'icon'  => 'fa-star',
         'label' => 'Average rating',
-        'value' => $stats['average'] === null ? 'No ratings yet' : number_format((float) $stats['average'], 1),
+        'value' => $stats['average'] === null ? 'No ratings yet' : format_rating($stats['average']),
         'tone'  => 'success',
     ],
     [

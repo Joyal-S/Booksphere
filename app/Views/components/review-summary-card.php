@@ -37,12 +37,14 @@ $summary = array_merge([
 $average = (float) $summary['average'];
 $count   = max(0, (int) $summary['count']);
 
+$cardClass = trim('card-base p-4 review-summary-card ' . ($summary['class'] ?? ''));
+
 ?>
-<div class="card-base h-100 p-4 review-summary-card">
+<div class="<?= e($cardClass) ?>">
     <h3 class="section-title"><?= e((string) $summary['title']) ?></h3>
 
     <div class="review-summary-average">
-        <span class="analytics-average-value"><?= e(number_format($average, 2)) ?>/5</span>
+        <span class="analytics-average-value"><?= e(format_rating($average)) ?>/5</span>
         <div class="mt-1">
             <?php $starRating = [
                 'rating'  => $average,

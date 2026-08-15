@@ -59,7 +59,7 @@ $lead  = $lead ?? '';
         <?php require root_path('app/Views/recommendations/_hero.php'); ?>
 
         <section class="rec-section rec-skeletons" data-skeletons hidden aria-hidden="true">
-            <div class="row g-3 g-xl-4 row-cols-1 row-cols-md-3 row-cols-xl-5">
+            <div class="rec-card-grid">
                 <?php $skeletonCount = 8; ?>
                 <?php require root_path('app/Views/recommendations/components/skeleton-card.php'); ?>
             </div>

@@ -44,6 +44,10 @@ final class SqliteSearchProvider implements SearchProvider
      */
     public function search(SearchQuerySpec $query): array
     {
+        if ($query->entity === SearchQuerySpec::SCOPE_ALL || $query->entity === 'all') {
+            return $this->searchAll($query);
+        }
+
         return match ($query->entity) {
             SearchQuerySpec::SCOPE_BOOKS      => $this->repository->searchBooks($query),
             SearchQuerySpec::SCOPE_AUTHORS    => $this->repository->searchAuthors($query),
@@ -52,6 +56,54 @@ final class SqliteSearchProvider implements SearchProvider
             SearchQuerySpec::SCOPE_REVIEWS    => $this->repository->searchReviews($query),
             default                            => ['items' => [], 'total' => 0],
         };
+    }
+
+    /**
+     * Search across all entities in the catalogue.
+     *
+     * @return array{items: array<int, array<string, mixed>>, total: int}
+     */
+    private function searchAll(SearchQuerySpec $query): array
+    {
+        $items = [];
+        $total = 0;
+
+        $books = $this->repository->searchBooks($query);
+        foreach ($books['items'] as $row) {
+            $row['_entity'] = SearchQuerySpec::SCOPE_BOOKS;
+            $items[] = $row;
+        }
+        $total += $books['total'];
+
+        $authors = $this->repository->searchAuthors($query);
+        foreach ($authors['items'] as $row) {
+            $row['_entity'] = SearchQuerySpec::SCOPE_AUTHORS;
+            $items[] = $row;
+        }
+        $total += $authors['total'];
+
+        $categories = $this->repository->searchCategories($query);
+        foreach ($categories['items'] as $row) {
+            $row['_entity'] = SearchQuerySpec::SCOPE_CATEGORIES;
+            $items[] = $row;
+        }
+        $total += $categories['total'];
+
+        $publishers = $this->repository->searchPublishers($query);
+        foreach ($publishers['items'] as $row) {
+            $row['_entity'] = SearchQuerySpec::SCOPE_PUBLISHERS;
+            $items[] = $row;
+        }
+        $total += $publishers['total'];
+
+        $reviews = $this->repository->searchReviews($query);
+        foreach ($reviews['items'] as $row) {
+            $row['_entity'] = SearchQuerySpec::SCOPE_REVIEWS;
+            $items[] = $row;
+        }
+        $total += $reviews['total'];
+
+        return ['items' => $items, 'total' => $total];
     }
 
     /**

@@ -156,8 +156,10 @@ function historyRequest(string $q, array $extra = []): SearchQueryRequest
 {
     global $config;
 
+    $defaultScope = (isset($extra['status']) || isset($extra['category_id']) || isset($extra['author_id']) || isset($extra['publisher']) || isset($extra['language']) || isset($extra['min_rating'])) ? 'books' : 'all';
+
     $input = array_replace(
-        ['q' => $q, 'scope' => 'books', 'page' => '1', 'per_page' => '0'],
+        ['q' => $q, 'scope' => $defaultScope, 'page' => '1', 'per_page' => '0'],
         $extra,
     );
 

@@ -83,7 +83,7 @@ $topGenre        = $userReviewStats['mostReviewedCategory'] ?? null;
             <div class="col-6">
                 <div class="analytics-tile">
                     <span class="analytics-tile-value">
-                        <?= e($givenAvg === null ? '—' : number_format((float) $givenAvg, 1)) ?>
+                        <?= e($givenAvg === null ? '—' : format_rating($givenAvg)) ?>
                     </span>
                     <span class="analytics-tile-label">Average rating given</span>
                 </div>

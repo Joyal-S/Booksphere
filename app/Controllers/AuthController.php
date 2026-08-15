@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BookSphere\App\Controllers;
 
 use BookSphere\App\Core\Controller;
+use BookSphere\App\Core\RateLimiter;
 use BookSphere\App\Core\Request;
 use BookSphere\App\Core\Response;
 use BookSphere\App\Core\Validator;
@@ -44,6 +45,7 @@ final class AuthController extends Controller
         private readonly AuthService $auth,
         private readonly User $users,
         private readonly PasswordResetToken $resetTokens,
+        private readonly ?RateLimiter $limiter = null,
     ) {}
 
     // -----------------------------------------------------------------
@@ -128,6 +130,7 @@ final class AuthController extends Controller
     {
         $email    = (string) $request->input('email');
         $remember = $request->input('remember') !== null;
+        $password = (string) $request->input('password');
 
         $data = [
             'title'  => 'Log in',
@@ -137,22 +140,8 @@ final class AuthController extends Controller
             'errors' => [],
         ];
 
-        if ($this->auth->tooManyAttempts()) {
-            $minutes = (int) ceil($this->auth->lockoutRemainingSeconds() / 60);
-
-            $data['errors'] = ['email' => [
-                "Too many failed attempts. Please try again in $minutes minute(s).",
-            ]];
-
-            $this->view('auth.login', $data, 'layouts.auth');
-
-            return;
-        }
-
-        $password = (string) $request->input('password');
-
         if ($email === '' || $password === '') {
-            $data['errors'] = ['email' => ['Enter your email address and password.']];
+            $data['errors'] = ['email' => ['Invalid email or password.']];
 
             $this->view('auth.login', $data, 'layouts.auth');
 
@@ -160,7 +149,7 @@ final class AuthController extends Controller
         }
 
         if (!$this->auth->attempt($email, $password, $remember)) {
-            $data['errors'] = ['password' => ['Invalid email address or password.']];
+            $data['errors'] = ['password' => ['Invalid email or password.']];
 
             $this->view('auth.login', $data, 'layouts.auth');
 
@@ -219,6 +208,27 @@ final class AuthController extends Controller
             $this->view('auth.forgot-password', $data, 'layouts.auth');
 
             return;
+        }
+
+        if ($this->limiter !== null) {
+            $ipKey = 'ip:' . ($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
+            $resetKey = 'reset:' . strtolower(trim($email));
+
+            if (!$this->limiter->allow('forgot_password', 3, 900, $ipKey) || !$this->limiter->allow('forgot_password_email', 3, 900, $resetKey)) {
+                $seconds = max(1, $this->limiter->remainingSeconds('forgot_password', 900, $ipKey));
+
+                if (!headers_sent()) {
+                    header('Retry-After: ' . $seconds);
+                    http_response_code(429);
+                }
+
+                $data['sent'] = true;
+                $data['sent_to'] = $email;
+
+                $this->view('auth.forgot-password', $data, 'layouts.auth');
+
+                return;
+            }
         }
 
         $user = $this->users->findByEmail($email);

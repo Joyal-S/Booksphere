@@ -130,6 +130,7 @@ final class RecommendationService
         private readonly ?PersonalizationCache $cache = null,
         private readonly ?Logger $logger = null,
         private readonly ?NotificationDispatcher $dispatcher = null,
+        private readonly ?CommunityRecommendationSignalService $communitySignals = null,
     ) {}
 
     /**
@@ -424,7 +425,10 @@ final class RecommendationService
         // ("starting point", no "your picks" claim), so only a real
         // profile earns the "Your picks are ready" notification.
         if ($this->dispatcher !== null && $this->profileHasSignals($profile)) {
-            $this->dispatcher->notify('recommendation_ready', [], $userId);
+            $notificationModel = new \BookSphere\App\Models\Notification();
+            if (!$notificationModel->hasRecent($userId, 'recommendation_ready', 86400)) {
+                $this->dispatcher->notify('recommendation_ready', [], $userId);
+            }
         }
 
         return $result;
@@ -509,6 +513,10 @@ final class RecommendationService
 
         if (in_array('review_score', $matched, true)) {
             $parts[] = 'Highly rated by the community.';
+        }
+
+        if (in_array('community', $matched, true)) {
+            $parts[] = 'Based on books you discussed in the community.';
         }
 
         if (in_array('trending', $matched, true)) {
@@ -908,6 +916,8 @@ final class RecommendationService
         $categoryIds  = $this->idsPerBook($this->repository->categoriesForBooks($candidateIds));
         $authorIds    = $this->idsPerBook($this->repository->authorsForBooks($candidateIds));
 
+        $userCommunitySignals = $this->communitySignals?->getUserBookSignals($profile->userId) ?? [];
+
         $items = [];
 
         foreach ($rows as $row) {
@@ -928,6 +938,7 @@ final class RecommendationService
                 'viewed'       => $viewedOverlap,
                 'rating'       => count(array_intersect($categoryIds[$id] ?? [], $ratingCategoryIds)),
                 'review_score' => $this->reviewScoreSignal($row),
+                'community'    => (float) ($userCommunitySignals[$id] ?? 0.0),
                 'trending'     => (float) ($row['trending_score'] ?? 0),
                 'popularity'   => (float) ($row['popularity_score'] ?? 0),
             ];
@@ -957,7 +968,7 @@ final class RecommendationService
      *
      * Input:  the factor signals of the book
      * Output: the matched keys ('category', 'author', 'wishlist',
-     *         'viewed', 'rating', 'review_score', 'trending')
+     *         'viewed', 'rating', 'review_score', 'community', 'trending')
      *
      * Business responsibility: the machine-readable half of the
      * explanation, and the basis of the confidence label. The pure
@@ -980,6 +991,10 @@ final class RecommendationService
 
         if ((float) ($signals['review_score'] ?? 0) > 0) {
             $matched[] = 'review_score';
+        }
+
+        if ((float) ($signals['community'] ?? 0) > 0) {
+            $matched[] = 'community';
         }
 
         if ((float) ($signals['trending'] ?? 0) > 0) {

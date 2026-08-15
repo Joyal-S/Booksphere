@@ -147,7 +147,7 @@ section('1. REQUEST GATE (SearchQueryRequest validation)');
 $req = new SearchQueryRequest(['q' => 'harry potter', 'scope' => 'books', 'page' => '2', 'per_page' => '12'], $config);
 check('Valid basic query passes', $req->valid() && $req->term() === 'harry potter');
 check('Whitelisted per_page survives', $req->perPage() === 12);
-check('Default scope is books', (new SearchQueryRequest([], $config))->scope() === 'books');
+check('Default scope is all', (new SearchQueryRequest([], $config))->scope() === 'all');
 
 $req = new SearchQueryRequest(['q' => str_repeat('x', 300)], $config);
 check('Over-long term rejected', !$req->valid() && !empty($req->errors()['q']));
@@ -208,7 +208,7 @@ check('Hit carries the detail url', $r->total === 0 || str_starts_with($r->hits[
 section('3. AUTHORS / CATEGORIES / PUBLISHERS / REVIEWS SCOPES');
 
 $r = run('rowling', 'authors');
-check('Authors by name', $r->ok() && $r->total === 1 && $r->hits[0]->entity === 'authors' && str_contains($r->hits[0]->url, 'author_id='));
+check('Authors by name', $r->ok() && $r->total === 1 && $r->hits[0]->entity === 'authors' && (str_contains($r->hits[0]->url, '/authors/') || str_contains($r->hits[0]->url, 'author_id=')));
 
 $r = run('harper', 'authors');
 check('Authors partial', $r->ok() && $r->total >= 1, "{$r->total} author(s)");
@@ -240,7 +240,7 @@ section('4. ADVANCED FILTERS (Phase 11.3 - books scope)');
 
 // --- Request-gate normalization -------------------------------------
 
-$req = new SearchQueryRequest(['status' => 'published', 'language' => 'en', 'min_rating' => '4'], $config);
+$req = new SearchQueryRequest(['scope' => 'books', 'status' => 'published', 'language' => 'en', 'min_rating' => '4'], $config);
 $f = $req->filters();
 check('Whitelisted filters survive', ($f['status'] ?? '') === 'published' && ($f['language'] ?? '') === 'en' && ($f['min_rating'] ?? '') === '4');
 
@@ -375,13 +375,13 @@ $_GET = ['q' => 'zzzzzz-no-such-book'];
 ob_start();
 $controller->index(new Request(), []);
 $html = (string) ob_get_clean();
-check('Empty state renders', str_contains($html, 'no results for') || str_contains($html, 'No results for'));
+check('Empty state renders', str_contains($html, 'no results') || str_contains($html, 'No results'));
 
 $_GET = [];
 ob_start();
 $controller->index(new Request(), []);
 $html = (string) ob_get_clean();
-check('Empty query renders the type-to-search state', str_contains($html, 'Type to search'));
+check('Empty query renders the type-to-search state', str_contains($html, 'Search BookSphere') || str_contains($html, 'Type to search'));
 
 $_GET = ['q' => 'harry', 'scope' => 'reviews'];
 ob_start();

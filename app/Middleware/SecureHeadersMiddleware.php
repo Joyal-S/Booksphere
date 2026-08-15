@@ -27,10 +27,25 @@ final class SecureHeadersMiddleware
      */
     public function handle(Request $request, callable $next): mixed
     {
-        header('X-Content-Type-Options: nosniff');
-        header('X-Frame-Options: DENY');
-        header('Referrer-Policy: strict-origin-when-cross-origin');
-        header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+        if (!headers_sent()) {
+            header('X-Content-Type-Options: nosniff');
+            header('X-Frame-Options: DENY');
+            header('Referrer-Policy: strict-origin-when-cross-origin');
+            header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+
+            $csp = "default-src 'self'; "
+                . "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                . "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "
+                . "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; "
+                . "img-src 'self' data: https://*.google.com https://*.google.co.in https://*.ggpht.com; "
+                . "connect-src 'self';";
+
+            header('Content-Security-Policy: ' . $csp);
+
+            if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+                header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+            }
+        }
 
         return $next();
     }

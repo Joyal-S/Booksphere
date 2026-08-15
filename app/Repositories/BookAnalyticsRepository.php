@@ -100,28 +100,51 @@ final class BookAnalyticsRepository
      */
     public function overview(): array
     {
-        $row = db()->query(
-            'SELECT
-                COUNT(*) AS books,
-                SUM(CASE WHEN b.cover_image IS NOT NULL AND b.cover_image != \'\' THEN 1 ELSE 0 END)  AS with_covers,
-                SUM(CASE WHEN b.cover_image IS NULL OR b.cover_image = \'\' THEN 1 ELSE 0 END)         AS without_covers,
-                SUM(CASE WHEN b.published_year IS NOT NULL THEN 1 ELSE 0 END)                          AS with_year,
-                SUM(CASE WHEN b.publisher IS NOT NULL THEN 1 ELSE 0 END)                               AS with_publisher,
-                SUM(CASE WHEN b.page_count IS NOT NULL THEN 1 ELSE 0 END)                              AS with_pages,
-                SUM(CASE WHEN b.google_book_id IS NOT NULL AND b.google_book_id != \'\' THEN 1 ELSE 0 END) AS imported
+        $rows = db()->query(
+            'SELECT b.id, b.cover_image, b.published_year, b.publisher, b.page_count, b.google_book_id
              FROM books b
              WHERE ' . self::VISIBLE,
             [self::BOOK_STATUS_PUBLISHED],
-        )[0] ?? [];
+        );
+
+        $totalBooks    = count($rows);
+        $withCovers    = 0;
+        $withYear      = 0;
+        $withPublisher = 0;
+        $withPages     = 0;
+        $imported      = 0;
+
+        foreach ($rows as $row) {
+            $img = trim((string) ($row['cover_image'] ?? ''));
+            if ($img !== '' && !str_starts_with($img, 'http://') && !str_starts_with($img, 'https://') && !str_contains($img, 'placeholder')) {
+                $fullPath = root_path('public/' . ltrim($img, '/'));
+                if (file_exists($fullPath) && is_file($fullPath) && filesize($fullPath) > 0) {
+                    $withCovers++;
+                }
+            }
+
+            if (!empty($row['published_year'])) {
+                $withYear++;
+            }
+            if (!empty($row['publisher'])) {
+                $withPublisher++;
+            }
+            if (!empty($row['page_count'])) {
+                $withPages++;
+            }
+            if (!empty($row['google_book_id'])) {
+                $imported++;
+            }
+        }
 
         return [
-            'books'            => (int) ($row['books'] ?? 0),
-            'with_covers'      => (int) ($row['with_covers'] ?? 0),
-            'without_covers'   => (int) ($row['without_covers'] ?? 0),
-            'with_year'        => (int) ($row['with_year'] ?? 0),
-            'with_publisher'   => (int) ($row['with_publisher'] ?? 0),
-            'with_pages'       => (int) ($row['with_pages'] ?? 0),
-            'imported'         => (int) ($row['imported'] ?? 0),
+            'books'            => $totalBooks,
+            'with_covers'      => $withCovers,
+            'without_covers'   => max(0, $totalBooks - $withCovers),
+            'with_year'        => $withYear,
+            'with_publisher'   => $withPublisher,
+            'with_pages'       => $withPages,
+            'imported'         => $imported,
         ];
     }
 
@@ -234,6 +257,7 @@ final class BookAnalyticsRepository
     {
         $rows = db()->query(
             'SELECT b.id, b.title, b.cover_image,
+                    (SELECT GROUP_CONCAT(a.name, \', \') FROM book_authors ba JOIN authors a ON a.id = ba.author_id WHERE ba.book_id = b.id) AS author_name,
                     AVG(r.rating)  AS average,
                     COUNT(r.id)    AS count
              FROM reviews r
@@ -248,11 +272,12 @@ final class BookAnalyticsRepository
 
         return array_map(
             static fn (array $row): array => [
-                'id'      => (int) $row['id'],
-                'title'   => (string) $row['title'],
-                'cover'   => ($row['cover_image'] !== null && $row['cover_image'] !== '') ? (string) $row['cover_image'] : null,
-                'average' => round((float) $row['average'], 2),
-                'count'   => (int) $row['count'],
+                'id'          => (int) $row['id'],
+                'title'       => (string) $row['title'],
+                'author_name' => (string) ($row['author_name'] ?? ''),
+                'cover'       => ($row['cover_image'] !== null && $row['cover_image'] !== '') ? (string) $row['cover_image'] : null,
+                'average'     => round((float) $row['average'], 2),
+                'count'       => (int) $row['count'],
             ],
             $rows,
         );
@@ -267,7 +292,9 @@ final class BookAnalyticsRepository
     public function mostReviewed(int $limit): array
     {
         $rows = db()->query(
-            'SELECT b.id, b.title, b.cover_image, COUNT(r.id) AS count
+            'SELECT b.id, b.title, b.cover_image,
+                    (SELECT GROUP_CONCAT(a.name, \', \') FROM book_authors ba JOIN authors a ON a.id = ba.author_id WHERE ba.book_id = b.id) AS author_name,
+                    COUNT(r.id) AS count
              FROM reviews r
              JOIN books b ON b.id = r.book_id
              WHERE ' . self::VISIBLE . ' AND r.status = \'' . self::REVIEW_STATUS_APPROVED . '\'
@@ -279,10 +306,11 @@ final class BookAnalyticsRepository
 
         return array_map(
             static fn (array $row): array => [
-                'id'    => (int) $row['id'],
-                'title' => (string) $row['title'],
-                'cover' => ($row['cover_image'] !== null && $row['cover_image'] !== '') ? (string) $row['cover_image'] : null,
-                'count' => (int) $row['count'],
+                'id'          => (int) $row['id'],
+                'title'       => (string) $row['title'],
+                'author_name' => (string) ($row['author_name'] ?? ''),
+                'cover'       => ($row['cover_image'] !== null && $row['cover_image'] !== '') ? (string) $row['cover_image'] : null,
+                'count'       => (int) $row['count'],
             ],
             $rows,
         );
@@ -299,7 +327,9 @@ final class BookAnalyticsRepository
     public function mostWishlisted(int $limit): array
     {
         $rows = db()->query(
-            'SELECT b.id, b.title, b.cover_image, COUNT(l.user_id) AS count
+            'SELECT b.id, b.title, b.cover_image,
+                    (SELECT GROUP_CONCAT(a.name, \', \') FROM book_authors ba JOIN authors a ON a.id = ba.author_id WHERE ba.book_id = b.id) AS author_name,
+                    COUNT(l.user_id) AS count
              FROM user_library l
              JOIN books b ON b.id = l.book_id
              WHERE ' . self::VISIBLE . ' AND l.library_status = \'' . self::STATUS_WANT_TO_READ . '\'
@@ -311,10 +341,11 @@ final class BookAnalyticsRepository
 
         return array_map(
             static fn (array $row): array => [
-                'id'    => (int) $row['id'],
-                'title' => (string) $row['title'],
-                'cover' => ($row['cover_image'] !== null && $row['cover_image'] !== '') ? (string) $row['cover_image'] : null,
-                'count' => (int) $row['count'],
+                'id'          => (int) $row['id'],
+                'title'       => (string) $row['title'],
+                'author_name' => (string) ($row['author_name'] ?? ''),
+                'cover'       => ($row['cover_image'] !== null && $row['cover_image'] !== '') ? (string) $row['cover_image'] : null,
+                'count'       => (int) $row['count'],
             ],
             $rows,
         );
@@ -330,7 +361,9 @@ final class BookAnalyticsRepository
     public function mostRead(int $limit): array
     {
         $rows = db()->query(
-            'SELECT b.id, b.title, b.cover_image, COUNT(l.user_id) AS count
+            'SELECT b.id, b.title, b.cover_image,
+                    (SELECT GROUP_CONCAT(a.name, \', \') FROM book_authors ba JOIN authors a ON a.id = ba.author_id WHERE ba.book_id = b.id) AS author_name,
+                    COUNT(l.user_id) AS count
              FROM user_library l
              JOIN books b ON b.id = l.book_id
              WHERE ' . self::VISIBLE . ' AND l.library_status = \'' . self::STATUS_FINISHED . '\'
@@ -342,10 +375,11 @@ final class BookAnalyticsRepository
 
         return array_map(
             static fn (array $row): array => [
-                'id'    => (int) $row['id'],
-                'title' => (string) $row['title'],
-                'cover' => ($row['cover_image'] !== null && $row['cover_image'] !== '') ? (string) $row['cover_image'] : null,
-                'count' => (int) $row['count'],
+                'id'          => (int) $row['id'],
+                'title'       => (string) $row['title'],
+                'author_name' => (string) ($row['author_name'] ?? ''),
+                'cover'       => ($row['cover_image'] !== null && $row['cover_image'] !== '') ? (string) $row['cover_image'] : null,
+                'count'       => (int) $row['count'],
             ],
             $rows,
         );
@@ -369,7 +403,9 @@ final class BookAnalyticsRepository
                  SELECT r.book_id AS book_id, r.user_id AS user_id FROM reviews r
                  WHERE r.status = \'' . self::REVIEW_STATUS_APPROVED . '\'
              )
-             SELECT b.id, b.title, b.cover_image, COUNT(DISTINCT a.user_id) AS count
+             SELECT b.id, b.title, b.cover_image,
+                    (SELECT GROUP_CONCAT(a.name, \', \') FROM book_authors ba JOIN authors a ON a.id = ba.author_id WHERE ba.book_id = b.id) AS author_name,
+                    COUNT(DISTINCT a.user_id) AS count
              FROM activity a
              JOIN books b ON b.id = a.book_id
              WHERE ' . self::VISIBLE . '
@@ -381,10 +417,11 @@ final class BookAnalyticsRepository
 
         return array_map(
             static fn (array $row): array => [
-                'id'    => (int) $row['id'],
-                'title' => (string) $row['title'],
-                'cover' => ($row['cover_image'] !== null && $row['cover_image'] !== '') ? (string) $row['cover_image'] : null,
-                'count' => (int) $row['count'],
+                'id'          => (int) $row['id'],
+                'title'       => (string) $row['title'],
+                'author_name' => (string) ($row['author_name'] ?? ''),
+                'cover'       => ($row['cover_image'] !== null && $row['cover_image'] !== '') ? (string) $row['cover_image'] : null,
+                'count'       => (int) $row['count'],
             ],
             $rows,
         );
@@ -416,6 +453,7 @@ final class BookAnalyticsRepository
                 b.id AS id,
                 b.title AS title,
                 b.cover_image AS cover_image,
+                (SELECT GROUP_CONCAT(a.name, \', \') FROM book_authors ba JOIN authors a ON a.id = ba.author_id WHERE ba.book_id = b.id) AS author_name,
                 COALESCE((SELECT AVG(r.rating) FROM reviews r
                           WHERE r.book_id = b.id AND r.status = \'' . self::REVIEW_STATUS_APPROVED . '\'), 0) AS average,
                 (SELECT COUNT(*) FROM reviews r
@@ -433,12 +471,13 @@ final class BookAnalyticsRepository
 
         return array_map(
             static fn (array $row): array => [
-                'id'        => (int) $row['id'],
-                'title'     => (string) $row['title'],
-                'cover'     => ($row['cover_image'] !== null && $row['cover_image'] !== '') ? (string) $row['cover_image'] : null,
-                'average'   => round((float) $row['average'], 2),
-                'reviews'   => (int) $row['reviews'],
-                'interests' => (int) $row['interests'],
+                'id'          => (int) $row['id'],
+                'title'       => (string) $row['title'],
+                'author_name' => (string) ($row['author_name'] ?? ''),
+                'cover'       => ($row['cover_image'] !== null && $row['cover_image'] !== '') ? (string) $row['cover_image'] : null,
+                'average'     => round((float) $row['average'], 2),
+                'reviews'     => (int) $row['reviews'],
+                'interests'   => (int) $row['interests'],
             ],
             $rows,
         );
@@ -460,6 +499,7 @@ final class BookAnalyticsRepository
                 b.id AS id,
                 b.title AS title,
                 b.cover_image AS cover_image,
+                (SELECT GROUP_CONCAT(a.name, \', \') FROM book_authors ba JOIN authors a ON a.id = ba.author_id WHERE ba.book_id = b.id) AS author_name,
                 COALESCE((SELECT COUNT(*) FROM reviews r
                           WHERE r.book_id = b.id AND r.status = \'' . self::REVIEW_STATUS_APPROVED . '\'
                             AND r.created_at >= ?), 0) AS recent_reviews,
@@ -477,9 +517,9 @@ final class BookAnalyticsRepository
                     OR EXISTS (SELECT 1 FROM user_library w
                                WHERE w.book_id = b.id AND w.library_status = \'' . self::STATUS_WANT_TO_READ . '\'
                                  AND w.created_at >= ?)
-OR EXISTS (SELECT 1 FROM user_library f
-                                WHERE f.book_id = b.id AND f.library_status = \'' . self::STATUS_FINISHED . '\'
-                                  AND f.finished_reading_at >= ?))',
+                    OR EXISTS (SELECT 1 FROM user_library f
+                               WHERE f.book_id = b.id AND f.library_status = \'' . self::STATUS_FINISHED . '\'
+                                 AND f.finished_reading_at >= ?))',
             // SQL placeholder order: the three window sub-selects come
             // first, then the VISIBLE scope (in the WHERE) - the bound
             // list must follow exactly that order.
@@ -488,12 +528,13 @@ OR EXISTS (SELECT 1 FROM user_library f
 
         return array_map(
             static fn (array $row): array => [
-                'id'        => (int) $row['id'],
-                'title'     => (string) $row['title'],
-                'cover'     => ($row['cover_image'] !== null && $row['cover_image'] !== '') ? (string) $row['cover_image'] : null,
-                'reviews'   => (int) $row['recent_reviews'],
-                'interests' => (int) $row['recent_interests'],
-                'finishes'  => (int) $row['recent_finishes'],
+                'id'          => (int) $row['id'],
+                'title'       => (string) $row['title'],
+                'author_name' => (string) ($row['author_name'] ?? ''),
+                'cover'       => ($row['cover_image'] !== null && $row['cover_image'] !== '') ? (string) $row['cover_image'] : null,
+                'reviews'     => (int) $row['recent_reviews'],
+                'interests'   => (int) $row['recent_interests'],
+                'finishes'    => (int) $row['recent_finishes'],
             ],
             $rows,
         );

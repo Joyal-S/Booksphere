@@ -287,6 +287,23 @@ final class NotificationRepository
     }
 
     /**
+     * Check if an unread or recent notification of a given type exists for a user.
+     * Prevents duplicate notification spam within the specified timeframe.
+     */
+    public function hasRecent(int $userId, string $type, int $withinSeconds = 3600): bool
+    {
+        $cutoff = gmdate('Y-m-d H:i:s', time() - $withinSeconds);
+        $rows = db()->query(
+            'SELECT COUNT(*) AS count
+             FROM notifications
+             WHERE user_id = ? AND type = ? AND datetime(created_at) >= datetime(?)',
+            [$userId, $type, $cutoff],
+        );
+
+        return (int) ($rows[0]['count'] ?? 0) > 0;
+    }
+
+    /**
      * Mark one notification read (idempotent): sets is_read = 1 and
      * stamps read_at only when it was still unread. Owner-scoped.
      */

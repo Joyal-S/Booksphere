@@ -36,7 +36,7 @@ $pagination = $pagination ?? null;
     <p class="eyebrow">Reviews &middot; Book #<?= (int) $book['id'] ?></p>
     <h1><?= e($book['title']) ?></h1>
     <p class="lead">
-        <?= e(number_format((float) $stats['average'], 1)) ?> average from
+        <?= e(format_rating($stats['average'])) ?> average from
         <?= (int) $stats['count'] ?> review<?= (int) $stats['count'] === 1 ? '' : 's' ?>
     </p>
 </div>

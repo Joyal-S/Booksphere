@@ -61,7 +61,7 @@ $collectionMeta = [
                 </span>
                 <span class="library-collection-meta">
                     <?php if ($count > 0): ?>
-                        <span data-collection-rating-text><i class="fa-solid fa-star" aria-hidden="true"></i><?= number_format($rating, 1) ?></span>
+                        <span data-collection-rating-text><i class="fa-solid fa-star" aria-hidden="true"></i><?= e(format_rating($rating)) ?></span>
                         <?php if ($updatedOn !== ''): ?>
                             <span class="library-collection-dot" aria-hidden="true">·</span>
                             <span data-collection-updated-text><i class="fa-regular fa-clock" aria-hidden="true"></i><?= e($updatedOn) ?></span>

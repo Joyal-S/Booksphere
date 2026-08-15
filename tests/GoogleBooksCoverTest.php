@@ -557,7 +557,7 @@ check('A book with a local cover renders the cached <img>', str_contains($withCo
 $withoutCover = View::fragment('books.components.book-cover', [
     'cover' => ['src' => '', 'alt' => 'Dune'],
 ]);
-check('A book without a cover renders the CSS placeholder, not an <img>', str_contains($withoutCover, 'book-cover-fallback') && !str_contains($withoutCover, '<img'));
+check('A book without a cover renders the placeholder fallback image', str_contains($withoutCover, 'book-cover-fallback') && str_contains($withoutCover, 'cover-placeholder.svg'));
 
 // The book detail page shows the local path when a cover was attached.
 $detailData = ['id' => 1, 'title' => 'Cover', 'cover_image' => $rowA['cover_image'] ?? ''];

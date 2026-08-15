@@ -66,11 +66,25 @@ final class BookAnalyticsService
         private readonly array $config,
     ) {}
 
+    private ?BookAnalytics $cachedDto = null;
+
+    /**
+     * Clear instance cache (for testing/resets).
+     */
+    public function clearCache(): void
+    {
+        $this->cachedDto = null;
+    }
+
     /**
      * Build the complete catalogue-analytics payload.
      */
     public function build(): BookAnalytics
     {
+        if ($this->cachedDto !== null) {
+            return $this->cachedDto;
+        }
+
         $overview   = $this->repository->overview();
         $pages      = (int) ($overview['books'] ?? 0);
         $distribution = $this->completeDistribution($this->repository->ratingDistribution());
@@ -115,7 +129,7 @@ final class BookAnalyticsService
 
         $activity = $this->activity((int) (($this->config['activity'] ?? [])['months'] ?? 12));
 
-        return new BookAnalytics(
+        return $this->cachedDto = new BookAnalytics(
             empty: $pages === 0,
             overview: [
                 'books'          => $pages,
@@ -232,10 +246,11 @@ final class BookAnalyticsService
             // signal keys never leak into the payload (a downstream
             // view reading average/count must not misread a score row).
             $scored[] = [
-                'id'    => (int) $row['id'],
-                'title' => (string) $row['title'],
-                'cover' => $row['cover'],
-                'score' => round($score($row), 4),
+                'id'          => (int) $row['id'],
+                'title'       => (string) $row['title'],
+                'author_name' => (string) ($row['author_name'] ?? ''),
+                'cover'       => $row['cover'],
+                'score'       => round($score($row), 4),
             ];
         }
 

@@ -10,15 +10,11 @@ use Throwable;
 /**
  * ErrorHandler
  *
- * Registers PHP's central error and exception handlers so that
- * every failure in the application is:
+ * Central error and exception handler for Phase 13.5 (Logging & Observability).
  *
- *     1. Logged to the log file (with details)
- *     2. Turned into a safe HTTP 500 response
- *
- * In debug mode the error message is shown in the browser to help
- * during development. In production only a generic message is
- * shown, so no internal details leak to visitors.
+ *     1. Logs full exception details (request_id, route, method, class, file, line, trace)
+ *     2. Returns safe HTTP 500 response with X-Request-ID correlation header
+ *     3. Prevents internal path/SQL leakage in production mode
  */
 final class ErrorHandler
 {
@@ -32,22 +28,28 @@ final class ErrorHandler
      */
     public function register(): void
     {
-        // Every PHP warning/notice becomes an exception, so a single
-        // handling path (the exception handler) covers all failures.
         set_error_handler(function (int $severity, string $message, string $file, int $line): never {
             throw new ErrorException($message, 0, $severity, $file, $line);
         });
 
         set_exception_handler(function (Throwable $exception): never {
+            $reqId = Logger::getRequestId();
+
             $this->logger->error($exception->getMessage(), [
-                'type'  => $exception::class,
-                'file'  => $exception->getFile(),
-                'line'  => $exception->getLine(),
-                'trace' => $exception->getTraceAsString(),
+                'type'       => $exception::class,
+                'request_id' => $reqId,
+                'route'      => $_SERVER['REQUEST_URI'] ?? 'CLI',
+                'method'     => $_SERVER['REQUEST_METHOD'] ?? 'GET',
+                'file'       => $exception->getFile(),
+                'line'       => $exception->getLine(),
+                'trace'      => $exception->getTraceAsString(),
             ]);
 
-            http_response_code(500);
-            header('Content-Type: text/html; charset=UTF-8');
+            if (!headers_sent()) {
+                http_response_code(500);
+                header('Content-Type: text/html; charset=UTF-8');
+                header('X-Request-ID: ' . $reqId);
+            }
 
             if ($this->debug) {
                 exit('<h1>Application error</h1><p>' . htmlspecialchars($exception->getMessage(), ENT_QUOTES, 'UTF-8') . '</p>');

@@ -71,6 +71,16 @@ final class Review
     }
 
     /**
+     * Find a review regardless of moderation status (for write path re-reads).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findAny(int $id): ?array
+    {
+        return $this->repository->findAny($id);
+    }
+
+    /**
      * Create a new review row and return its id.
      *
      * @param array<string, mixed> $data Normalized column values

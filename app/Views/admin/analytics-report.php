@@ -108,7 +108,7 @@ $csvUrl = '/admin/analytics/report?format=csv' . ($range === 'custom'
         $kpis = [
             ['label' => 'Books in catalogue', 'value' => (int) ($overview['books'] ?? 0), 'note' => 'all time'],
             ['label' => 'Approved reviews',   'value' => (int) ($overview['reviews'] ?? 0), 'note' => 'all time'],
-            ['label' => 'Average rating',     'value' => $overview['averageRating'] === null ? $dash : number_format((float) $overview['averageRating'], 2), 'note' => 'all time'],
+            ['label' => 'Average rating',     'value' => $overview['averageRating'] === null ? $dash : format_rating($overview['averageRating']), 'note' => 'all time'],
             ['label' => 'Recommendations',    'value' => (int) ($totals['logs'] ?? 0), 'note' => 'in range'],
             ['label' => 'Users served',       'value' => (int) ($totals['users'] ?? 0), 'note' => 'in range'],
             ['label' => 'Books suggested',    'value' => (int) ($totals['books'] ?? 0), 'note' => 'in range'],

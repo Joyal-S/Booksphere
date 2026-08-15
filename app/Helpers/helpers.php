@@ -76,7 +76,7 @@ function config(?string $key = null, mixed $default = null): mixed
  */
 function e(string|int|float|null $value): string
 {
-    return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML5, 'UTF-8');
 }
 
 /**
@@ -236,3 +236,34 @@ function csrf_token(): string
 
     return $csrf->token();
 }
+
+/**
+ * Render a hidden CSRF token input field.
+ */
+function csrf_field(): string
+{
+    return '<input type="hidden" name="_token" value="' . e(csrf_token()) . '">';
+}
+
+/**
+ * Format a rating value to 1 decimal place consistently across BookSphere.
+ *
+ * Examples:
+ *     format_rating(5)       -> "5.0"
+ *     format_rating(4.5)     -> "4.5"
+ *     format_rating(4.67)    -> "4.7"
+ *     format_rating(5.00)    -> "5.0"
+ *     format_rating(null)    -> ""
+ *
+ * @param float|int|string|null $rating
+ * @param string                $fallback Returned when $rating is null or empty string
+ */
+function format_rating(float|int|string|null $rating, string $fallback = ''): string
+{
+    if ($rating === null || $rating === '') {
+        return $fallback;
+    }
+
+    return number_format((float) $rating, 1);
+}
+

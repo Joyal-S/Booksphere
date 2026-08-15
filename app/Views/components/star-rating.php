@@ -83,7 +83,7 @@ $isReadOnly = (bool) $starRating['readOnly'];
 
 if ($isReadOnly): ?>
 <span class="star-rating star-rating-<?= e($size) ?><?= $isCompact ? ' star-rating-compact' : '' ?>"
-      <?= $starRating['tooltip'] ? 'title="' . e(number_format($rating, 1)) . ' out of ' . $max . '"' : '' ?>>
+      <?= $starRating['tooltip'] ? 'title="' . e(format_rating($rating)) . ' out of ' . $max . '"' : '' ?>>
     <span class="star-rating-visual" aria-hidden="true">
         <?php for ($i = 1; $i <= $max; $i++): ?>
             <?php if ($rating >= $i - 0.25): ?>
@@ -95,13 +95,17 @@ if ($isReadOnly): ?>
             <?php endif; ?>
         <?php endfor; ?>
     </span>
-    <span class="star-rating-value"><?= e(number_format($rating, 1)) ?></span>
+    <span class="star-rating-value"><?= e(format_rating($rating)) ?></span>
     <?php if ($starRating['count'] !== null): ?>
         <span class="star-rating-count">
-            <?= (int) $starRating['count'] === 1 ? 'Based on 1 review' : 'Based on ' . (int) $starRating['count'] . ' ' . e($starRating['countLabel']) ?>
+            <?php if ($size === 'sm' || !empty($starRating['shortCount'])): ?>
+                (<?= number_format((int) $starRating['count']) ?>)
+            <?php else: ?>
+                <?= (int) $starRating['count'] === 1 ? 'Based on 1 review' : 'Based on ' . number_format((int) $starRating['count']) . ' ' . e($starRating['countLabel']) ?>
+            <?php endif; ?>
         </span>
     <?php endif; ?>
-    <span class="visually-hidden">Rated <?= e(number_format($rating, 1)) ?> out of <?= $max ?> stars</span>
+    <span class="visually-hidden">Rated <?= e(format_rating($rating)) ?> out of <?= $max ?> stars</span>
 </span>
 <?php else: ?>
 <?php

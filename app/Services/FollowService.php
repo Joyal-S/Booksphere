@@ -60,6 +60,7 @@ final class FollowService
         private readonly Author $authors,
         private readonly ?NotificationDispatcher $dispatcher = null,
         ?Logger $logger = null,
+        private readonly ?RecommendationService $recommendations = null,
     ) {
         $this->logger = $logger ?? new Logger(root_path('storage/logs/application.log'));
     }
@@ -126,6 +127,8 @@ final class FollowService
             'author_id' => $authorId,
         ], $userId);
 
+        $this->recommendations?->invalidatePersonalization($userId);
+
         return $id;
     }
 
@@ -143,6 +146,8 @@ final class FollowService
                 'user_id'   => $userId,
                 'author_id' => $authorId,
             ]);
+
+            $this->recommendations?->invalidatePersonalization($userId);
         }
 
         return $removed;

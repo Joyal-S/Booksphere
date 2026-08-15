@@ -195,6 +195,9 @@ return [
     // field (Phase 11.6 ranking) and is ignored until then. A new
     // searchable entity = one new block here (+ its repository read).
     'entities' => [
+        'all' => [
+            'enabled' => true,
+        ],
         'books' => [
             'enabled' => true,
             'fields'  => [

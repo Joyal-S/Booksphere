@@ -53,8 +53,9 @@ return [
         'wishlist'     => 10,
         'rating'       => 10,
         'review_score' => 10,
+        'community'    => 5,
         'trending'     => 0,
-        'popularity'   => 5,
+        'popularity'   => 0,
     ],
 
     // --- Profile building -------------------------------------------

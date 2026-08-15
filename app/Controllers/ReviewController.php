@@ -96,8 +96,12 @@ final class ReviewController extends Controller
     {
         $userId = (int) auth()->id();
         $state  = $this->presenter->state($request);
+        // Own list: the owner's identity is the actor, so their
+        // pending/hidden rows stay visible to them (Phase 13.1 gate).
+        $state['actor_id']       = $userId;
+        $state['actor_is_admin'] = auth_is_admin();
         $result = $this->service->userReviews($userId, $state, $state['perPage'], $state['page']);
-        $stats  = $this->service->reviewStatistics(['user_id' => $userId]);
+        $stats  = $this->service->reviewStatistics(['user_id' => $userId, 'actor_id' => $userId]);
         $items  = $this->service->attachVoteState($result['items'], $userId);
 
         $this->view('reviews.index', [
@@ -126,6 +130,13 @@ final class ReviewController extends Controller
         if ($state['mine'] && auth()?->id() !== null) {
             $state['user_id'] = (int) auth()->id();
         }
+
+        // Phase 13.1 (security audit): the list gate needs to know
+        // WHO is asking, so a foreign user's page (or a ?user_id
+        // injected into the query string) can never expose
+        // pending/hidden reviews or their statistics.
+        $state['actor_id']       = (int) (auth()?->id() ?? 0);
+        $state['actor_is_admin'] = auth_is_admin();
 
         $result = $this->service->searchReviews($state['q'], $state, $state['perPage'], $state['page']);
         $stats  = $this->service->reviewStatistics($state);
@@ -156,7 +167,7 @@ final class ReviewController extends Controller
         $mine  = null;
 
         if (($userId = auth()?->id()) !== null) {
-            $mine = $this->service->reviewStatistics(['user_id' => $userId]);
+            $mine = $this->service->reviewStatistics(['user_id' => $userId, 'actor_id' => $userId]);
         }
 
         $this->view('reviews.statistics', [
@@ -185,8 +196,13 @@ final class ReviewController extends Controller
         }
 
         $state  = $this->presenter->state($request);
+        // Phase 13.1 (security audit): the visitor's own identity,
+        // so a foreign user's page shows pending/hidden rows only
+        // to that page's owner or an admin.
+        $state['actor_id']       = (int) (auth()?->id() ?? 0);
+        $state['actor_is_admin'] = auth_is_admin();
         $result = $this->service->userReviews($userId, $state, $state['perPage'], $state['page']);
-        $stats  = $this->service->reviewStatistics(['user_id' => $userId]);
+        $stats  = $this->service->reviewStatistics(['user_id' => $userId, 'actor_id' => $state['actor_id'], 'actor_is_admin' => $state['actor_is_admin']]);
         $base   = '/reviews/user/' . $userId;
         $items  = auth()?->id() !== null
             ? $this->service->attachVoteState($result['items'], (int) auth()->id())
@@ -554,11 +570,20 @@ final class ReviewController extends Controller
      * Fetch a review or answer 404. Response::error() terminates,
      * so the returned row is guaranteed to exist.
      *
+     * Phase 13.1 (security audit): the read is actor-aware - a
+     * hidden or pending review is a 404 for everyone except its
+     * own author and admins. The owner-or-admin EDIT/DELETE gates
+     * then run on top of this, exactly as before.
+     *
      * @return array<string, mixed>
      */
     private function findOrFail(int $reviewId): array
     {
-        $review = $this->service->find($reviewId);
+        $review = $this->service->find(
+            $reviewId,
+            (int) (auth()?->id() ?? 0),
+            auth_is_admin(),
+        );
 
         if ($review === null) {
             Response::error(404, 'Review not found.');
@@ -635,7 +660,16 @@ final class ReviewController extends Controller
             return;
         }
 
-        if (!$this->limiter->allow($bucket, $limit, $window)) {
+        $userId = auth()?->id();
+        $persistentKey = $userId !== null ? 'user:' . $userId : 'ip:' . ($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
+
+        if (!$this->limiter->allow($bucket, $limit, $window, $persistentKey)) {
+            $seconds = max(1, $this->limiter->remainingSeconds($bucket, $window, $persistentKey));
+
+            if (!headers_sent()) {
+                header('Retry-After: ' . $seconds);
+            }
+
             Response::error(429, 'Too many requests - please try again in a minute.');
         }
     }

@@ -146,6 +146,14 @@ final class Notification
     }
 
     /**
+     * Check if an unread or recent notification of a type exists for a user.
+     */
+    public function hasRecent(int $userId, string $type, int $withinSeconds = 3600): bool
+    {
+        return $this->repository->hasRecent($userId, $type, $withinSeconds);
+    }
+
+    /**
      * Mark one notification read (idempotent, owner-scoped).
      */
     public function markRead(int $id, int $userId): bool

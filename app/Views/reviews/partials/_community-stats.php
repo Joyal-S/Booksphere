@@ -63,19 +63,19 @@ foreach (['mostHelpful' => 'Most helpful review', 'newest' => 'Newest review', '
                 <?php require root_path('app/Views/components/stat-card.php'); ?>
             </div>
             <div class="col-6 col-md-4 col-lg-2">
-                <?php $stat = ['icon' => 'fa-star', 'label' => 'Average Rating', 'value' => $communityStats['averageRating'] === null ? '&mdash;' : number_format((float) $communityStats['averageRating'], 1), 'tone' => 'warning']; ?>
+                <?php $stat = ['icon' => 'fa-star', 'label' => 'Average Rating', 'value' => $communityStats['averageRating'] === null ? '—' : format_rating($communityStats['averageRating']), 'tone' => 'warning']; ?>
                 <?php require root_path('app/Views/components/stat-card.php'); ?>
             </div>
             <div class="col-6 col-md-4 col-lg-2">
-                <?php $stat = ['icon' => 'fa-fire', 'label' => 'Most Helpful', 'value' => $spots[0]['exists'] ? (string) $spots[0]['rating'] . ' &starf;' : '&mdash;', 'tone' => 'danger']; ?>
+                <?php $stat = ['icon' => 'fa-fire', 'label' => 'Most Helpful', 'value' => $spots[0]['exists'] ? (string) $spots[0]['rating'] . '★' : '—', 'tone' => 'danger']; ?>
                 <?php require root_path('app/Views/components/stat-card.php'); ?>
             </div>
             <div class="col-6 col-md-4 col-lg-2">
-                <?php $stat = ['icon' => 'fa-clock', 'label' => 'Newest Review', 'value' => $spots[1]['exists'] ? 'View' : '&mdash;', 'tone' => 'info']; ?>
+                <?php $stat = ['icon' => 'fa-clock', 'label' => 'Newest Review', 'value' => $spots[1]['exists'] ? 'View' : '—', 'tone' => 'info']; ?>
                 <?php require root_path('app/Views/components/stat-card.php'); ?>
             </div>
             <div class="col-6 col-md-4 col-lg-2">
-                <?php $stat = ['icon' => 'fa-crown', 'label' => 'Highest Rated', 'value' => $spots[2]['exists'] ? (string) $spots[2]['rating'] . ' &starf;' : '&mdash;', 'tone' => 'primary']; ?>
+                <?php $stat = ['icon' => 'fa-crown', 'label' => 'Highest Rated', 'value' => $spots[2]['exists'] ? (string) $spots[2]['rating'] . '★' : '—', 'tone' => 'primary']; ?>
                 <?php require root_path('app/Views/components/stat-card.php'); ?>
             </div>
         </div>

@@ -201,7 +201,7 @@ $topList = static function (array $rows): void {
                 ];
                 foreach ($rows as [$label, $value]): ?>
                     <dt class="col-sm-6"><?= e($label) ?></dt>
-                    <dd class="col-sm-6"><?= is_float($value) ? e(number_format($value, 2)) : e(number_format($value)) ?></dd>
+                    <dd class="col-sm-6"><?= $label === 'Average rating' ? e(format_rating($value)) : (is_float($value) ? e(number_format($value, 2)) : e(number_format($value))) ?></dd>
                 <?php endforeach; ?>
             </dl>
         </div>

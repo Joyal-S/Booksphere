@@ -23,6 +23,36 @@
  */
 
 /* =========================================================
+   FontAwesome 6 Icon System Protection
+   ========================================================= */
+.fa-solid,
+.fas,
+i.fa-solid,
+i.fas {
+    font-family: "Font Awesome 6 Free" !important;
+    font-weight: 900 !important;
+    font-style: normal !important;
+}
+
+.fa-regular,
+.far,
+i.fa-regular,
+i.far {
+    font-family: "Font Awesome 6 Free" !important;
+    font-weight: 400 !important;
+    font-style: normal !important;
+}
+
+.fa-brands,
+.fab,
+i.fa-brands,
+i.fab {
+    font-family: "Font Awesome 6 Brands" !important;
+    font-weight: 400 !important;
+    font-style: normal !important;
+}
+
+/* =========================================================
    1. Design tokens
    ========================================================= */
 :root {
@@ -177,11 +207,25 @@ a {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex: 0 0 auto;
     min-width: 0;
 }
 
+.navbar-app-left {
+    justify-content: flex-start;
+}
+
 .navbar-app-right {
-    flex-shrink: 0;
+    justify-content: flex-end;
+}
+
+.navbar-app-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 auto;
+    max-width: 540px;
+    width: 100%;
 }
 
 .brand {
@@ -226,15 +270,15 @@ a {
     font-size: 0.85rem;
 }
 
-/* Search bar (placeholder, no logic yet) */
+/* Search bar */
 .search-bar {
-    flex: 1;
-    max-width: 460px;
+    width: 100%;
+    max-width: 540px;
     min-width: 120px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 0 12px;
+    gap: 6px;
+    padding: 0 10px;
     height: 40px;
     background: var(--surface-2);
     border: 1px solid transparent;
@@ -250,17 +294,30 @@ a {
 }
 
 .search-bar-icon {
-    font-size: 0.9rem;
+    font-size: 0.88rem;
+    flex-shrink: 0;
 }
 
 .search-bar-input {
+    width: 100%;
     flex: 1;
     min-width: 0;
     border: 0;
+    padding: 0;
     background: transparent;
     color: var(--text);
-    font-size: 0.875rem;
+    font-size: 0.85rem;
     outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.search-bar-input::-webkit-search-decoration,
+.search-bar-input::-webkit-search-cancel-button,
+.search-bar-input::-webkit-search-results-button,
+.search-bar-input::-webkit-search-results-decoration {
+    -webkit-appearance: none;
+    display: none;
 }
 
 .search-bar-input::placeholder {
@@ -268,13 +325,14 @@ a {
 }
 
 .search-bar-hint {
-    padding: 2px 7px;
+    flex-shrink: 0;
+    padding: 1px 5px;
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: 5px;
     background: var(--surface);
     color: var(--muted);
     font-family: var(--font-sans);
-    font-size: 0.68rem;
+    font-size: 0.65rem;
     line-height: 1.4;
 }
 
@@ -649,12 +707,26 @@ body.sidebar-collapsed .sidebar-footer {
 }
 
 .page-intro h1 {
+    font-family: var(--font-sans);
     font-size: clamp(1.9rem, 4vw, 2.6rem);
     font-weight: 800;
+    color: var(--text);
     letter-spacing: -0.03em;
+    line-height: 1.2;
 }
 
-.card-base {
+.page-intro .lead {
+    font-family: var(--font-sans);
+    color: var(--muted);
+    font-size: 1.05rem;
+    font-weight: 400;
+    line-height: 1.5;
+}
+
+.card-base,
+.top-rated-book-card,
+.recent-review-card {
+    position: relative;
     padding: 24px;
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
@@ -761,8 +833,11 @@ body.sidebar-collapsed .sidebar-footer {
 
 .section-title {
     margin: 0;
+    font-family: var(--font-sans);
     font-size: 1.25rem;
     font-weight: 750;
+    color: var(--text);
+    letter-spacing: -0.02em;
 }
 
 .section-link {
@@ -1837,15 +1912,34 @@ a.category-badge:hover {
 /* ---------- Book cover component ---------- */
 .book-cover-component {
     display: block;
+    max-width: 100%;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface-2);
 }
 
-.book-cover-fallback {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--muted);
-    background: linear-gradient(150deg, var(--surface-2), var(--border));
+.top-rated-cover,
+.recent-review-cover {
+    width: 52px;
+    height: 72px;
+    flex-shrink: 0;
+    object-fit: cover;
+    aspect-ratio: 3 / 4;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--border);
+    background: var(--surface-2);
+}
+
+.book-cover-fallback,
+.book-cover-fallback-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
 }
 
 .book-cover-component.book-cover-broken {
@@ -1952,10 +2046,30 @@ a.category-badge:hover {
     }
 }
 
+@media (max-width: 768px) {
+    .navbar-app-center {
+        max-width: 320px;
+    }
+}
+
 @media (max-width: 575.98px) {
     .navbar-app {
-        padding: 0 14px;
+        padding: 0 12px;
         gap: 8px;
+    }
+
+    .navbar-app-left,
+    .navbar-app-right {
+        flex: 0 0 auto;
+    }
+
+    .brand span {
+        display: none;
+    }
+
+    .search-bar {
+        min-width: 0;
+        padding: 0 8px;
     }
 
     .search-bar-input {
@@ -2807,9 +2921,51 @@ a.category-badge:hover {
     color: var(--muted);
 }
 
+/* Responsive Grid layout for Recommendation Dashboard Cards */
+.rec-card-grid {
+    display: grid;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+    width: 100%;
+}
+
+@media (min-width: 576px) {
+    .rec-card-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 768px) {
+    .rec-card-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 992px) {
+    .rec-card-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1200px) {
+    .rec-card-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+    .rec-card-grid.rec-card-grid-4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
 /* ---------- Recommendation card ---------- */
 
-.rec-dashboard .rec-card {
+.rec-dashboard .rec-card,
+.rec-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0;
+    width: 100%;
     position: relative;
     padding: 0;
     gap: 0;
@@ -2822,7 +2978,9 @@ a.category-badge:hover {
 }
 
 .rec-dashboard .rec-card:hover,
-.rec-dashboard .rec-card:focus-within {
+.rec-dashboard .rec-card:focus-within,
+.rec-card:hover,
+.rec-card:focus-within {
     transform: translateY(-4px);
     box-shadow: var(--shadow-lg);
     border-color: var(--border-strong);
@@ -2833,11 +2991,14 @@ a.category-badge:hover {
     position: relative;
     display: block;
     padding: 14px 14px 0;
+    width: 100%;
 }
 
 .rec-card-cover-frame {
     display: block;
     aspect-ratio: 2 / 3;
+    max-height: 280px;
+    width: 100%;
     overflow: hidden;
     border-radius: var(--radius-sm);
     background: var(--surface-2);
@@ -2888,40 +3049,62 @@ a.category-badge:hover {
 .rec-card-body {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 14px 16px 16px;
+    flex: 1 1 auto;
+    gap: 6px;
+    padding: 12px 14px 14px;
+    min-width: 0;
+    overflow: hidden;
 }
 
-.rec-dashboard .rec-card-title {
+.rec-dashboard .rec-card-title,
+.rec-card-title {
     margin: 0;
-    font-size: 0.95rem;
+    font-size: 0.925rem;
     font-weight: 700;
-    line-height: 1.35;
+    line-height: 1.3;
     color: var(--text);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: 2.4em;
+    word-break: break-word;
 }
 
-.rec-dashboard .rec-card-title a {
+.rec-dashboard .rec-card-title a,
+.rec-card-title a {
     color: inherit;
     text-decoration: none;
 }
 
-.rec-dashboard .rec-card-title a:hover {
+.rec-dashboard .rec-card-title a:hover,
+.rec-card-title a:hover {
     color: var(--primary);
 }
 
 .rec-card-author {
     margin: 0;
-    font-size: 0.8125rem;
+    font-size: 0.8rem;
     color: var(--muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-height: 1.2em;
 }
 
 .rec-card-categories {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 4px;
+    min-height: 22px;
+    overflow: hidden;
+}
+
+.rec-card-categories .category-badge {
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .category-badge-more {
@@ -2932,13 +3115,20 @@ a.category-badge:hover {
 .rec-card-meta {
     display: flex;
     align-items: center;
-    gap: 10px;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-height: 20px;
+    overflow: hidden;
 }
 
 .rec-rating {
-    font-size: 0.8125rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    max-width: 100%;
 }
 
 .rec-rating i {
@@ -2952,20 +3142,23 @@ a.category-badge:hover {
     font-weight: 500;
 }
 
-/* The explainable reason badge. The tooltip (hover / focus) shows
-   the full reason when the badge text is clamped. */
-.rec-dashboard .rec-reason {
+/* The explainable reason badge. */
+.rec-dashboard .rec-reason,
+.rec-reason {
     position: relative;
     display: flex;
     align-items: flex-start;
-    gap: 7px;
-    margin: 2px 0 0;
+    gap: 6px;
+    margin: 4px 0 0;
     font-size: 0.75rem;
-    line-height: 1.45;
+    line-height: 1.35;
     color: var(--primary);
     background: var(--primary-soft);
     border-radius: var(--radius-sm);
-    padding: 7px 9px;
+    padding: 6px 8px;
+    min-height: 44px;
+    max-height: 44px;
+    overflow: hidden;
     cursor: help;
 }
 
@@ -2979,13 +3172,12 @@ a.category-badge:hover {
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    word-break: break-word;
 }
 
 .rec-reason[data-tooltip]::after {
     content: attr(data-tooltip);
     position: absolute;
-    /* Opens below the badge: the card clips overflow, so an
-       upward tooltip would be cut off by the card edge. */
     left: 0;
     top: calc(100% + 8px);
     z-index: 30;
@@ -3015,10 +3207,13 @@ a.category-badge:hover {
 .rec-card-actions {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 6px;
-    margin-top: 4px;
+    margin-top: auto;
     padding-top: 10px;
     border-top: 1px solid var(--border);
+    min-width: 0;
+    width: 100%;
 }
 
 .rec-wish-btn,
@@ -3377,4 +3572,223 @@ a.category-badge:hover {
 
 .rec-freshness i {
     font-size: 0.8rem;
+}
+
+/* =========================================================
+   Book Analytics Module Alignment & Layout (SaaS Standard)
+   ========================================================= */
+
+.analytics-rank-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 0;
+    padding-left: 0;
+    list-style: none;
+}
+
+.analytics-rank-row {
+    display: grid;
+    grid-template-columns: 32px 56px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 14px;
+    background: var(--surface-1, #ffffff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: var(--radius, 10px);
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.analytics-rank-row:hover {
+    background: var(--surface-2, #f8fafc);
+    border-color: var(--primary-border, #c7d2fe);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.analytics-rank-number {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--muted, #64748b);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+.analytics-rank-cover {
+    width: 56px;
+    height: 84px;
+    flex-shrink: 0;
+    overflow: hidden;
+    border-radius: var(--radius-sm, 6px);
+    border: 1px solid var(--border, #e2e8f0);
+    background: var(--surface-2, #f1f5f9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.analytics-rank-cover img,
+.analytics-rank-cover .book-cover-component {
+    width: 56px !important;
+    height: 84px !important;
+    max-width: 56px !important;
+    max-height: 84px !important;
+    aspect-ratio: 2 / 3 !important;
+    object-fit: cover !important;
+    display: block !important;
+    border-radius: var(--radius-sm, 6px);
+    border: none;
+}
+
+.analytics-rank-info {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+}
+
+.analytics-rank-title {
+    font-weight: 650;
+    font-size: 0.95rem;
+    color: var(--text, #1e293b);
+    text-decoration: none;
+    line-height: 1.35;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.analytics-rank-title:hover {
+    color: var(--primary, #6366f1);
+}
+
+.analytics-rank-author {
+    font-size: 0.825rem;
+    color: var(--muted, #64748b);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    margin-top: 2px;
+}
+
+.analytics-rank-metric {
+    text-align: right;
+    white-space: nowrap;
+    font-weight: 600;
+    min-width: max-content;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+}
+
+.analytics-metric-value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--primary, #6366f1);
+    font-variant-numeric: tabular-nums;
+}
+
+.analytics-featured-card {
+    background: var(--surface-1, #ffffff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: var(--radius-lg, 12px);
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.analytics-featured-cover-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: var(--surface-2, #f8fafc);
+    border-radius: var(--radius, 8px);
+    padding: 1.25rem 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--border-light, #f1f5f9);
+}
+
+.analytics-featured-cover {
+    max-width: 200px;
+    max-height: 280px;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 2 / 3;
+    object-fit: contain;
+    border-radius: var(--radius-sm, 6px);
+    box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.1));
+}
+
+.analytics-featured-info {
+    text-align: center;
+}
+
+.analytics-featured-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text, #1e293b);
+    margin-bottom: 0.25rem;
+    text-decoration: none;
+    display: block;
+}
+
+.analytics-featured-title:hover {
+    color: var(--primary, #6366f1);
+}
+
+.analytics-featured-author {
+    font-size: 0.875rem;
+    color: var(--muted, #64748b);
+    margin-bottom: 0.75rem;
+}
+
+.analytics-featured-stats {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border, #e2e8f0);
+}
+
+.analytics-featured-stat-item {
+    text-align: center;
+}
+
+.analytics-featured-stat-val {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text, #1e293b);
+    line-height: 1.2;
+}
+
+.analytics-featured-stat-lbl {
+    font-size: 0.75rem;
+    color: var(--muted, #64748b);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+@media (max-width: 767.98px) {
+    .analytics-rank-row {
+        grid-template-columns: 28px 48px minmax(0, 1fr) auto;
+        gap: 10px;
+        padding: 8px 10px;
+    }
+    
+    .analytics-rank-cover {
+        width: 48px;
+        height: 72px;
+    }
+    
+    .analytics-rank-cover img,
+    .analytics-rank-cover .book-cover-component {
+        width: 48px !important;
+        height: 72px !important;
+        max-width: 48px !important;
+        max-height: 72px !important;
+    }
 }

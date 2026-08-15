@@ -65,7 +65,7 @@ $authors           = $analytics['authorAverage'] ?? [];
             <?php require root_path('app/Views/components/stat-card.php'); ?>
         </div>
         <div class="col-6 col-md-3">
-            <?php $stat = ['icon' => 'fa-star', 'label' => 'Average platform rating', 'value' => number_format($overall, 2), 'tone' => 'primary']; ?>
+            <?php $stat = ['icon' => 'fa-star', 'label' => 'Average platform rating', 'value' => format_rating($overall), 'tone' => 'primary']; ?>
             <?php require root_path('app/Views/components/stat-card.php'); ?>
         </div>
     </div>
@@ -74,7 +74,7 @@ $authors           = $analytics['authorAverage'] ?? [];
         <div class="col-12 col-md-4">
             <div class="card-base h-100 p-4 text-center">
                 <p class="eyebrow">Catalogue average</p>
-                <div class="analytics-average-value"><?= e(number_format($overall, 2)) ?>/5</div>
+                <div class="analytics-average-value"><?= e(format_rating($overall)) ?>/5</div>
                 <p class="text-muted mb-0">from <?= $reviewCount ?> approved review<?= $reviewCount === 1 ? '' : 's' ?></p>
                 <?php $starRating = [
                     'rating' => $overall,
@@ -112,7 +112,7 @@ $authors           = $analytics['authorAverage'] ?? [];
                     <?php foreach ($highest as $book): ?>
                         <li>
                             <a href="/books/<?= (int) $book['id'] ?>"><?= e($book['title']) ?></a>
-                            <span class="text-muted"><?= e(number_format((float) $book['average'], 1)) ?> &middot; <?= (int) $book['count'] ?> review<?= (int) $book['count'] === 1 ? '' : 's' ?></span>
+                            <span class="text-muted"><?= e(format_rating($book['average'])) ?> &middot; <?= (int) $book['count'] ?> review<?= (int) $book['count'] === 1 ? '' : 's' ?></span>
                         </li>
                     <?php endforeach; ?>
                 </ol>
@@ -126,7 +126,7 @@ $authors           = $analytics['authorAverage'] ?? [];
                     <?php foreach ($lowest as $book): ?>
                         <li>
                             <a href="/books/<?= (int) $book['id'] ?>"><?= e($book['title']) ?></a>
-                            <span class="text-muted"><?= e(number_format((float) $book['average'], 1)) ?> &middot; <?= (int) $book['count'] ?> review<?= (int) $book['count'] === 1 ? '' : 's' ?></span>
+                            <span class="text-muted"><?= e(format_rating($book['average'])) ?> &middot; <?= (int) $book['count'] ?> review<?= (int) $book['count'] === 1 ? '' : 's' ?></span>
                         </li>
                     <?php endforeach; ?>
                 </ol>
@@ -153,7 +153,7 @@ $authors           = $analytics['authorAverage'] ?? [];
                     <?php foreach ($categories as $category): ?>
                         <li>
                             <span><?= e($category['name']) ?></span>
-                            <span class="text-muted"><?= e(number_format((float) $category['average'], 2)) ?></span>
+                            <span class="text-muted"><?= e(format_rating($category['average'])) ?></span>
                         </li>
                     <?php endforeach; ?>
                 </ul>
@@ -187,7 +187,7 @@ $authors           = $analytics['authorAverage'] ?? [];
                             <a href="/categories/<?= (int) $category['id'] ?>" class="text-decoration-none"><?= e($category['name']) ?></a>
                             <span class="text-muted">
                                 <?= (int) $category['count'] ?> review<?= (int) $category['count'] === 1 ? '' : 's' ?>
-                                &middot; <?= e(number_format((float) $category['average'], 2)) ?>
+                                &middot; <?= e(format_rating($category['average'])) ?>
                             </span>
                         </li>
                     <?php endforeach; ?>
@@ -202,7 +202,7 @@ $authors           = $analytics['authorAverage'] ?? [];
                     <?php foreach ($authors as $author): ?>
                         <li>
                             <a href="/authors/<?= (int) $author['id'] ?>" class="text-decoration-none"><?= e($author['name']) ?></a>
-                            <span class="text-muted"><?= e(number_format((float) $author['average'], 2)) ?> &middot; <?= (int) $author['count'] ?></span>
+                            <span class="text-muted"><?= e(format_rating($author['average'])) ?> &middot; <?= (int) $author['count'] ?></span>
                         </li>
                     <?php endforeach; ?>
                 </ul>
@@ -332,7 +332,7 @@ $categoryChart = '';
 $categoryRows = array_slice(array_values($categories ?? []), 0, 8);
 $categorySummary = $categoryRows !== []
     ? 'Approved-review rating by category: ' . implode(', ', array_map(
-        static fn (array $r): string => ($r['category'] ?? '?') . ' ' . number_format((float) ($r['average'] ?? 0), 2),
+        static fn (array $r): string => ($r['category'] ?? '?') . ' ' . format_rating($r['average'] ?? 0),
         $categoryRows,
     )) . '.'
     : '';

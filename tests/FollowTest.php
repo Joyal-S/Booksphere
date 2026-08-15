@@ -563,6 +563,7 @@ $check('The 61st follow exits with the 429 message', str_contains($out, 'Too man
 // emitted. headers_list() is empty in the CLI SAPI, so the probe
 // proves the flash instead of the Location header.
 $probeRedirect = $probeHead
+    . '(new RateLimiter($session))->clearPersistent(\'follow_write\', \'user:\' . ' . $riyaId . ');' . PHP_EOL
     . 'register_shutdown_function(function (): void {' . PHP_EOL
     . '    echo json_encode(session()->getFlash(\'success\'));' . PHP_EOL
     . '});' . PHP_EOL

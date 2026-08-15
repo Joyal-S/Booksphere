@@ -25,6 +25,15 @@ declare(strict_types=1);
  * delivers $params['name'] = "Alice".
  */
 
+use BookSphere\App\Controllers\CommunityController;
+use BookSphere\App\Controllers\AdminCommunityController;
+use BookSphere\App\Models\CommunityComment;
+use BookSphere\App\Models\CommunityFollow;
+use BookSphere\App\Models\CommunityLike;
+use BookSphere\App\Models\CommunityPost;
+use BookSphere\App\Models\CommunityReport;
+use BookSphere\App\Policies\CommunityPolicy;
+use BookSphere\App\Services\CommunityService;
 use BookSphere\App\Controllers\AdminController;
 use BookSphere\App\Controllers\AuthorController;
 use BookSphere\App\Controllers\AuthController;
@@ -115,19 +124,22 @@ use BookSphere\App\Strategies\SameAuthorStrategy;
 use BookSphere\App\Strategies\SameCategoryStrategy;
 use BookSphere\App\Strategies\TrendingBooksStrategy;
 
+$logger         = new Logger(root_path('storage/logs/application.log'));
+$csrf           = new Csrf(session());
+$csrfMiddleware = new CsrfMiddleware($csrf, $logger);
+$secure         = new SecureHeadersMiddleware();
+$rateLimiter    = new RateLimiter(session(), db());
+
 // --- Shared services -------------------------------------------------
 // One AuthService per request, registered globally so the auth()
 // helpers and the views can reach the logged-in user.
 $users = new User();
-$auth  = new AuthService(session(), $users);
+$auth  = new AuthService(session(), $users, $rateLimiter, $logger);
 AuthService::setInstance($auth);
-
-$csrf   = new Csrf(session());
-$secure = new SecureHeadersMiddleware();
 
 // --- Pages -----------------------------------------------------------
 
-$authController = new AuthController($auth, $users, new PasswordResetToken());
+$authController = new AuthController($auth, $users, new PasswordResetToken(), $rateLimiter);
 $pageController = new PageController();
 
 // --- Notifications (Phase 9.2 infrastructure + Phase 9.3 API) ----------
@@ -184,6 +196,8 @@ $personalizationCache = new PersonalizationCache(
     (bool) config('recommendations.cache.enabled', true),
 );
 
+$communitySignalService = new \BookSphere\App\Services\CommunityRecommendationSignalService();
+
 $recommendationService = new RecommendationService(
     new RecommendationFactory(
         new PopularBooksStrategy($recommendationRepository),
@@ -197,6 +211,7 @@ $recommendationService = new RecommendationService(
     $personalizationCache,
     null,
     $notificationDispatcher,
+    $communitySignalService,
 );
 
 // --- Reviews & Ratings (Phase 7.1 backend + Phase 7.2 CRUD) -------------
@@ -244,7 +259,20 @@ $reviewListPresenter = new ReviewListPresenter($reviewService);
 // Phase 7.7: the review write endpoints get the session-backed
 // throttle (RateLimiter), the same wiring as the recommendation
 // dashboard writes.
-$reviewController = new ReviewController($reviewService, new ReviewPolicy(), $reviewListPresenter, new RateLimiter(session()));
+$reviewController = new ReviewController($reviewService, new ReviewPolicy(), $reviewListPresenter, $rateLimiter);
+// Phase C3-B: Community Module Backend Foundation
+$communityService = new CommunityService(
+    new CommunityPost(),
+    new CommunityComment(),
+    new CommunityLike(),
+    new CommunityReport(),
+    new Book(),
+    null,
+    new CommunityFollow()
+);
+$communityController      = new CommunityController($communityService, new CommunityPolicy(), $rateLimiter);
+$adminCommunityController = new AdminCommunityController($communityService, new CommunityPolicy());
+
 
 // Phase 7.3: the dashboard needs the SAME ReviewService instance for
 // its real Top Rated Books section (rating analytics come from the
@@ -281,7 +309,7 @@ $adminController = new AdminController(
 // Follow button). The dispatcher was already built above (the shared
 // notification stack), so a follow always leaves its
 // "author_followed" notification behind.
-$followService = new FollowService(new AuthorFollow(), new Author(), $notificationDispatcher);
+$followService = new FollowService(new AuthorFollow(), new Author(), $notificationDispatcher, null, $recommendationService);
 $followPolicy = new FollowPolicy();
 
 // Phase 7.3: the profile page's "My rating activity" block comes
@@ -300,7 +328,7 @@ $userController = new UserController($auth, $users, $reviewService, $libraryServ
 // Phase 9.2: the follow service + policy were already wired above
 // (they must exist before the user controller); the author controller
 // gets that shared instance for its Follow button.
-$authorController   = new AuthorController(new Author(), $reviewService, $followService, $followPolicy, new RateLimiter(session()));
+$authorController   = new AuthorController(new Author(), $reviewService, $followService, $followPolicy, $rateLimiter);
 $categoryController = new CategoryController(new Category(), $reviewService);
 
 $recommendationController = new RecommendationController(
@@ -316,7 +344,7 @@ $recommendationController = new RecommendationController(
         new Category(),
     ),
     // Phase 6.5: the write-endpoint throttle (session-backed).
-    new RateLimiter(session()),
+    $rateLimiter,
 );
 
 // Phase 8.1 + 8.2: Wishlist & Personal Reading Library. The
@@ -328,7 +356,7 @@ $recommendationController = new RecommendationController(
 $libraryController = new LibraryController(
     $libraryService,
     new LibraryPolicy(),
-    new RateLimiter(session()),
+    $rateLimiter,
     $recommendationService,
 );
 
@@ -425,7 +453,7 @@ $suggestionService = new SearchSuggestionService(
 // without touching a class.
 $historyService = new SearchHistoryService(new SearchRepository(), $searchConfig);
 
-$searchController = new SearchController($searchService, $suggestionService, $historyService, new RateLimiter(session()));
+$searchController = new SearchController($searchService, $suggestionService, $historyService, $rateLimiter);
 
 // Phase 12.1: the user analytics service - one composition point for
 // the personal statistics page. Its limits and the activity window
@@ -651,6 +679,21 @@ $router->post('/admin/reports/{id}/dismiss', [$adminController, 'dismissReport']
 $router->post('/admin/reviews/{id}/hide', [$adminController, 'hideReview'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
 $router->post('/admin/reviews/{id}/unhide', [$adminController, 'unhideReview'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
 
+// --- Community Moderation & Analytics (Phases C5 & C8-D) ----------------
+// Admin-only moderation queue and community analytics dashboard. Every GET is read-
+// only behind AdminMiddleware; every POST additionally carries CSRF protection.
+$router->get('/admin/analytics/community', [$adminCommunityController, 'analytics'], [$secure, new AdminMiddleware($auth)]);
+$router->get('/admin/community/analytics', [$adminCommunityController, 'analytics'], [$secure, new AdminMiddleware($auth)]);
+$router->get('/admin/community/reports', [$adminCommunityController, 'queue'], [$secure, new AdminMiddleware($auth)]);
+$router->get('/admin/community/reports/{id}', [$adminCommunityController, 'detail'], [$secure, new AdminMiddleware($auth)]);
+$router->post('/admin/community/reports/{id}/resolve', [$adminCommunityController, 'resolve'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/admin/community/reports/{id}/dismiss', [$adminCommunityController, 'dismiss'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/admin/community/reports/{id}/review', [$adminCommunityController, 'markReviewed'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/admin/community/posts/{id}/hide', [$adminCommunityController, 'hidePost'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/admin/community/posts/{id}/unhide', [$adminCommunityController, 'unhidePost'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/admin/community/comments/{id}/hide', [$adminCommunityController, 'hideComment'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/admin/community/comments/{id}/unhide', [$adminCommunityController, 'unhideComment'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
+
 // --- Personal Library (Phase 8.1 backend) ---------------------------
 // The wishlist's successor: one record per user per book with a
 // reading-status lifecycle, favourites, progress and statistics.
@@ -791,3 +834,40 @@ $router->patch('/notifications/{id}/unread', [$notificationController, 'markUnre
 $router->post('/notifications/bulk', [$notificationController, 'bulkDestroy'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
 $router->delete('/notifications', [$notificationController, 'deleteAll'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
 $router->delete('/notifications/{id}', [$notificationController, 'destroy'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+
+// --- Community (Phase C3-B: HTTP Layer) -----------------------------------
+// The backend API endpoints of the Community module. Public reads allow feed
+// and post browsing; state-changing writes require authentication and CSRF.
+$router->get('/community', [$communityController, 'index'], [$secure]);
+$router->get('/community/create', [$communityController, 'create'], [$secure, new AuthMiddleware($auth)]);
+$router->get('/community/post/{id}/edit', [$communityController, 'edit'], [$secure, new AuthMiddleware($auth)]);
+$router->get('/community/post/{id}', [$communityController, 'show'], [$secure]);
+$router->get('/community/posts/{id}/comments', [$communityController, 'comments'], [$secure]);
+$router->get('/community/book/{id}', [$communityController, 'bookPosts'], [$secure]);
+$router->get('/community/user/{id}', [$communityController, 'userPosts'], [$secure]);
+
+$router->post('/community/posts', [$communityController, 'storePost'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->patch('/community/posts/{id}', [$communityController, 'updatePost'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/community/posts/{id}/edit', [$communityController, 'updatePost'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->delete('/community/posts/{id}', [$communityController, 'destroyPost'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/community/posts/{id}/delete', [$communityController, 'destroyPost'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+
+$router->post('/community/posts/{id}/comments', [$communityController, 'storeComment'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->patch('/community/comments/{id}', [$communityController, 'updateComment'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/community/comments/{id}/edit', [$communityController, 'updateComment'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->delete('/community/comments/{id}', [$communityController, 'destroyComment'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/community/comments/{id}/delete', [$communityController, 'destroyComment'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+
+$router->post('/community/posts/{id}/like', [$communityController, 'like'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->delete('/community/posts/{id}/like', [$communityController, 'unlike'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/community/posts/{id}/unlike', [$communityController, 'unlike'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+
+$router->post('/community/posts/{id}/report', [$communityController, 'reportPost'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/community/comments/{id}/report', [$communityController, 'reportComment'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+
+// Phase C7-B: User Following routes
+$router->post('/community/user/{id}/follow', [$communityController, 'followUser'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->delete('/community/user/{id}/follow', [$communityController, 'unfollowUser'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/community/user/{id}/unfollow', [$communityController, 'unfollowUser'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->get('/community/user/{id}/followers', [$communityController, 'followers'], [$secure]);
+$router->get('/community/user/{id}/following', [$communityController, 'following'], [$secure]);

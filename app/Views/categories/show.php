@@ -45,7 +45,7 @@ $recent    = $stats['recentReviews'] ?? [];
 <?php else: ?>
     <div class="row g-3 g-xl-4 mb-4">
         <div class="col-12 col-md-6 col-xl-4">
-            <?php $summary = ['title' => 'Average category rating', 'average' => $average, 'count' => $reviews, 'subtitle' => $reviewed . ' book' . ($reviewed === 1 ? '' : 's') . ' reviewed']; ?>
+            <?php $summary = ['title' => 'Average category rating', 'average' => $average, 'count' => $reviews, 'subtitle' => $reviewed . ' book' . ($reviewed === 1 ? '' : 's') . ' reviewed', 'class' => 'h-100']; ?>
             <?php require root_path('app/Views/components/review-summary-card.php'); ?>
         </div>
         <div class="col-12 col-md-6 col-xl-4">

@@ -69,27 +69,34 @@ $distributionMax = max(1, ...($distribution === [] ? [1] : array_values($distrib
 $rankList = static function (array $rows): string {
     ob_start();
     ?>
-    <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
+    <ul class="analytics-rank-list">
         <?php foreach ($rows as $i => $row): ?>
-            <li class="d-flex align-items-center gap-3">
-                <span class="analytics-rank small fw-semibold text-muted" style="width: 1.5rem"><?= (int) $i + 1 ?></span>
-                <?php $cover = [
-                    'src'   => (string) ($row['cover'] ?? ''),
-                    'alt'   => (string) $row['title'],
-                    'class' => 'table-cover',
-                ]; ?>
-                <span class="flex-shrink-0">
+            <li class="analytics-rank-row">
+                <span class="analytics-rank-number"><?= sprintf('%02d', (int) $i + 1) ?></span>
+                <div class="analytics-rank-cover">
+                    <?php $cover = [
+                        'src'   => (string) ($row['cover'] ?? ''),
+                        'alt'   => (string) $row['title'],
+                        'class' => 'table-cover',
+                    ]; ?>
                     <?php require root_path('app/Views/books/components/book-cover.php'); ?>
-                </span>
-                <a class="flex-grow-1 text-truncate fw-semibold" href="/books/<?= (int) $row['id'] ?>"><?= e((string) $row['title']) ?></a>
-                <?php if (isset($row['average'])): ?>
-                    <span class="badge rounded-pill text-bg-warning"><i class="fa-solid fa-star fa-xs" aria-hidden="true"></i> <?= number_format((float) $row['average'], 1) ?></span>
-                    <span class="small muted text-nowrap"><?= (int) $row['count'] ?> review<?= (int) $row['count'] === 1 ? '' : 's' ?></span>
-                <?php elseif (isset($row['score'])): ?>
-                    <span class="small muted text-nowrap"><?= number_format((float) $row['score'] * 100, 1) ?>%</span>
-                <?php else: ?>
-                    <span class="badge rounded-pill text-bg-light border"><?= (int) $row['count'] ?></span>
-                <?php endif; ?>
+                </div>
+                <div class="analytics-rank-info">
+                    <a class="analytics-rank-title" href="/books/<?= (int) $row['id'] ?>"><?= e((string) $row['title']) ?></a>
+                    <?php if (!empty($row['author_name'])): ?>
+                        <span class="analytics-rank-author"><?= e((string) $row['author_name']) ?></span>
+                    <?php endif; ?>
+                </div>
+                <div class="analytics-rank-metric">
+                    <?php if (isset($row['average'])): ?>
+                        <span class="badge rounded-pill text-bg-warning mb-1"><i class="fa-solid fa-star fa-xs" aria-hidden="true"></i> <?= e(format_rating($row['average'])) ?></span>
+                        <span class="small text-muted text-nowrap"><?= (int) $row['count'] ?> review<?= (int) $row['count'] === 1 ? '' : 's' ?></span>
+                    <?php elseif (isset($row['score'])): ?>
+                        <span class="analytics-metric-value"><?= number_format((float) $row['score'] * 100, 1) ?>%</span>
+                    <?php else: ?>
+                        <span class="badge rounded-pill text-bg-light border"><?= (int) $row['count'] ?></span>
+                    <?php endif; ?>
+                </div>
             </li>
         <?php endforeach; ?>
     </ul>
@@ -124,7 +131,7 @@ $emptyNote = static fn (string $why): string =>
             $cards = [
                 ['icon' => 'fa-book',               'label' => 'Books in Catalogue', 'value' => (int) ($overview['books'] ?? 0),          'tone' => 'primary'],
                 ['icon' => 'fa-star',               'label' => 'Approved Reviews',    'value' => (int) ($overview['reviews'] ?? 0),        'tone' => 'warning'],
-                ['icon' => 'fa-star-half-stroke',   'label' => 'Average Rating',      'value' => $overview['averageRating'] === null ? $dash : number_format((float) $overview['averageRating'], 1), 'tone' => 'danger'],
+                ['icon' => 'fa-star-half-stroke',   'label' => 'Average Rating',      'value' => $overview['averageRating'] === null ? $dash : format_rating($overview['averageRating']), 'tone' => 'danger'],
                 ['icon' => 'fa-book-open-cover',    'label' => 'Books with Covers',   'value' => (int) ($overview['with_covers'] ?? 0),    'tone' => 'info'],
             ];
             foreach ($cards as $stat):
@@ -135,10 +142,6 @@ $emptyNote = static fn (string $why): string =>
     </section>
 
     <?php
-    // Phase 12.5: the visual layer. Same payload, re-shaped only -
-    // ChartPresenter never computes a number, it formats the arrays
-    // the service already produced. The tables below stay as the
-    // tabular alternative (Task: charts always carry a text summary).
     $chartP = '\BookSphere\App\Presenters\ChartPresenter';
 
     $shelfChart = '';
@@ -192,7 +195,96 @@ $emptyNote = static fn (string $why): string =>
             [['label' => 'Books', 'tone' => 'primary', 'values' => array_map(static fn (array $r): int => (int) $r['books'], $chartPages)]],
             $pagesSummary)
         : '';
+
+    $popular  = $rankings['popular'] ?? [];
+    $trending = $rankings['trending'] ?? [];
+    $topBook  = $popular[0] ?? ($rankings['highestRated'][0] ?? null);
     ?>
+
+    <!-- Main Analytics Section (Ranked Books + Featured Book Panel) -->
+    <section class="dash-section" data-animate>
+        <div class="row g-3 g-xl-4 align-items-start">
+            <!-- Left Column: Performance Lists -->
+            <div class="col-lg-7 col-xl-8 d-flex flex-column gap-3 gap-xl-4">
+                <div class="card-base">
+                    <p class="eyebrow mb-1">Popularity</p>
+                    <h2 class="h4 mb-3">Most popular right now</h2>
+                    <?php if ($popular === []): ?>
+                        <?= $emptyNote('Popularity needs at least one review or wishlist entry') ?>
+                    <?php else: ?>
+                        <?= $rankList($popular) ?>
+                        <p class="muted small mt-3 mb-0">Score = 40% rating + 30% review volume + 30% wishlist volume &middot; weights are tunable in config/book_analytics.php.</p>
+                    <?php endif; ?>
+                </div>
+
+                <div class="card-base">
+                    <p class="eyebrow mb-1">Trending</p>
+                    <h2 class="h4 mb-3">Last <?= (int) ($activity['windowDays'] ?? 30) ?> days</h2>
+                    <?php if ($trending === []): ?>
+                        <?= $emptyNote('Trending needs recent activity inside the trailing window') ?>
+                    <?php else: ?>
+                        <?= $rankList($trending) ?>
+                        <p class="muted small mt-3 mb-0">Score = 40% recent reviews + 30% recent wishlist adds + 30% recent finishes &middot; the window lives in config/book_analytics.php.</p>
+                    <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- Right Column: Featured Book Panel + Summary Visuals -->
+            <div class="col-lg-5 col-xl-4 d-flex flex-column gap-3 gap-xl-4">
+                <?php if ($topBook !== null): ?>
+                    <div class="analytics-featured-card">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <p class="eyebrow mb-0">Top Performer</p>
+                            <span class="badge text-bg-primary rounded-pill"><i class="fa-solid fa-crown fa-xs me-1"></i> #1 Ranked</span>
+                        </div>
+                        <h2 class="h4 mb-3">Featured Book</h2>
+                        <div class="analytics-featured-cover-wrap">
+                            <?php $cover = [
+                                'src'   => (string) ($topBook['cover'] ?? ''),
+                                'alt'   => (string) $topBook['title'],
+                                'class' => 'analytics-featured-cover',
+                            ]; ?>
+                            <?php require root_path('app/Views/books/components/book-cover.php'); ?>
+                        </div>
+                        <div class="analytics-featured-info">
+                            <a class="analytics-featured-title" href="/books/<?= (int) $topBook['id'] ?>"><?= e((string) $topBook['title']) ?></a>
+                            <?php if (!empty($topBook['author_name'])): ?>
+                                <div class="analytics-featured-author"><?= e((string) $topBook['author_name']) ?></div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="analytics-featured-stats">
+                            <?php if (isset($topBook['score'])): ?>
+                                <div class="analytics-featured-stat-item">
+                                    <div class="analytics-featured-stat-val text-primary"><?= number_format((float) $topBook['score'] * 100, 1) ?>%</div>
+                                    <div class="analytics-featured-stat-lbl">Popularity Score</div>
+                                </div>
+                            <?php elseif (isset($topBook['average'])): ?>
+                                <div class="analytics-featured-stat-item">
+                                    <div class="analytics-featured-stat-val text-warning"><i class="fa-solid fa-star fa-xs me-1"></i><?= e(format_rating($topBook['average'])) ?></div>
+                                    <div class="analytics-featured-stat-lbl">Rating</div>
+                                </div>
+                            <?php endif; ?>
+                            <?php if (isset($topBook['count'])): ?>
+                                <div class="analytics-featured-stat-item">
+                                    <div class="analytics-featured-stat-val"><?= (int) $topBook['count'] ?></div>
+                                    <div class="analytics-featured-stat-lbl">Volume</div>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($shelfChart !== ''): ?>
+                    <div>
+                        <?php $chartEyebrow = 'Community shelves'; $chartTitle = 'All five statuses'; $chartTrend = ''; $chart = $shelfChart; $chartSummary = $shelfSummary; ?>
+                        <?php require root_path('app/Views/components/chart-card.php'); ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </section>
+
+    <!-- Additional Visuals Section -->
     <section class="dash-section" data-animate>
         <div class="d-flex justify-content-between align-items-end mb-3">
             <div>
@@ -206,123 +298,17 @@ $emptyNote = static fn (string $why): string =>
             <?php endif; ?>
         </div>
         <div class="row g-3 g-xl-4">
-            <div class="col-12 col-md-6 col-xl-4">
-                <?php $chartEyebrow = 'Community shelves'; $chartTitle = 'All five statuses'; $chartTrend = ''; $chart = $shelfChart; $chartSummary = $shelfSummary; ?>
-                <?php require root_path('app/Views/components/chart-card.php'); ?>
-            </div>
-            <div class="col-12 col-md-6 col-xl-4">
+            <div class="col-12 col-md-4">
                 <?php $chartEyebrow = 'Per calendar month'; $chartTitle = 'Reviews &amp; finishes'; $chartTrend = ''; $chart = $monthlyChart; $chartSummary = $monthlySummary; ?>
                 <?php require root_path('app/Views/components/chart-card.php'); ?>
             </div>
-            <div class="col-12 col-md-6 col-xl-2">
+            <div class="col-12 col-md-4">
                 <?php $chartEyebrow = 'Top languages'; $chartTitle = 'Catalogue mix'; $chartTrend = ''; $chart = $languageChart; $chartSummary = $languageSummary; ?>
                 <?php require root_path('app/Views/components/chart-card.php'); ?>
             </div>
-            <div class="col-12 col-md-6 col-xl-2">
+            <div class="col-12 col-md-4">
                 <?php $chartEyebrow = 'Page count'; $chartTitle = 'Length spread'; $chartTrend = ''; $chart = $pagesChart; $chartSummary = $pagesSummary; ?>
                 <?php require root_path('app/Views/components/chart-card.php'); ?>
-            </div>
-        </div>
-    </section>
-
-    <section class="dash-section" data-animate>
-        <div class="row g-3 g-xl-4">
-            <div class="col-lg-6">
-                <div class="card-base h-100">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <p class="eyebrow mb-1">Community shelves</p>
-                            <h2 class="h4 mb-0">Where the books all sit</h2>
-                        </div>
-                        <span class="badge rounded-pill text-bg-light border"><?= (int) array_sum($shelves) ?> records</span>
-                    </div>
-                    <ul class="list-unstyled d-flex flex-column gap-3 mb-0">
-                        <?php foreach ($shelfLabels as $status => $label): ?>
-                            <?php $count = (int) ($shelves[$status] ?? 0); ?>
-                            <li>
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="fw-semibold"><?= e($label) ?></span>
-                                    <span class="small muted"><?= $count ?> (<?= round($count / $shelfTotal * 100) ?>%)</span>
-                                </div>
-                                <div class="progress" role="progressbar"
-                                     aria-valuenow="<?= $count ?>" aria-valuemin="0" aria-valuemax="<?= $shelfTotal ?>"
-                                     aria-label="<?= e($label) ?>, <?= $count ?> of <?= $shelfTotal ?> library records">
-                                    <div class="progress-bar bg-<?= e($shelfTones[$status]) ?>" style="width: <?= (int) round($count / $shelfTotal * 100) ?>%"></div>
-                                </div>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                    <p class="muted small mt-3 mb-0">The five shelves of the library module, counted over all users. A user can sit in only one status per book &mdash; the (user, book) pair is UNIQUE.</p>
-                </div>
-            </div>
-
-            <div class="col-lg-6">
-                <div class="card-base h-100">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <p class="eyebrow mb-1">Catalogue completeness</p>
-                            <h2 class="h4 mb-0">Metadata health</h2>
-                        </div>
-                        <span class="badge rounded-pill text-bg-light border"><?= (int) ($overview['imported'] ?? 0) ?> imported</span>
-                    </div>
-                    <p class="small fw-semibold text-uppercase tracking-wide mt-1 mb-1">Covered &middot; missing</p>
-                    <?php
-                    $completeness = [
-                        ['label' => 'Covers',       'have' => (int) ($overview['with_covers'] ?? 0),    'haveNot' => (int) ($overview['without_covers'] ?? 0), 'tone' => 'info'],
-                        ['label' => 'Publication year', 'have' => (int) ($overview['with_year'] ?? 0),  'haveNot' => (int) ($overview['books'] ?? 0) - (int) ($overview['with_year'] ?? 0), 'tone' => 'primary'],
-                        ['label' => 'Publisher',    'have' => (int) ($overview['with_publisher'] ?? 0), 'haveNot' => (int) ($overview['books'] ?? 0) - (int) ($overview['with_publisher'] ?? 0), 'tone' => 'warning'],
-                        ['label' => 'Page count',   'have' => (int) ($overview['with_pages'] ?? 0),     'haveNot' => (int) ($overview['books'] ?? 0) - (int) ($overview['with_pages'] ?? 0),   'tone' => 'success'],
-                    ];
-                    ?>
-                    <ul class="list-unstyled d-flex flex-column gap-3 mb-3">
-                        <?php foreach ($completeness as $item): ?>
-                            <?php $total = $item['have'] + $item['haveNot']; ?>
-                            <li>
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="fw-semibold"><?= e($item['label']) ?></span>
-                                    <span class="small muted"><?= $item['have'] ?> &middot; <?= $item['haveNot'] ?> missing</span>
-                                </div>
-                                <div class="progress" role="progressbar"
-                                     aria-valuenow="<?= (int) round($item['have'] / max(1, $total) * 100) ?>" aria-valuemin="0" aria-valuemax="100"
-                                     aria-label="<?= e($item['label']) ?>, <?= (int) $item['have'] ?> of <?= $total ?> books covered">
-                                    <div class="progress-bar bg-<?= e($item['tone']) ?>" style="width: <?= (int) round($item['have'] / max(1, $total) * 100) ?>%"></div>
-                                </div>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                    <p class="muted small mt-3 mb-0">Imported books come from Google Books and leave their provider id attached (<?= (int) ($overview['imported'] ?? 0) ?> of <?= (int) ($overview['books'] ?? 0) ?> with one). Missing metadata is reported as missing, never invented into a bucket.</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="dash-section" data-animate>
-        <div class="row g-3 g-xl-4">
-            <div class="col-lg-6">
-                <div class="card-base h-100">
-                    <p class="eyebrow mb-1">Popularity</p>
-                    <h2 class="h4 mb-3">Most popular right now</h2>
-                    <?php $popular = $rankings['popular'] ?? []; ?>
-                    <?php if ($popular === []): ?>
-                        <?= $emptyNote('Popularity needs at least one review or wishlist entry') ?>
-                    <?php else: ?>
-                        <?= $rankList($popular) ?>
-                        <p class="muted small mt-3 mb-0">Score = 40% rating + 30% review volume + 30% wishlist volume, each capped &middot; weights are tunable in config/book_analytics.php.</p>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <div class="col-lg-6">
-                <div class="card-base h-100">
-                    <p class="eyebrow mb-1">Trending</p>
-                    <h2 class="h4 mb-3">Last <?= (int) ($activity['windowDays'] ?? 30) ?> days</h2>
-                    <?php $trending = $rankings['trending'] ?? []; ?>
-                    <?php if ($trending === []): ?>
-                        <?= $emptyNote('Trending needs recent activity inside the trailing window') ?>
-                    <?php else: ?>
-                        <?= $rankList($trending) ?>
-                        <p class="muted small mt-3 mb-0">Score = 40% recent reviews + 30% recent wishlist adds + 30% recent finishes, each capped &middot; the window and weights live in config/book_analytics.php.</p>
-                    <?php endif; ?>
-                </div>
             </div>
         </div>
     </section>

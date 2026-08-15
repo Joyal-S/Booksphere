@@ -43,13 +43,12 @@ $cover = array_merge([
 $classAttr = trim('book-cover-component ' . $cover['class']);
 
 ?>
-<?php if ($cover['src'] !== ''): ?>
+<?php if (!empty($cover['src'])): ?>
     <img class="<?= e($classAttr) ?>" src="<?= e($cover['src']) ?>"
          alt="<?= e($cover['alt']) ?>" loading="lazy"
-         onerror="this.classList.add('book-cover-broken');this.classList.remove('book-cover-has-image');"
+         onerror="this.onerror=null;this.src='/assets/images/cover-placeholder.svg';this.classList.add('book-cover-fallback-img');"
          data-book-cover>
 <?php else: ?>
-    <span class="<?= e($classAttr) ?> book-cover-fallback" role="img" aria-label="<?= e($cover['alt']) ?>">
-        <i class="fa-solid fa-book" aria-hidden="true"></i>
-    </span>
+    <img class="<?= e($classAttr) ?> book-cover-fallback-img" src="/assets/images/cover-placeholder.svg"
+         alt="<?= e($cover['alt']) ?>" loading="lazy" data-book-cover>
 <?php endif; ?>

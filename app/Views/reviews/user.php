@@ -35,7 +35,7 @@ $isOwner    = $actorId !== null && (int) $actorId === (int) ($profile['id'] ?? 0
     <p class="lead">
         <?= (int) ($stats['total'] ?? 0) ?> review<?= (int) ($stats['total'] ?? 0) === 1 ? '' : 's' ?> written
         <?php if ($stats['average'] !== null): ?>
-            &middot; <?= e(number_format((float) $stats['average'], 1)) ?> average
+            &middot; <?= e(format_rating($stats['average'])) ?> average
         <?php endif; ?>
     </p>
 </div>

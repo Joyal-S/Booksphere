@@ -255,8 +255,13 @@ final class BookRepository
         $params = [];
 
         if (!empty($options['status'])) {
+            if ($options['status'] !== 'all') {
+                $where[]  = 'b.status = ?';
+                $params[] = $options['status'];
+            }
+        } elseif (empty($options['include_drafts'])) {
             $where[]  = 'b.status = ?';
-            $params[] = $options['status'];
+            $params[] = 'published';
         }
 
         if (!empty($options['q'])) {

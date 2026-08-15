@@ -41,7 +41,8 @@ final class SearchResultFormatter
         $items = [];
 
         foreach ($raw['items'] ?? [] as $row) {
-            $items[] = $this->hit($spec->entity, $row);
+            $entity = $row['_entity'] ?? $row['entity'] ?? $spec->entity;
+            $items[] = $this->hit($entity, $row);
         }
 
         $total = max(0, (int) ($raw['total'] ?? 0));
@@ -107,12 +108,16 @@ final class SearchResultFormatter
      */
     private function authorHit(array $row): SearchHit
     {
+        $count = (int) ($row['book_count'] ?? 0);
+        $avg   = isset($row['average_rating']) && $row['average_rating'] !== null ? format_rating($row['average_rating']) . ' average rating' : '';
+        $sub   = $count . ' ' . ($count === 1 ? 'book' : 'books') . ($avg !== '' ? ' · ' . $avg : '');
+
         return new SearchHit(
             entity:   SearchQuerySpec::SCOPE_AUTHORS,
             title:    (string) ($row['name'] ?? ''),
             data:     $row,
-            subtitle: 'Author',
-            url:      '/books?author_id=' . (int) $row['id'],
+            subtitle: $sub,
+            url:      isset($row['id']) ? '/authors/' . (int) $row['id'] : '/books?author_id=' . (int) ($row['id'] ?? 0),
         );
     }
 
@@ -121,12 +126,15 @@ final class SearchResultFormatter
      */
     private function categoryHit(array $row): SearchHit
     {
+        $count = (int) ($row['book_count'] ?? 0);
+        $sub   = $count > 0 ? $count . ' ' . ($count === 1 ? 'book' : 'books') : 'Category';
+
         return new SearchHit(
             entity:   SearchQuerySpec::SCOPE_CATEGORIES,
             title:    (string) ($row['name'] ?? ''),
             data:     $row,
-            subtitle: 'Category',
-            url:      '/books?category_id=' . (int) $row['id'],
+            subtitle: $sub,
+            url:      isset($row['id']) ? '/categories/' . (int) $row['id'] : '/books?category_id=' . (int) ($row['id'] ?? 0),
         );
     }
 
@@ -135,12 +143,15 @@ final class SearchResultFormatter
      */
     private function publisherHit(array $row): SearchHit
     {
+        $count = (int) ($row['book_count'] ?? 0);
+        $sub   = $count > 0 ? $count . ' ' . ($count === 1 ? 'book' : 'books') : 'Publisher';
+
         return new SearchHit(
             entity:   SearchQuerySpec::SCOPE_PUBLISHERS,
             title:    (string) ($row['name'] ?? ''),
             data:     $row,
-            subtitle: 'Publisher',
-            url:      '/books' . ($row['name'] ?? '' !== ''
+            subtitle: $sub,
+            url:      '/books' . (($row['name'] ?? '') !== ''
                     ? '?publisher=' . rawurlencode((string) $row['name'])
                     : ''),
         );
@@ -151,11 +162,15 @@ final class SearchResultFormatter
      */
     private function reviewHit(array $row): SearchHit
     {
+        $text    = trim((string) ($row['review'] ?? ''));
+        $snippet = $text !== '' ? '"' . mb_strimwidth($text, 0, 90, '...') . '"' : (string) ($row['book_title'] ?? 'Review');
+        $meta    = '— ' . ($row['reviewer_name'] ?? 'Community Reviewer') . (!empty($row['book_title']) ? ' on ' . $row['book_title'] : '');
+
         return new SearchHit(
             entity:   SearchQuerySpec::SCOPE_REVIEWS,
-            title:    (string) ($row['book_title'] ?? ''),
+            title:    $snippet,
             data:     $row,
-            subtitle: 'Review',
+            subtitle: $meta,
             url:      '/reviews/' . (int) $row['id'],
         );
     }
