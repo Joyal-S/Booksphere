@@ -151,13 +151,24 @@ final class GoogleBooksSyncService
         // per book.
         $local = $this->books->metadataFor($ids);
 
+        // Preload authors and categories for all local books in 2 batch queries (eliminating N+1 queries)
+        $bookIds = array_values(array_filter(array_map(
+            fn (array $row): int => (int) ($row['id'] ?? 0),
+            $local,
+        ), fn (int $id): bool => $id > 0));
+
+        $relationsMap = [
+            'authors'    => $this->books->authorsForBooks($bookIds),
+            'categories' => $this->books->categoriesForBooks($bookIds),
+        ];
+
         $counts  = ['updated' => 0, 'unchanged' => 0, 'failed' => 0, 'skipped' => 0];
         $results = [];
 
         $this->logger->info('google_books.sync.started', ['total' => $total]);
 
         foreach ($ids as $id) {
-            $outcome = $this->process($id, $local);
+            $outcome = $this->process($id, $local, $relationsMap);
 
             $results[] = [
                 'id'      => $id,
@@ -235,10 +246,11 @@ final class GoogleBooksSyncService
      * stamp. Returns the slim outcome the caller counts and streams.
      *
      * @param array<string, array<string, mixed>> $local [google id => row]
+     * @param array<string, array<int, array<int, array<string, mixed>>>> $relationsMap Preloaded batch relations
      * @return array{status: string, bookId: int|null, message: string,
      *               reason: string, title: string, changes: int, cover: bool}
      */
-    private function process(string $id, array $local): array
+    private function process(string $id, array $local, array $relationsMap = []): array
     {
         $book = $local[$id] ?? null;
 
@@ -304,7 +316,7 @@ final class GoogleBooksSyncService
         // 4. Change detection: the SAME provider mapping the importer
         //    wrote with, compared field by field against the local row.
         $remote  = $this->importer->providerMetadata($record);
-        $changes = $this->diff($book, $remote);
+        $changes = $this->diff($book, $remote, $relationsMap);
 
         // 5. Cover: only when the provider URL moved or the book has
         //    no usable cover yet; the cache reuse rules of
@@ -381,9 +393,10 @@ final class GoogleBooksSyncService
      *
      * @param array<string, mixed> $book   the local row
      * @param array<string, mixed> $remote providerMetadata() output
+     * @param array<string, array<int, array<int, array<string, mixed>>>> $relationsMap Preloaded batch relations
      * @return array<string, mixed>
      */
-    private function diff(array $book, array $remote): array
+    private function diff(array $book, array $remote, array $relationsMap = []): array
     {
         $fields  = (array) ($this->config['sync']['fields'] ?? []);
         $columns = [
@@ -415,7 +428,7 @@ final class GoogleBooksSyncService
         }
 
         if (!empty($fields['authors'])) {
-            $localNames = $this->relationNames($book, 'authors');
+            $localNames = $this->relationNames($book, 'authors', $relationsMap);
             $remoteNames = $remote['authors'];
 
             if ($localNames !== $remoteNames) {
@@ -424,7 +437,7 @@ final class GoogleBooksSyncService
         }
 
         if (!empty($fields['categories'])) {
-            $localNames = $this->relationNames($book, 'categories');
+            $localNames = $this->relationNames($book, 'categories', $relationsMap);
             $remoteNames = $remote['categories'];
 
             if ($localNames !== $remoteNames) {
@@ -498,16 +511,25 @@ final class GoogleBooksSyncService
     /**
      * The current author/category display names of a local row.
      * Resolved from the join tables (never from the row itself, which
-     * carries no denormalized list).
+     * carries no denormalized list). Reads from preloaded batch map
+     * when available (eliminating N+1 queries).
      *
      * @param array<string, mixed> $book the local row
+     * @param string $relation 'authors'|'categories'
+     * @param array<string, array<int, array<int, array<string, mixed>>>> $relationsMap Preloaded batch relations
      * @return array<int, string>
      */
-    private function relationNames(array $book, string $relation): array
+    private function relationNames(array $book, string $relation, array $relationsMap = []): array
     {
-        $rows = $relation === 'authors'
-            ? $this->books->authorsFor((int) $book['id'])
-            : $this->books->categoriesFor((int) $book['id']);
+        $bookId = (int) ($book['id'] ?? 0);
+
+        if (isset($relationsMap[$relation][$bookId])) {
+            $rows = $relationsMap[$relation][$bookId];
+        } else {
+            $rows = $relation === 'authors'
+                ? $this->books->authorsFor($bookId)
+                : $this->books->categoriesFor($bookId);
+        }
 
         $names = [];
 

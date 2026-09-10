@@ -47,7 +47,7 @@ foreach ($dailyActivity as $day) {
     <p class="eyebrow text-uppercase fw-semibold text-primary mb-1" style="letter-spacing: 0.05em; font-size: 0.8125rem;">ADMINISTRATIVE ANALYTICS</p>
     <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
         <div>
-            <h1 class="h3 fw-bold text-dark mb-1">
+            <h1 class="h3 fw-bold text-body mb-1">
                 <i class="fa-solid fa-chart-line text-primary me-2" aria-hidden="true"></i>Community Analytics
             </h1>
             <p class="text-muted small mb-0">Overview of community growth, member engagement, discussion topics, and moderation activity.</p>
@@ -176,7 +176,7 @@ foreach ($dailyActivity as $day) {
                                     <?= $idx + 1 ?>
                                 </span>
                                 <div>
-                                    <a href="/community/book/<?= $bId ?>" target="_blank" class="fw-bold text-dark text-decoration-none hover-primary">
+                                    <a href="/community/book/<?= $bId ?>" target="_blank" class="fw-bold text-body text-decoration-none hover-primary">
                                         <?= e($bTitle) ?>
                                     </a>
                                     <div class="text-muted small">
@@ -225,7 +225,7 @@ foreach ($dailyActivity as $day) {
                         <div class="list-group-item py-3 px-0 border-subtle">
                             <div class="d-flex align-items-start justify-content-between gap-2">
                                 <div>
-                                    <a href="/community/post/<?= $pId ?>" target="_blank" class="fw-bold text-dark text-decoration-none hover-primary d-block mb-1">
+                                    <a href="/community/post/<?= $pId ?>" target="_blank" class="fw-bold text-body text-decoration-none hover-primary d-block mb-1">
                                         <?= e($pTitle) ?>
                                     </a>
                                     <div class="text-muted small">
@@ -316,7 +316,7 @@ foreach ($dailyActivity as $day) {
                         ?>
                         <div>
                             <div class="d-flex align-items-center justify-content-between small mb-1">
-                                <span class="fw-semibold text-dark"><?= e($reasonLabel) ?></span>
+                                <span class="fw-semibold text-body"><?= e($reasonLabel) ?></span>
                                 <span class="text-muted"><?= $rCnt ?> (<?= $rPct ?>%)</span>
                             </div>
                             <div class="progress" style="height: 6px;">

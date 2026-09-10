@@ -21,7 +21,7 @@ declare(strict_types=1);
  *         'name'  => 'Fantasy',
  *         'count' => 3,                  // books in the batch
  *         'href'  => '/books?category=5', // category listing
- *         'icon'  => 'fa-wand-sparkles',  // optional icon
+ *         'icon'  => 'fa-wand-magic-sparkles',  // optional icon
  *     ];
  *
  * Accessibility:

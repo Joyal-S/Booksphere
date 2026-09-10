@@ -153,7 +153,7 @@ final class UserController extends Controller
         }
 
         $this->users->updateProfile($user['id'], $data['full_name'], $email);
-        $this->auth->refreshUser([
+        $this->auth->updateUser([
             'id'        => $user['id'],
             'full_name' => $data['full_name'],
             'email'     => $email,

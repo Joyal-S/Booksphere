@@ -220,9 +220,7 @@
     }
 
     function reTheme() {
-        instances.forEach(function () {
-            mountAll(document);
-        });
+        mountAll(document);
     }
 
     function init() {

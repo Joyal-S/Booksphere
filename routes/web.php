@@ -34,6 +34,7 @@ use BookSphere\App\Models\CommunityPost;
 use BookSphere\App\Models\CommunityReport;
 use BookSphere\App\Policies\CommunityPolicy;
 use BookSphere\App\Services\CommunityService;
+use BookSphere\App\Controllers\AdminAuthorController;
 use BookSphere\App\Controllers\AdminController;
 use BookSphere\App\Controllers\AuthorController;
 use BookSphere\App\Controllers\AuthController;
@@ -328,8 +329,9 @@ $userController = new UserController($auth, $users, $reviewService, $libraryServ
 // Phase 9.2: the follow service + policy were already wired above
 // (they must exist before the user controller); the author controller
 // gets that shared instance for its Follow button.
-$authorController   = new AuthorController(new Author(), $reviewService, $followService, $followPolicy, $rateLimiter);
-$categoryController = new CategoryController(new Category(), $reviewService);
+$authorController      = new AuthorController(new Author(), $reviewService, $followService, $followPolicy, $rateLimiter, new Book());
+$adminAuthorController = new AdminAuthorController(new Author(), $recommendationService);
+$categoryController    = new CategoryController(new Category(), $reviewService);
 
 $recommendationController = new RecommendationController(
     $recommendationService,
@@ -528,6 +530,13 @@ $router->post('/change-password', [$userController, 'changePassword'], [$secure,
 // --- Administration (admin role only) ---------------------------------
 
 $router->get('/admin', [$adminController, 'index'], [$secure, new AdminMiddleware($auth)]);
+
+// Admin Author Management: directory, edit, and safe transactional deletion
+$router->get('/admin/authors', [$adminAuthorController, 'index'], [$secure, new AdminMiddleware($auth)]);
+$router->get('/admin/authors/{id}/edit', [$adminAuthorController, 'edit'], [$secure, new AdminMiddleware($auth)]);
+$router->post('/admin/authors/{id}/edit', [$adminAuthorController, 'update'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->get('/admin/authors/{id}/delete', [$adminAuthorController, 'deleteConfirm'], [$secure, new AdminMiddleware($auth)]);
+$router->post('/admin/authors/{id}/delete', [$adminAuthorController, 'destroy'], [$secure, new AdminMiddleware($auth), new CsrfMiddleware($csrf)]);
 
 // Phase 6.5: the recommendation engine monitoring page and its one
 // write tool. Both stay behind AdminMiddleware; the flush is a POST

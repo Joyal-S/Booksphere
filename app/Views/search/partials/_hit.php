@@ -38,7 +38,7 @@ $iconClass = match ($hit->entity) {
             <div class="d-flex align-items-center gap-2 flex-wrap mb-1">
                 <span class="search-hit-title fw-semibold text-body h6 mb-0"><?= e($hit->title) ?></span>
                 <?php if (!empty($book['average_rating'])): ?>
-                    <span class="badge rounded-pill text-bg-warning text-dark small ms-auto">
+                    <span class="badge-pill badge-soft-warning small ms-auto">
                         <i class="fa-solid fa-star fa-xs me-1" aria-hidden="true"></i><?= e(format_rating($book['average_rating'])) ?>
                     </span>
                 <?php endif; ?>

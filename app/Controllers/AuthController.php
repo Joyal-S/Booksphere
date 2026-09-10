@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BookSphere\App\Controllers;
 
 use BookSphere\App\Core\Controller;
+use BookSphere\App\Core\Logger;
 use BookSphere\App\Core\RateLimiter;
 use BookSphere\App\Core\Request;
 use BookSphere\App\Core\Response;
@@ -12,6 +13,8 @@ use BookSphere\App\Core\Validator;
 use BookSphere\App\Models\PasswordResetToken;
 use BookSphere\App\Models\User;
 use BookSphere\App\Services\AuthService;
+use PDOException;
+use Throwable;
 
 /**
  * AuthController
@@ -41,12 +44,17 @@ use BookSphere\App\Services\AuthService;
  */
 final class AuthController extends Controller
 {
+    private readonly Logger $logger;
+
     public function __construct(
         private readonly AuthService $auth,
         private readonly User $users,
         private readonly PasswordResetToken $resetTokens,
         private readonly ?RateLimiter $limiter = null,
-    ) {}
+        ?Logger $logger = null,
+    ) {
+        $this->logger = $logger ?? new Logger(root_path('storage/logs/application.log'));
+    }
 
     // -----------------------------------------------------------------
     // Register
@@ -87,7 +95,7 @@ final class AuthController extends Controller
             return;
         }
 
-        $email = strtolower($data['email']);
+        $email = strtolower((string) $data['email']);
 
         if ($this->users->emailExists($email)) {
             $this->view('auth.register', [
@@ -101,11 +109,61 @@ final class AuthController extends Controller
             return;
         }
 
-        $this->users->create(
-            $data['full_name'],
-            $email,
-            password_hash($data['password'], PASSWORD_DEFAULT),
-        );
+        try {
+            $this->users->create(
+                (string) $data['full_name'],
+                $email,
+                password_hash((string) $data['password'], PASSWORD_DEFAULT),
+            );
+        } catch (PDOException $e) {
+            $this->logger->error('auth.register_database_error', [
+                'email' => $email,
+                'error' => $e->getMessage(),
+                'code'  => $e->getCode(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            // If a concurrent registration inserted the same email, handle gracefully
+            if (str_contains($e->getMessage(), 'UNIQUE constraint failed') || $this->users->emailExists($email)) {
+                $this->view('auth.register', [
+                    'title'  => 'Create an account',
+                    'active' => 'register',
+                    'tabs'   => true,
+                    'old'    => $data,
+                    'errors' => ['email' => ['An account with this email address already exists.']],
+                ], 'layouts.auth');
+
+                return;
+            }
+
+            session()->flash('error', 'Unable to create your account due to a temporary database error. Please try again.');
+            $this->view('auth.register', [
+                'title'  => 'Create an account',
+                'active' => 'register',
+                'tabs'   => true,
+                'old'    => $data,
+                'errors' => [],
+            ], 'layouts.auth');
+
+            return;
+        } catch (Throwable $e) {
+            $this->logger->error('auth.register_unexpected_error', [
+                'email' => $email,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            session()->flash('error', 'An unexpected error occurred while creating your account. Please try again.');
+            $this->view('auth.register', [
+                'title'  => 'Create an account',
+                'active' => 'register',
+                'tabs'   => true,
+                'old'    => $data,
+                'errors' => [],
+            ], 'layouts.auth');
+
+            return;
+        }
 
         session()->flash('success', 'Your account has been created. Please log in.');
         Response::redirect('/login');

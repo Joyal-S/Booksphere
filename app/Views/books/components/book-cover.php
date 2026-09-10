@@ -45,10 +45,10 @@ $classAttr = trim('book-cover-component ' . $cover['class']);
 ?>
 <?php if (!empty($cover['src'])): ?>
     <img class="<?= e($classAttr) ?>" src="<?= e($cover['src']) ?>"
-         alt="<?= e($cover['alt']) ?>" loading="lazy"
+         alt="<?= e($cover['alt']) ?>" loading="lazy" decoding="async"
          onerror="this.onerror=null;this.src='/assets/images/cover-placeholder.svg';this.classList.add('book-cover-fallback-img');"
          data-book-cover>
 <?php else: ?>
     <img class="<?= e($classAttr) ?> book-cover-fallback-img" src="/assets/images/cover-placeholder.svg"
-         alt="<?= e($cover['alt']) ?>" loading="lazy" data-book-cover>
+         alt="<?= e($cover['alt']) ?>" loading="lazy" decoding="async" data-book-cover>
 <?php endif; ?>

@@ -13,16 +13,16 @@ declare(strict_types=1);
  */
 
 ?>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-<script src="<?= e(asset('js/charts.js')) ?>"></script>
-<script src="<?= e(asset('js/app.js')) ?>"></script>
-<script src="<?= e(asset('js/rating.js')) ?>"></script>
-<script src="<?= e(asset('js/reviews.js')) ?>"></script>
-<script src="<?= e(asset('js/library.js')) ?>"></script>
-<script src="<?= e(asset('js/follow.js')) ?>"></script>
-<script src="<?= e(asset('js/notifications.js')) ?>"></script>
-<script src="<?= e(asset('js/settings.js')) ?>"></script>
-<script src="<?= e(asset('js/google-books.js')) ?>"></script>
-<script src="<?= e(asset('js/search.js')) ?>"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+<script src="<?= e(asset('js/charts.js')) ?>" defer></script>
+<script src="<?= e(asset('js/app.js')) ?>" defer></script>
+<script src="<?= e(asset('js/rating.js')) ?>" defer></script>
+<script src="<?= e(asset('js/reviews.js')) ?>" defer></script>
+<script src="<?= e(asset('js/library.js')) ?>" defer></script>
+<script src="<?= e(asset('js/follow.js')) ?>" defer></script>
+<script src="<?= e(asset('js/notifications.js')) ?>" defer></script>
+<script src="<?= e(asset('js/settings.js')) ?>" defer></script>
+<script src="<?= e(asset('js/google-books.js')) ?>" defer></script>
+<script src="<?= e(asset('js/search.js')) ?>" defer></script>

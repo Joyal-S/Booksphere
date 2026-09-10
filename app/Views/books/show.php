@@ -204,19 +204,31 @@ $reviewSection = $reviewSection ?? false;
                 </a>
 </div>
 
-<!-- Phase C4-D: Community Discussions link -->
+<?php if ($isAdmin): ?>
+    <?php require root_path('app/Views/books/partials/_delete-modal.php'); ?>
+<?php endif; ?>
+
+<?php if ($librarySection ?? false): ?>
+    <!-- Phase 8.2: Personal Library panel -->
+    <?php require root_path('app/Views/library/partials/_book-panel.php'); ?>
+<?php endif; ?>
+
+<!-- Community Discussions & Discussion Hub Card on Book Details -->
 <?php
-$commCount = $communityCount ?? (new \BookSphere\App\Models\CommunityPost())->countByBook((int) $book['id']);
-$bookId    = (int) $book['id'];
+$commCount = (int) ($communityCount ?? 0);
+$hubBookId = (int) ($book['id'] ?? 0);
 ?>
-<div class="card-base p-4 mt-4 mb-4">
-    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+<section class="card-interactive mt-4 mb-4 p-4">
+    <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
         <div class="d-flex align-items-center gap-3">
-            <div class="d-flex align-items-center justify-content-center rounded bg-primary-subtle text-primary p-2" style="width: 44px; height: 44px; font-size: 1.25rem;">
+            <div class="icon-box icon-box-primary">
                 <i class="fa-solid fa-users" aria-hidden="true"></i>
             </div>
             <div>
-                <h2 class="h6 mb-1 text-dark fw-bold">Community Discussions</h2>
+                <div class="text-eyebrow mb-1">
+                    <i class="fa-solid fa-comments me-1" aria-hidden="true"></i> Community Discussions
+                </div>
+                <h2 class="h5 mb-1 fw-bold">Join readers discussing <?= e($book['title'] ?? '') ?></h2>
                 <p class="text-muted small mb-0">
                     <?php if ($commCount > 0): ?>
                         <?= $commCount ?> discussion<?= $commCount === 1 ? '' : 's' ?> about this book. Join the conversation with other readers!
@@ -226,47 +238,9 @@ $bookId    = (int) $book['id'];
                 </p>
             </div>
         </div>
-        <div>
-            <a href="/community/book/<?= $bookId ?>" class="btn btn-outline-primary btn-sm px-3">
-                <i class="fa-solid fa-comments me-1" aria-hidden="true"></i>
-                <?= $commCount > 0 ? 'Join Discussion' : 'View Discussions' ?>
-            </a>
-        </div>
-    </div>
-</div>
-
-<?php if ($isAdmin): ?>
-    <?php require root_path('app/Views/books/partials/_delete-modal.php'); ?>
-<?php endif; ?>
-
-<?php if ($librarySection ?? false): ?>
-    <!-- Phase 8.2: the Personal Library panel - "Add to library"
-         when the book is not saved yet, the full "Update library
-         entry" panel (status, favourite, progress, remove) when it
-         is. The library SQL stays in the Library module; this page
-         only presents the user's own record. -->
-    <?php require root_path('app/Views/library/partials/_book-panel.php'); ?>
-<?php endif; ?>
-
-<!-- Phase C7-C: Community Discussion Hub Card on Book Details -->
-<?php
-$hubBookId = (int) ($book['id'] ?? 0);
-$hubCommCount = (int) (db()->query("SELECT COUNT(*) AS n FROM community_posts WHERE book_id = ? AND status = 'active'", [$hubBookId])[0]['n'] ?? 0);
-?>
-<section class="card-base p-4 mb-4">
-    <div class="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
-        <div>
-            <div class="text-uppercase text-primary fw-semibold small tracking-wide mb-1">
-                <i class="fa-solid fa-comments me-1" aria-hidden="true"></i> Community Discussion
-            </div>
-            <h2 class="h5 mb-1 text-dark fw-bold">Join readers discussing <?= e($book['title'] ?? '') ?></h2>
-            <p class="text-muted small mb-0">
-                <?= $hubCommCount === 1 ? '1 discussion' : "{$hubCommCount} discussions" ?> by the BookSphere reading community.
-            </p>
-        </div>
         <div class="d-flex align-items-center gap-2 flex-shrink-0">
             <a href="/community/book/<?= $hubBookId ?>" class="btn btn-outline-primary btn-sm rounded-pill px-3">
-                <i class="fa-solid fa-comments me-1" aria-hidden="true"></i> View Community Hub
+                <i class="fa-solid fa-comments me-1" aria-hidden="true"></i> <?= $commCount > 0 ? 'Join Discussion' : 'View Discussions' ?>
             </a>
             <?php if (auth_check()): ?>
                 <a href="/community/create?book_id=<?= $hubBookId ?>" class="btn btn-primary btn-sm rounded-pill px-3">

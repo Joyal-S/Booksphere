@@ -1021,11 +1021,19 @@ final class CommunityService
         $whereLike    = $dateClause ? "WHERE created_at >= {$dateClause}" : "";
         $whereReport  = $dateClause ? "WHERE created_at >= {$dateClause}" : "";
 
-        // 1. KPI Summaries
-        $postCount    = (int) (db()->query("SELECT COUNT(*) AS n FROM community_posts {$wherePost}")[0]['n'] ?? 0);
-        $commentCount = (int) (db()->query("SELECT COUNT(*) AS n FROM community_comments {$whereComment}")[0]['n'] ?? 0);
-        $likeCount    = (int) (db()->query("SELECT COUNT(*) AS n FROM community_likes {$whereLike}")[0]['n'] ?? 0);
-        $reportCount  = (int) (db()->query("SELECT COUNT(*) AS n FROM community_reports {$whereReport}")[0]['n'] ?? 0);
+        // 1. KPI Summaries - unified into single query
+        $kpiRow = db()->query("
+            SELECT 
+                (SELECT COUNT(*) FROM community_posts {$wherePost}) AS post_count,
+                (SELECT COUNT(*) FROM community_comments {$whereComment}) AS comment_count,
+                (SELECT COUNT(*) FROM community_likes {$whereLike}) AS like_count,
+                (SELECT COUNT(*) FROM community_reports {$whereReport}) AS report_count
+        ")[0] ?? [];
+
+        $postCount    = (int) ($kpiRow['post_count'] ?? 0);
+        $commentCount = (int) ($kpiRow['comment_count'] ?? 0);
+        $likeCount    = (int) ($kpiRow['like_count'] ?? 0);
+        $reportCount  = (int) ($kpiRow['report_count'] ?? 0);
 
         // Active Users: distinct authors of active posts or active comments in range
         $activeUserSql = $dateClause

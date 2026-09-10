@@ -166,7 +166,7 @@ $reportStats = $reportStats ?? [
                             </td>
                             <td class="small text-muted"><?= e($reporter) ?></td>
                             <td>
-                                <span class="badge bg-light text-dark border"><?= e($reason) ?></span>
+                                <span class="badge bg-body-secondary text-body border"><?= e($reason) ?></span>
                             </td>
                             <td class="small text-muted text-nowrap"><?= e($timeLabel) ?></td>
                             <td>

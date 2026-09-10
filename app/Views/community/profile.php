@@ -50,7 +50,7 @@ $isFollowing    = (bool) ($stats['is_following'] ?? false);
             </div>
             <div>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <h1 class="h4 mb-0 fw-bold text-dark"><?= e($fullName) ?></h1>
+                    <h1 class="h4 mb-0 fw-bold text-body"><?= e($fullName) ?></h1>
                     <?php if ($isOwnProfile): ?>
                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
                             <i class="fa-solid fa-user-check me-1" aria-hidden="true"></i> Your Community Profile
@@ -116,7 +116,7 @@ $repBadges = $reputation['badges'] ?? [];
             <div class="text-uppercase text-primary fw-semibold small tracking-wide mb-1" style="font-size: 0.75rem; letter-spacing: 0.05em;">
                 <i class="fa-solid fa-medal me-1" aria-hidden="true"></i> Community Reputation
             </div>
-            <h2 class="h5 mb-0 fw-bold text-dark">
+            <h2 class="h5 mb-0 fw-bold text-body">
                 <?= number_format($repScore) ?> <span class="text-muted fs-6 fw-normal">reputation points</span>
             </h2>
         </div>
@@ -144,7 +144,7 @@ $repBadges = $reputation['badges'] ?? [];
                             <i class="fa-solid <?= e($badge['icon'] ?? 'fa-award') ?>" aria-hidden="true"></i>
                         </div>
                         <div>
-                            <div class="fw-semibold text-dark small mb-0"><?= e($badge['name']) ?></div>
+                            <div class="fw-semibold text-body small mb-0"><?= e($badge['name']) ?></div>
                             <div class="text-muted" style="font-size: 0.725rem;"><?= e($badge['description']) ?></div>
                         </div>
                     </div>
@@ -154,20 +154,20 @@ $repBadges = $reputation['badges'] ?? [];
     <?php endif; ?>
 </div>
 
-<!-- Activity Tabs -->
-<div class="d-flex align-items-center gap-2 border-bottom mb-4 pb-2">
+<!-- Community Activity Tabs -->
+<div class="d-flex align-items-center gap-2 border-bottom mb-4">
     <a href="/community/user/<?= $userId ?>?tab=discussions"
-       class="btn btn-sm <?= $currentTab === 'discussions' ? 'btn-primary' : 'btn-light border' ?>">
-        <i class="fa-solid fa-comments me-1" aria-hidden="true"></i> Discussions (<?= $postTotal ?>)
+       class="text-decoration-none px-3 py-2 border-bottom border-2 fw-semibold <?= $tab === 'discussions' ? 'border-primary text-primary' : 'border-transparent text-muted hover-text-dark' ?>">
+        <i class="fa-solid fa-comments me-1" aria-hidden="true"></i> Discussions (<?= $postCount ?>)
     </a>
     <a href="/community/user/<?= $userId ?>?tab=comments"
-       class="btn btn-sm <?= $currentTab === 'comments' ? 'btn-primary' : 'btn-light border' ?>">
-        <i class="fa-solid fa-comment-dots me-1" aria-hidden="true"></i> Comments (<?= $commentTotal ?>)
+       class="text-decoration-none px-3 py-2 border-bottom border-2 fw-semibold <?= $tab === 'comments' ? 'border-primary text-primary' : 'border-transparent text-muted hover-text-dark' ?>">
+        <i class="fa-solid fa-comment-dots me-1" aria-hidden="true"></i> Comments (<?= $commentCount ?>)
     </a>
 </div>
 
 <!-- Tab Content: DISCUSSIONS -->
-<?php if ($currentTab === 'discussions'): ?>
+<?php if ($tab === 'discussions'): ?>
     <?php if (empty($posts)): ?>
         <?php $empty = ['icon' => 'fa-comments', 'title' => 'No Discussions Yet', 'message' => e($fullName) . ' has not started any community discussions yet.']; ?>
         <?php require root_path('app/Views/components/empty-state.php'); ?>
@@ -189,12 +189,12 @@ $repBadges = $reputation['badges'] ?? [];
                             </div>
 
                             <h2 class="h5 mb-2">
-                                <a href="/community/post/<?= (int) $post['id'] ?>" class="text-decoration-none text-dark hover-primary fw-semibold">
+                                <a href="/community/post/<?= (int) $post['id'] ?>" class="text-decoration-none text-body hover-primary fw-semibold">
                                     <?= e($post['title'] ?? '') ?>
                                 </a>
                             </h2>
 
-                            <p class="text-secondary mb-3 text-break" style="line-height: 1.55;">
+                            <p class="text-body mb-3 text-break" style="line-height: 1.55;">
                                 <?= e(mb_strimwidth((string) ($post['body'] ?? ''), 0, 280, '...')) ?>
                             </p>
 
@@ -228,7 +228,7 @@ $repBadges = $reputation['badges'] ?? [];
             <nav class="d-flex justify-content-center gap-2 mt-4" aria-label="Discussion pages">
                 <?php for ($i = 1; $i <= $postPages; $i++): ?>
                     <a href="/community/user/<?= $userId ?>?tab=discussions&page=<?= $i ?>"
-                       class="btn btn-sm <?= $i === $postPage ? 'btn-dark' : 'btn-outline-secondary' ?>">
+                       class="btn btn-sm <?= $i === $postPage ? 'btn-primary' : 'btn-outline-secondary' ?>">
                         <?= $i ?>
                     </a>
                 <?php endfor; ?>
@@ -258,14 +258,14 @@ $repBadges = $reputation['badges'] ?? [];
                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                         <div class="small">
                             <span class="text-muted">Commented on</span>
-                            <a href="/community/post/<?= $postId ?>" class="fw-semibold text-dark text-decoration-none hover-primary">
+                            <a href="/community/post/<?= $postId ?>" class="fw-semibold text-body text-decoration-none hover-primary">
                                 <?= e($postTitle) ?>
                             </a>
                         </div>
                         <span class="text-muted small" style="font-size: 0.75rem;"><?= e($commentTime) ?></span>
                     </div>
 
-                    <div class="text-secondary small mb-2" style="line-height: 1.55; white-space: pre-wrap;"><?= e($comment['body'] ?? '') ?></div>
+                    <div class="text-body small mb-2" style="line-height: 1.55; white-space: pre-wrap;"><?= e($comment['body'] ?? '') ?></div>
 
                     <?php if ($hasBook): ?>
                         <div class="mt-2">

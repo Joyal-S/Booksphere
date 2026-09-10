@@ -518,8 +518,10 @@
                         }
                     });
 
-                    input.setAttribute('aria-activedescendant', options[activeIndex].id);
-                    options[activeIndex].scrollIntoView({ block: 'nearest' });
+                    if (options[activeIndex]) {
+                        input.setAttribute('aria-activedescendant', options[activeIndex].id || '');
+                        options[activeIndex].scrollIntoView({ block: 'nearest' });
+                    }
                     return;
                 }
 

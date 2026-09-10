@@ -158,6 +158,8 @@ final class Database
      *     - synchronous = NORMAL-> faster writes with safe durability
      *     - busy_timeout = 5000 -> wait instead of failing when the
      *                              database is briefly locked
+     *     - cache_size = -2000  -> 2MB in-memory page cache
+     *     - temp_store = MEMORY -> in-memory temporary tables and indices
      */
     private function configurePragmas(): void
     {
@@ -165,7 +167,9 @@ final class Database
             'PRAGMA foreign_keys = ON;
              PRAGMA journal_mode = WAL;
              PRAGMA synchronous = NORMAL;
-             PRAGMA busy_timeout = 5000;'
+             PRAGMA busy_timeout = 5000;
+             PRAGMA cache_size = -2000;
+             PRAGMA temp_store = MEMORY;'
         );
     }
 }

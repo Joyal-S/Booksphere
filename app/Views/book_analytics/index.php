@@ -61,7 +61,7 @@ $shelfTones = [
 
 $shelfTotal = max(1, (int) array_sum($shelves));
 
-$dash = '&mdash;';
+$dash = '—';
 
 $distribution = $overview['distribution'] ?? [];
 $distributionMax = max(1, ...($distribution === [] ? [1] : array_values($distribution)));
@@ -132,7 +132,7 @@ $emptyNote = static fn (string $why): string =>
                 ['icon' => 'fa-book',               'label' => 'Books in Catalogue', 'value' => (int) ($overview['books'] ?? 0),          'tone' => 'primary'],
                 ['icon' => 'fa-star',               'label' => 'Approved Reviews',    'value' => (int) ($overview['reviews'] ?? 0),        'tone' => 'warning'],
                 ['icon' => 'fa-star-half-stroke',   'label' => 'Average Rating',      'value' => $overview['averageRating'] === null ? $dash : format_rating($overview['averageRating']), 'tone' => 'danger'],
-                ['icon' => 'fa-book-open-cover',    'label' => 'Books with Covers',   'value' => (int) ($overview['with_covers'] ?? 0),    'tone' => 'info'],
+                ['icon' => 'fa-book-open',          'label' => 'Books with Covers',   'value' => (int) ($overview['with_covers'] ?? 0),    'tone' => 'info'],
             ];
             foreach ($cards as $stat):
                 require root_path('app/Views/components/stat-card.php');
@@ -299,7 +299,7 @@ $emptyNote = static fn (string $why): string =>
         </div>
         <div class="row g-3 g-xl-4">
             <div class="col-12 col-md-4">
-                <?php $chartEyebrow = 'Per calendar month'; $chartTitle = 'Reviews &amp; finishes'; $chartTrend = ''; $chart = $monthlyChart; $chartSummary = $monthlySummary; ?>
+                <?php $chartEyebrow = 'Per calendar month'; $chartTitle = 'Reviews & finishes'; $chartTrend = ''; $chart = $monthlyChart; $chartSummary = $monthlySummary; ?>
                 <?php require root_path('app/Views/components/chart-card.php'); ?>
             </div>
             <div class="col-12 col-md-4">

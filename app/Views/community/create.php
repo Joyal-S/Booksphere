@@ -38,7 +38,7 @@ $books = $books ?? [];
 
         <!-- Title -->
         <div>
-            <label for="title" class="form-label fw-semibold text-dark">Discussion Title <span class="text-danger">*</span></label>
+            <label for="title" class="form-label fw-semibold">Discussion Title <span class="text-danger">*</span></label>
             <input type="text"
                    id="title"
                    name="title"
@@ -52,7 +52,7 @@ $books = $books ?? [];
 
         <!-- Content Body -->
         <div>
-            <label for="body" class="form-label fw-semibold text-dark">Discussion Content <span class="text-danger">*</span></label>
+            <label for="body" class="form-label fw-semibold">Discussion Content <span class="text-danger">*</span></label>
             <textarea id="body"
                       name="body"
                       class="form-control"
@@ -67,7 +67,7 @@ $books = $books ?? [];
         <!-- Optional Book Attachment -->
         <?php $activeBookId = (int) ($_POST['book_id'] ?? ($selectedBook ?? ($_GET['book_id'] ?? 0))); ?>
         <div>
-            <label for="book_id" class="form-label fw-semibold text-dark">Related Book <span class="text-muted fw-normal">(optional)</span></label>
+            <label for="book_id" class="form-label fw-semibold">Related Book <span class="text-muted fw-normal">(optional)</span></label>
             <select id="book_id" name="book_id" class="form-select">
                 <option value="">-- Select a book to tag (optional) --</option>
                 <?php foreach ($books as $book): ?>

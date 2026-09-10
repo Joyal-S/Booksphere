@@ -88,7 +88,7 @@ if ($total === 0) {
 }
 
 ?>
-<div class="book-browse-results" data-live-results aria-busy="false">
+<div class="book-browse-results" data-live-results aria-busy="false" aria-live="polite">
 
     <?php if ($total === 0): ?>
         <div class="card-base">

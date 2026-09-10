@@ -17,7 +17,7 @@ declare(strict_types=1);
  */
 
 if (!empty($errors[$field])): ?>
-    <div class="invalid-feedback d-block">
+    <div class="invalid-feedback d-block" role="alert">
         <?php foreach ($errors[$field] as $message): ?>
             <p class="mb-0"><?= e($message) ?></p>
         <?php endforeach; ?>

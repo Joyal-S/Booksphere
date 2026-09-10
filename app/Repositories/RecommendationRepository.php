@@ -839,10 +839,18 @@ final class RecommendationRepository
         // candidate-set ids and the limit.
         return db()->query(
             'SELECT t.*,
+                    (SELECT GROUP_CONCAT(a.name, ", ")
+                     FROM book_authors ba
+                     JOIN authors a ON a.id = ba.author_id
+                     WHERE ba.book_id = t.id) AS authors_list,
+                    (SELECT GROUP_CONCAT(c.name, ", ")
+                     FROM book_categories bc
+                     JOIN categories c ON c.id = bc.category_id
+                     WHERE bc.book_id = t.id) AS categories_list,
                     ' . RecommendationScoring::popularitySql() . ' AS popularity_score,
                     ' . RecommendationScoring::trendingSql() . ' AS trending_score
              FROM (
-                 SELECT ' . self::BOOK_SELECT . ',
+                 SELECT b.*,
                         ' . self::REVIEW_COUNT_SQL . ' AS review_count,
                         ' . self::WISHLIST_COUNT_SQL . ' AS wishlist_count,
                         ' . self::RECENT_REVIEW_COUNT_SQL . ' AS recent_review_count,
@@ -909,7 +917,7 @@ final class RecommendationRepository
      *
      * @return array<int, int>
      */
-    public function libraryBookIds(int $userId, int $limit, ?string $status = null): array
+    public function libraryBookIds(int $userId, int $limit = 200, ?string $status = null): array
     {
         $statusClause = $status !== null ? ' AND ul.library_status = ?' : '';
         $params       = $status !== null ? [$userId, $status, $limit] : [$userId, $limit];

@@ -22,7 +22,7 @@ declare(strict_types=1);
 
 return [
     'up' => "
-        CREATE TABLE community_follows (
+        CREATE TABLE IF NOT EXISTS community_follows (
             id           INTEGER PRIMARY KEY AUTOINCREMENT,
             follower_id  INTEGER NOT NULL,
             following_id INTEGER NOT NULL,
@@ -32,8 +32,8 @@ return [
             UNIQUE (follower_id, following_id)
         );
 
-        CREATE INDEX idx_community_follows_follower  ON community_follows (follower_id);
-        CREATE INDEX idx_community_follows_following ON community_follows (following_id);
+        CREATE INDEX IF NOT EXISTS idx_community_follows_follower  ON community_follows (follower_id);
+        CREATE INDEX IF NOT EXISTS idx_community_follows_following ON community_follows (following_id);
     ",
     'down' => "
         DROP INDEX IF EXISTS idx_community_follows_follower;

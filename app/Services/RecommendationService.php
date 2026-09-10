@@ -400,12 +400,12 @@ final class RecommendationService
             $candidates,
         );
 
-        // Exclusion rules (the brief's list, enforced once): wishlist
-        // books, the exact recently-viewed books ("do not recommend
+        // Exclusion rules: library books (want_to_read, currently_reading, finished),
+        // wishlist books, the exact recently-viewed books ("do not recommend
         // the same book"), duplicates and junk ids.
         $items = $this->filterRecommendations(
             $items,
-            [...$profile->wishlistBookIds, ...$profile->recentlyViewedBookIds],
+            [...$profile->libraryBookIds, ...$profile->wishlistBookIds, ...$profile->recentlyViewedBookIds],
         );
         $items = $this->sortRecommendations($items);
         $items = $this->limitRecommendations($items, $limit);
@@ -790,6 +790,7 @@ final class RecommendationService
         );
 
         $viewCap = (int) (config('recommendations.candidates.signal_book_cap', 20));
+        $libraryIds = $this->repository->libraryBookIds($userId, self::LIBRARY_EXCLUSION_LIMIT);
 
         return new PersonalizationProfile(
             userId:                $userId,
@@ -800,6 +801,7 @@ final class RecommendationService
             reviewedBookIds:       $reviewedForProfile,
             recentlyViewedBookIds: $this->repository->recentlyViewedBookIds($userId, $viewCap),
             builtAt:               gmdate('Y-m-d\TH:i:s\Z'),
+            libraryBookIds:        array_values(array_unique($libraryIds)),
         );
     }
 

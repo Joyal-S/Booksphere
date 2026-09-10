@@ -67,11 +67,11 @@ $sortIcons = [
                     <div class="text-uppercase text-primary fw-semibold small tracking-wide mb-1">
                         <i class="fa-solid fa-comments me-1" aria-hidden="true"></i> Community Discussion Hub
                     </div>
-                    <h1 class="h3 fw-bold text-dark mb-1"><?= e($bookTitle) ?></h1>
+                    <h1 class="h3 fw-bold text-body mb-1"><?= e($bookTitle) ?></h1>
                     <?php if (!empty($authors)): ?>
                         <p class="text-muted mb-2">
                             By <?php foreach ($authors as $idx => $a): ?>
-                                <a href="/authors/<?= (int) $a['id'] ?>" class="text-dark text-decoration-none hover-primary fw-medium"><?= e($a['name']) ?></a><?= $idx < count($authors) - 1 ? ', ' : '' ?>
+                                <a href="/authors/<?= (int) $a['id'] ?>" class="text-body text-decoration-none hover-primary fw-medium"><?= e($a['name']) ?></a><?= $idx < count($authors) - 1 ? ', ' : '' ?>
                             <?php endforeach; ?>
                         </p>
                     <?php endif; ?>
@@ -228,7 +228,7 @@ $sortIcons = [
                             <?= e($initial) ?>
                         </div>
                         <div>
-                            <a href="/community/user/<?= $authorId ?>" class="fw-semibold text-dark text-decoration-none hover-primary small">
+                            <a href="/community/user/<?= $authorId ?>" class="fw-semibold text-body text-decoration-none hover-primary small">
                                 <?= e($authorName) ?>
                             </a>
                             <span class="text-muted small">&middot; <?= e($createdTime) ?></span>
@@ -237,12 +237,12 @@ $sortIcons = [
                 </div>
 
                 <h2 class="h5 fw-bold mb-2">
-                    <a href="/community/post/<?= $pId ?>" class="text-dark text-decoration-none hover-primary">
+                    <a href="/community/post/<?= $pId ?>" class="text-body text-decoration-none hover-primary">
                         <?= e($post['title']) ?>
                     </a>
                 </h2>
 
-                <p class="text-secondary small mb-3"><?= e($bodyExcerpt) ?></p>
+                <p class="text-body small mb-3"><?= e($bodyExcerpt) ?></p>
 
                 <div class="d-flex align-items-center justify-content-between pt-2 border-top text-muted small">
                     <div class="d-flex align-items-center gap-3">

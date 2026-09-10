@@ -37,7 +37,7 @@ $shelfLabels = [
     'dropped'           => 'Dropped',
 ];
 
-$dash = '&mdash;';
+$dash = '—';
 ?>
 
 <div class="page-intro report-sheet">
@@ -90,7 +90,7 @@ if (array_sum($shelfNumbers) > 0): ?>
     <h2 class="h4 mb-3">Where my books sit</h2>
     <div class="row g-3">
         <div class="col-md-5">
-            <?php $chartEyebrow = 'Shelf split'; $chartTitle = 'All five statuses'; $chartTrend = ''; $chart = $json('doughnut', 'shelf', array_values($shelfLabels), $shelfNumbers, ''); $chartSummary = implode(' &middot; ', array_map(
+            <?php $chartEyebrow = 'Shelf split'; $chartTitle = 'All five statuses'; $chartTrend = ''; $chart = $json('doughnut', 'shelf', array_values($shelfLabels), $shelfNumbers, ''); $chartSummary = implode(' · ', array_map(
                 static fn (string $label, int $count): string => $count . ' ' . strtolower($label),
                 array_values($shelfLabels),
                 $shelfNumbers,
@@ -99,22 +99,24 @@ if (array_sum($shelfNumbers) > 0): ?>
         </div>
         <div class="col-md-7">
             <div class="card-base p-4">
-                <table class="table align-middle table-striped">
-                    <thead>
-                        <tr><th scope="col">Status</th><th scope="col" class="text-end">Books</th><th scope="col" class="text-end">Share</th></tr>
-                    </thead>
-                    <tbody>
-                        <?php $total = max(1, array_sum($shelfNumbers)); ?>
-                        <?php foreach ($shelfLabels as $status => $label): ?>
-                            <?php $count = (int) ($shelf[$status] ?? 0); ?>
-                            <tr>
-                                <td><?= e($label) ?></td>
-                                <td class="text-end"><?= $count ?></td>
-                                <td class="text-end"><?= round($count / $total * 100) ?>%</td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="table align-middle table-striped mb-0">
+                        <thead>
+                            <tr><th scope="col">Status</th><th scope="col" class="text-end">Books</th><th scope="col" class="text-end">Share</th></tr>
+                        </thead>
+                        <tbody>
+                            <?php $total = max(1, array_sum($shelfNumbers)); ?>
+                            <?php foreach ($shelfLabels as $status => $label): ?>
+                                <?php $count = (int) ($shelf[$status] ?? 0); ?>
+                                <tr>
+                                    <td><?= e($label) ?></td>
+                                    <td class="text-end"><?= $count ?></td>
+                                    <td class="text-end"><?= round($count / $total * 100) ?>%</td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -132,7 +134,7 @@ if ($chrono !== []):
         <h2 class="h4 mb-3">Monthly totals</h2>
         <div class="row g-4">
             <div class="col-md-7">
-                <?php $chartEyebrow = 'Last ' . count($months) . ' months'; $chartTitle = 'Finishes &amp; reviews'; $chartTrend = ''; $chart = $json('line', 'monthly', array_map(static fn (array $m): string => (string) $m['label'], $chrono), [
+                <?php $chartEyebrow = 'Last ' . count($months) . ' months'; $chartTitle = 'Finishes & reviews'; $chartTrend = ''; $chart = $json('line', 'monthly', array_map(static fn (array $m): string => (string) $m['label'], $chrono), [
                     ['label' => 'Books finished', 'tone' => 'success', 'values' => $finished],
                     ['label' => 'Reviews written', 'tone' => 'warning', 'values' => $rated],
                 ], ''); $chartSummary = ''; ?>
@@ -140,20 +142,22 @@ if ($chrono !== []):
             </div>
             <div class="col-md-5">
                 <div class="card-base p-4">
-                    <table class="table align-middle table-striped">
-                        <thead>
-                            <tr><th scope="col">Month</th><th class="text-end" scope="col">Finished</th><th class="text-end" scope="col">Reviews</th></tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach (array_reverse($months) as $m): ?>
-                                <tr>
-                                    <td><?= e((string) $m['label']) ?></td>
-                                    <td class="text-end"><?= (int) ($m['completed'] ?? 0) ?></td>
-                                    <td class="text-end"><?= (int) ($m['rated'] ?? 0) ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table align-middle table-striped mb-0">
+                            <thead>
+                                <tr><th scope="col">Month</th><th class="text-end" scope="col">Finished</th><th class="text-end" scope="col">Reviews</th></tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach (array_reverse($months) as $m): ?>
+                                    <tr>
+                                        <td><?= e((string) $m['label']) ?></td>
+                                        <td class="text-end"><?= (int) ($m['completed'] ?? 0) ?></td>
+                                        <td class="text-end"><?= (int) ($m['rated'] ?? 0) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -173,19 +177,21 @@ if ($chrono !== []):
             </div>
             <div class="col-md-5">
                 <div class="card-base p-4">
-                    <table class="table align-middle table-striped">
-                        <thead>
-                            <tr><th scope="col">Genre</th><th class="text-end" scope="col">Share</th></tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($genreRows as $r): ?>
-                                <tr>
-                                    <td><?= e((string) $r['name']) ?></td>
-                                    <td class="text-end"><?= number_format((float) $r['percent'], 1) ?>%</td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table align-middle table-striped mb-0">
+                            <thead>
+                                <tr><th scope="col">Genre</th><th class="text-end" scope="col">Share</th></tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($genreRows as $r): ?>
+                                    <tr>
+                                        <td><?= e((string) $r['name']) ?></td>
+                                        <td class="text-end"><?= number_format((float) $r['percent'], 1) ?>%</td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

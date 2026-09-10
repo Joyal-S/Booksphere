@@ -82,12 +82,12 @@ final class DashboardController extends Controller
         $favouriteBooks  = $userId !== null && $this->library !== null
             ? $this->library->favoriteBooks((int) $userId, 4)
             : [];
-        $libraryCounts   = $userId !== null && $this->library !== null
-            ? $this->library->statusCounts((int) $userId)
-            : [];
         $collections     = $userId !== null && $this->library !== null
             ? $this->library->collectionStatistics((int) $userId)
             : [];
+        $libraryCounts   = $collections !== []
+            ? array_map(fn (array $c): int => (int) ($c['count'] ?? 0), $collections)
+            : ($userId !== null && $this->library !== null ? $this->library->statusCounts((int) $userId) : []);
 
         // Phase 8.5: the real recommendation shelves - the personal
         // hybrid shelf ("Recommended for you"), the library-derived

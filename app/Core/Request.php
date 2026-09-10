@@ -132,4 +132,12 @@ final class Request
 
         return $file;
     }
+
+    /**
+     * Return the client's IP address safely.
+     */
+    public function ip(): string
+    {
+        return (string) ($_SERVER['REMOTE_ADDR'] ?? '127.0.0.1');
+    }
 }

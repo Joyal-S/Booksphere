@@ -417,19 +417,19 @@ $feedTabs[] = [
                     <!-- Post Body & Info -->
                     <div class="flex-grow-1 min-w-0">
                         <div class="d-flex align-items-center justify-content-between gap-2 mb-1">
-                            <a href="/community/user/<?= (int) ($post['user_id'] ?? 0) ?>" class="fw-semibold text-dark text-decoration-none hover-primary text-truncate">
+                            <a href="/community/user/<?= (int) ($post['user_id'] ?? 0) ?>" class="fw-semibold text-body text-decoration-none hover-primary text-truncate">
                                 <?= e($authorName) ?>
                             </a>
                             <span class="text-muted small flex-shrink-0"><?= e($timeAgo) ?></span>
                         </div>
 
                         <h3 class="h5 mb-2">
-                            <a href="/community/post/<?= (int) $post['id'] ?>" class="text-decoration-none text-dark hover-primary fw-semibold">
+                            <a href="/community/post/<?= (int) $post['id'] ?>" class="text-decoration-none text-body hover-primary fw-semibold">
                                 <?= e($post['title']) ?>
                             </a>
                         </h3>
 
-                        <p class="text-secondary mb-3 text-break" style="line-height: 1.55;">
+                        <p class="text-body mb-3 text-break" style="line-height: 1.55;">
                             <?= e(mb_strimwidth((string) ($post['body'] ?? ''), 0, 280, '...')) ?>
                         </p>
 

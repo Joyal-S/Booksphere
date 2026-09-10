@@ -23,6 +23,7 @@ declare(strict_types=1);
 <html lang="en" data-bs-theme="light">
     <?php require root_path('app/Views/partials/head.php'); ?>
     <body class="<?= e((string) ($bodyClass ?? '')) ?>">
+        <a href="#main-content" class="skip-link visually-hidden-focusable">Skip to main content</a>
         <?php require root_path('app/Views/partials/header.php'); ?>
         <div class="app-shell">
             <?php require root_path('app/Views/partials/sidebar.php'); ?>

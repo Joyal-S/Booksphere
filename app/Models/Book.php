@@ -157,6 +157,17 @@ final class Book
     }
 
     /**
+     * The author rows of multiple books, keyed by book_id (batch query, no N+1).
+     *
+     * @param array<int, int> $bookIds
+     * @return array<int, array<int, array<string, mixed>>>
+     */
+    public function authorsForBooks(array $bookIds): array
+    {
+        return $this->repository->authorsForBooks($bookIds);
+    }
+
+    /**
      * The category rows (id + name) of one book, in name order.
      *
      * @return array<int, array<string, mixed>>
@@ -164,6 +175,17 @@ final class Book
     public function categoriesFor(int $bookId): array
     {
         return $this->repository->categoriesFor($bookId);
+    }
+
+    /**
+     * The category rows of multiple books, keyed by book_id (batch query, no N+1).
+     *
+     * @param array<int, int> $bookIds
+     * @return array<int, array<int, array<string, mixed>>>
+     */
+    public function categoriesForBooks(array $bookIds): array
+    {
+        return $this->repository->categoriesForBooks($bookIds);
     }
 
     /**

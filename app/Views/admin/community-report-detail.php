@@ -105,12 +105,12 @@ $timeLabel = function_exists('format_notification_time')
                 <?php if (!empty($report['comment_post_title'])): ?>
                     <div class="mb-3 p-3 rounded bg-body-tertiary border">
                         <span class="text-uppercase text-muted fw-bold small d-block mb-1" style="font-size: 0.6875rem; letter-spacing: 0.05em;">PARENT DISCUSSION</span>
-                        <a href="/community/post/<?= (int) ($report['comment_post_id'] ?? 0) ?>" target="_blank" class="fw-bold text-dark text-decoration-none hover-primary">
+                        <a href="/community/post/<?= (int) ($report['comment_post_id'] ?? 0) ?>" target="_blank" class="fw-bold text-body text-decoration-none hover-primary">
                             <?= e($report['comment_post_title']) ?>
                         </a>
                     </div>
                 <?php endif; ?>
-                <div class="text-secondary mb-3" style="white-space: pre-wrap; font-size: 0.95rem; line-height: 1.65;"><?= e($commentBody) ?></div>
+                <div class="text-body mb-3" style="white-space: pre-wrap; font-size: 0.95rem; line-height: 1.65;"><?= e($commentBody) ?></div>
                 <?php if (!empty($report['book_id'])): ?>
                     <div class="mb-2">
                         <a href="/community/book/<?= (int) $report['book_id'] ?>" target="_blank" class="btn btn-sm btn-outline-primary">
@@ -139,7 +139,7 @@ $timeLabel = function_exists('format_notification_time')
 
                 <dt class="col-sm-4 text-muted fw-normal small">Reason</dt>
                 <dd class="col-sm-8 mb-0">
-                    <span class="badge bg-light text-dark border"><?= e($reason) ?></span>
+                    <span class="badge bg-body-secondary text-body border"><?= e($reason) ?></span>
                 </dd>
 
                 <?php if ($description !== ''): ?>

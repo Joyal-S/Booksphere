@@ -104,6 +104,39 @@ final class BookRepository
     }
 
     /**
+     * Return the authors of multiple books in a single batch query (no N+1).
+     *
+     * @param array<int, int> $bookIds
+     * @return array<int, array<int, array<string, mixed>>> Keyed by book_id
+     */
+    public function authorsForBooks(array $bookIds): array
+    {
+        $cleanIds = array_values(array_filter(array_map('intval', $bookIds), fn (int $id): bool => $id > 0));
+
+        if ($cleanIds === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($cleanIds), '?'));
+        $rows = db()->query(
+            "SELECT ba.book_id, a.id, a.name
+             FROM book_authors ba
+             JOIN authors a ON a.id = ba.author_id
+             WHERE ba.book_id IN ({$placeholders})
+             ORDER BY a.name ASC",
+            $cleanIds,
+        );
+
+        $result = [];
+        foreach ($rows as $row) {
+            $bookId = (int) $row['book_id'];
+            $result[$bookId][] = ['id' => (int) $row['id'], 'name' => (string) $row['name']];
+        }
+
+        return $result;
+    }
+
+    /**
      * Return the categories of one book.
      *
      * @return array<int, array<string, mixed>> Rows with id and name
@@ -118,6 +151,39 @@ final class BookRepository
              ORDER BY c.name ASC',
             [$bookId],
         );
+    }
+
+    /**
+     * Return the categories of multiple books in a single batch query (no N+1).
+     *
+     * @param array<int, int> $bookIds
+     * @return array<int, array<int, array<string, mixed>>> Keyed by book_id
+     */
+    public function categoriesForBooks(array $bookIds): array
+    {
+        $cleanIds = array_values(array_filter(array_map('intval', $bookIds), fn (int $id): bool => $id > 0));
+
+        if ($cleanIds === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($cleanIds), '?'));
+        $rows = db()->query(
+            "SELECT bc.book_id, c.id, c.name
+             FROM book_categories bc
+             JOIN categories c ON c.id = bc.category_id
+             WHERE bc.book_id IN ({$placeholders})
+             ORDER BY c.name ASC",
+            $cleanIds,
+        );
+
+        $result = [];
+        foreach ($rows as $row) {
+            $bookId = (int) $row['book_id'];
+            $result[$bookId][] = ['id' => (int) $row['id'], 'name' => (string) $row['name']];
+        }
+
+        return $result;
     }
 
     /**
@@ -196,13 +262,16 @@ final class BookRepository
 
         // 2. Fetch ONLY the rows of the current page (LIMIT/OFFSET).
         //    The catalogue is never loaded into memory as a whole.
+        $perPage = (int) ($options['perPage'] ?? 20);
+        $offset  = (int) ($options['offset'] ?? 0);
+
         $items = db()->query(
             'SELECT ' . self::SELECT_COLUMNS . '
              FROM books b
              WHERE ' . $whereSql . '
              ORDER BY ' . $this->orderSql($options['sort'] ?? []) . '
              LIMIT ? OFFSET ?',
-            [...$params, $options['perPage'], $options['offset']],
+            [...$params, $perPage, $offset],
         );
 
         return ['items' => $items, 'total' => $total];

@@ -71,8 +71,8 @@ $reportReasons = [
             </a>
             <div>
                 <?php $authorRep = (new \BookSphere\App\Models\CommunityReputation())->getUserReputation((int) ($post['user_id'] ?? 0)); ?>
-                <h2 class="h6 mb-0 text-dark fw-bold d-flex align-items-center gap-1.5 flex-wrap">
-                    <a href="/community/user/<?= (int) ($post['user_id'] ?? 0) ?>" class="text-decoration-none text-dark hover-primary">
+                <h2 class="h6 mb-0 fw-bold d-flex align-items-center gap-1.5 flex-wrap">
+                    <a href="/community/user/<?= (int) ($post['user_id'] ?? 0) ?>" class="text-decoration-none text-body hover-primary">
                         <?= e($authorName) ?>
                     </a>
                     <?php if (!empty($authorRep['primary_badge'])): ?>
@@ -105,17 +105,17 @@ $reportReasons = [
     </div>
 
     <!-- Title -->
-    <h1 class="display-6 fw-bold mb-3"><?= e($post['title'] ?? '') ?></h1>
+    <h1 class="text-title-xl mb-3"><?= e($post['title'] ?? '') ?></h1>
 
     <!-- Optional Compact Related Book Card -->
     <?php if ($hasBook): ?>
-        <div class="mb-4 p-3 rounded bg-body-tertiary border border-subtle d-inline-flex align-items-center gap-3">
-            <div class="d-flex align-items-center justify-content-center rounded bg-primary-subtle text-primary p-2" style="width: 40px; height: 50px;">
-                <i class="fa-solid fa-book fa-lg" aria-hidden="true"></i>
+        <div class="mb-4 p-3 rounded card-flat d-inline-flex align-items-center gap-3">
+            <div class="icon-box icon-box-sm icon-box-primary">
+                <i class="fa-solid fa-book" aria-hidden="true"></i>
             </div>
             <div>
-                <div class="text-uppercase text-muted fw-bold small" style="font-size: 0.6875rem; letter-spacing: 0.05em;">RELATED BOOK</div>
-                <div class="fw-bold text-dark text-truncate" style="max-width: 300px;"><?= e($bookTitle) ?></div>
+                <div class="text-eyebrow" style="font-size: 0.6875rem;">RELATED BOOK</div>
+                <div class="fw-bold text-body text-truncate" style="max-width: 300px;"><?= e($bookTitle) ?></div>
                 <?php if ($bookDetails && !empty($bookDetails['author'])): ?>
                     <div class="text-muted small"><?= e($bookDetails['author']) ?></div>
                 <?php endif; ?>
@@ -125,7 +125,7 @@ $reportReasons = [
     <?php endif; ?>
 
     <!-- Post Body Content -->
-    <div class="post-body text-secondary mb-4" style="font-size: 1.0625rem; line-height: 1.7; white-space: pre-wrap;"><?= e($post['body'] ?? '') ?></div>
+    <div class="post-body text-body mb-4" style="font-size: 1.0625rem; line-height: 1.7; white-space: pre-wrap;"><?= e($post['body'] ?? '') ?></div>
 
     <!-- Engagement Controls & Counts -->
     <div class="d-flex align-items-center justify-content-between pt-3 border-top">
@@ -231,7 +231,7 @@ $reportReasons = [
                                 <?= e($commentInit) ?>
                             </div>
                             <div>
-                                <span class="fw-semibold small text-dark d-block leading-none"><?= e($commentAuthor) ?></span>
+                                <span class="fw-semibold small text-body d-block leading-none"><?= e($commentAuthor) ?></span>
                                 <span class="text-muted small" style="font-size: 0.71875rem;"><?= e($commentTime) ?></span>
                             </div>
                         </div>

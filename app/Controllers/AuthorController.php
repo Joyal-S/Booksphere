@@ -10,6 +10,7 @@ use BookSphere\App\Core\Request;
 use BookSphere\App\Core\Response;
 use BookSphere\App\Exceptions\FollowException;
 use BookSphere\App\Models\Author;
+use BookSphere\App\Models\Book;
 use BookSphere\App\Policies\FollowPolicy;
 use BookSphere\App\Requests\FollowRequest;
 use BookSphere\App\Services\FollowService;
@@ -24,13 +25,10 @@ use BookSphere\App\Services\ReviewService;
  *
  *     - index    -> the author directory with the average author
  *                   rating per author (ReviewService::authorAverage())
- *     - show     -> one author's page: average author rating, books
- *                   reviewed, highest rated book, most reviewed book,
- *                   recent community reviews and top reviewers - all
- *                   aggregated by the Reviews module. Since Phase 9.2
- *                   the page also carries the FOLLOW surface: the
- *                   follow button state and the follower count, read
- *                   through the shared FollowService.
+ *     - show     -> one author's page: books by this author, average
+ *                   author rating, books reviewed, highest rated book,
+ *                   most reviewed book, recent community reviews and
+ *                   top reviewers.
  *     - follow   -> POST /authors/{id}/follow (Phase 9.2)
  *     - unfollow -> DELETE /authors/{id}/follow (Phase 9.2; the
  *                   no-JS form fallback posts _method=DELETE)
@@ -58,6 +56,7 @@ final class AuthorController extends Controller
         private readonly ?FollowService $follows = null,
         private readonly ?FollowPolicy $policy = null,
         private readonly ?RateLimiter $limiter = null,
+        private readonly ?Book $books = null,
     ) {}
 
     /**
@@ -109,10 +108,18 @@ final class AuthorController extends Controller
             $followers = $this->follows->followerCount($authorId);
         }
 
+        $bookModel = $this->books ?? new Book();
+        $booksData = $bookModel->browse([
+            'author_id' => $authorId,
+            'status'    => 'published',
+            'perPage'   => 50,
+        ]);
+
         $this->view('authors.show', [
             'title'      => $author['name'],
             'active'     => 'authors',
             'author'     => $author,
+            'books'      => $booksData['items'] ?? [],
             'statistics' => $this->reviews?->authorStatistics($authorId) ?? [],
             // Phase 9.2: the follow surface of the author page.
             'followed'   => $followed,

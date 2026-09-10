@@ -44,6 +44,7 @@ final readonly class PersonalizationProfile
      * @param array<int, int> $highlyRatedBookIds
      * @param array<int, int> $reviewedBookIds
      * @param array<int, int> $recentlyViewedBookIds
+     * @param array<int, int> $libraryBookIds
      */
     public function __construct(
         public readonly int $userId,
@@ -54,6 +55,7 @@ final readonly class PersonalizationProfile
         public readonly array $reviewedBookIds,
         public readonly array $recentlyViewedBookIds,
         public readonly string $builtAt,
+        public readonly array $libraryBookIds = [],
     ) {}
 
     /**

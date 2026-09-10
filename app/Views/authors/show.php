@@ -23,6 +23,7 @@ declare(strict_types=1);
  */
 
 $author = $author ?? [];
+$books  = $books ?? [];
 $stats  = $statistics ?? [];
 
 $average   = (float) ($stats['average'] ?? 0);
@@ -38,16 +39,20 @@ $reviewers = $stats['topReviewers'] ?? [];
     <div>
         <p class="eyebrow">Author page</p>
         <h1 class="mb-1"><?= e($author['name']) ?></h1>
-        <p class="lead mb-0">How the community rated the books of this author.</p>
+        <p class="lead mb-0">Explore books and community ratings for this author.</p>
     </div>
 
-    <div class="author-header-actions flex-shrink-0">
+    <div class="author-header-actions d-flex align-items-center gap-2 flex-shrink-0">
+        <?php if (auth_is_admin()): ?>
+            <a href="/admin/authors/<?= (int) $author['id'] ?>/edit" class="btn btn-outline-primary btn-sm" title="Edit Author">
+                <i class="fa-solid fa-pen-to-square me-1" aria-hidden="true"></i>Edit
+            </a>
+            <a href="/admin/authors/<?= (int) $author['id'] ?>/delete" class="btn btn-outline-danger btn-sm" title="Delete Author">
+                <i class="fa-solid fa-trash me-1" aria-hidden="true"></i>Delete
+            </a>
+        <?php endif; ?>
+
         <?php
-        // Phase 9.2: the Follow / Following control - the button state
-        // comes from the controller (the session user's row) and the
-        // follower count from the shared FollowService, so this control
-        // and the /authors/{id}/followers page always agree. The lead
-        // above stays short; the count lives inside the control itself.
         $follow = [
             'author_id' => (int) $author['id'],
             'author'    => (string) $author['name'],
@@ -59,8 +64,48 @@ $reviewers = $stats['topReviewers'] ?? [];
     </div>
 </div>
 
+<?php if (!empty($author['biography'])): ?>
+    <div class="card-base p-4 mb-4">
+        <h2 class="h6 text-muted text-uppercase fw-bold mb-2">About the Author</h2>
+        <p class="mb-0"><?= nl2br(e($author['biography'])) ?></p>
+    </div>
+<?php endif; ?>
+
+<!-- Books by this Author Section -->
+<section class="mb-5" aria-labelledby="author-books-heading">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="h4 mb-0" id="author-books-heading">
+            <i class="fa-solid fa-book-open-reader text-primary me-2" aria-hidden="true"></i>Books by <?= e($author['name']) ?>
+        </h2>
+        <span class="text-muted small">
+            <?= count($books) ?> <?= count($books) === 1 ? 'book' : 'books' ?> in catalogue
+        </span>
+    </div>
+
+    <?php if ($books === []): ?>
+        <div class="card-base p-4 text-center text-muted">
+            <i class="fa-solid fa-book-bookmark fs-2 mb-2 opacity-50 d-block" aria-hidden="true"></i>
+            No published books found in the catalogue for this author yet.
+        </div>
+    <?php else: ?>
+        <div class="book-browse-grid mb-3">
+            <?php foreach ($books as $authorBook): ?>
+                <?php $book = $authorBook; ?>
+                <?php require root_path('app/Views/books/components/book-card.php'); ?>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+</section>
+
+<!-- Community Reviews & Ratings Header -->
+<div class="d-flex align-items-center justify-content-between mb-3 pt-2 border-top">
+    <h2 class="h4 mb-0">
+        <i class="fa-solid fa-comments text-primary me-2" aria-hidden="true"></i>Community Ratings &amp; Reviews
+    </h2>
+</div>
+
 <?php if ($reviews === 0): ?>
-    <div class="card-base p-4 text-center text-muted">
+    <div class="card-base p-4 text-center text-muted mb-4">
         No one has reviewed this author's books yet - be the first to review one.
     </div>
 <?php else: ?>

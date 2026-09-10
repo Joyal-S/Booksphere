@@ -110,6 +110,9 @@ $sessionUser = auth_user();
                 <a class="nav-item<?= $active === 'admin' ? ' is-active' : '' ?>" href="/admin" title="Administration">
                     <i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span>Administration</span>
                 </a>
+                <a class="nav-item<?= $active === 'admin-authors' ? ' is-active' : '' ?>" href="/admin/authors" title="Author Management">
+                    <i class="fa-solid fa-feather-pointed" aria-hidden="true"></i><span>Authors</span>
+                </a>
                 <!-- Phase 12.5: the print-only administration report
                      (GET /admin/analytics/report). -->
                 <a class="nav-item<?= $active === 'admin-analytics-report' ? ' is-active' : '' ?>" href="/admin/analytics/report" title="Print-friendly administration report">

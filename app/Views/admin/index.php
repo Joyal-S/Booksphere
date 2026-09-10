@@ -39,10 +39,20 @@ $topReviewers      = $analytics['mostActiveReviewers'] ?? [];
 $reviewedCategories = $analytics['mostReviewedCategories'] ?? [];
 $authors           = $analytics['authorAverage'] ?? [];
 ?>
-<div class="page-intro">
-    <p class="eyebrow">Restricted area</p>
-    <h1>Administration</h1>
-    <p class="lead">You are signed in as an administrator. Here is the live state of the library's ratings.</p>
+<div class="page-intro d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3 mb-4">
+    <div>
+        <p class="eyebrow">Restricted area</p>
+        <h1 class="mb-1">Administration</h1>
+        <p class="lead mb-0">You are signed in as an administrator. Here is the live state of the library's ratings.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a href="/admin/authors" class="btn btn-outline-primary btn-sm">
+            <i class="fa-solid fa-feather-pointed me-1" aria-hidden="true"></i>Author Management
+        </a>
+        <a href="/books/create" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-plus me-1" aria-hidden="true"></i>Add Book
+        </a>
+    </div>
 </div>
 
 <!-- Phase 7.3: Rating analytics (aggregated from the reviews table) -->

@@ -6,8 +6,11 @@
 
 # Database files
 /storage/*.sqlite
+/storage/*.sqlite*
 /database/*.db
+/database/*.db*
 /database/*.sqlite
+/database/backups/
 
 # Storage contents (keep the folders, ignore files)
 /storage/cache/*
@@ -31,7 +34,8 @@
 !/database/cache/.gitkeep
 /database/personalization_test_cache/
 /scratch/
-
+.agents
+.env
 # OS / editor noise
 .DS_Store
 Thumbs.db

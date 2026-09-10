@@ -53,7 +53,7 @@ $fullName = (string) ($profileUser['full_name'] ?? 'Member');
                             <?= e($initial) ?>
                         </div>
                         <div>
-                            <a href="/community/user/<?= $tId ?>" class="fw-bold text-dark text-decoration-none hover-primary">
+                            <a href="/community/user/<?= $tId ?>" class="fw-bold text-body text-decoration-none hover-primary">
                                 <?= e($tName) ?>
                             </a>
                             <div class="text-muted small">

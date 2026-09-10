@@ -208,17 +208,19 @@ $ratingValues = $distribution === []
                 <?php if ($top === []): ?>
                     <p class="muted small mb-0">Nothing recommended yet.</p>
                 <?php else: ?>
-                    <table class="table align-middle">
-                        <thead><tr><th scope="col">Book</th><th scope="col" class="text-end">Times</th></tr></thead>
-                        <tbody>
-                            <?php foreach ($top as $book): ?>
-                                <tr>
-                                    <td><?= e($book['title']) ?></td>
-                                    <td class="text-end"><?= (int) $book['logs'] ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead><tr><th scope="col">Book</th><th scope="col" class="text-end">Times</th></tr></thead>
+                            <tbody>
+                                <?php foreach ($top as $book): ?>
+                                    <tr>
+                                        <td><?= e($book['title']) ?></td>
+                                        <td class="text-end"><?= (int) $book['logs'] ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 <?php endif; ?>
                 <p class="muted small mt-3 mb-0">"Repeatedly suggested" has no meaning inside a short range, so these lists stay all-time - the note is on every copy.</p>
             </div>
@@ -229,17 +231,19 @@ $ratingValues = $distribution === []
                 <?php if ($slept === []): ?>
                     <p class="muted small mb-0">Every repeatedly recommended book has community interaction.</p>
                 <?php else: ?>
-                    <table class="table align-middle">
-                        <thead><tr><th scope="col">Book</th><th scope="col" class="text-end">Recommended</th></tr></thead>
-                        <tbody>
-                            <?php foreach ($slept as $book): ?>
-                                <tr>
-                                    <td><?= e($book['title']) ?></td>
-                                    <td class="text-end"><?= (int) $book['logs'] ?>x</td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead><tr><th scope="col">Book</th><th scope="col" class="text-end">Recommended</th></tr></thead>
+                            <tbody>
+                                <?php foreach ($slept as $book): ?>
+                                    <tr>
+                                        <td><?= e($book['title']) ?></td>
+                                        <td class="text-end"><?= (int) $book['logs'] ?>x</td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>
@@ -249,17 +253,19 @@ $ratingValues = $distribution === []
                 <?php if ($signals === []): ?>
                     <p class="muted small mb-0">No recommendation was served inside this range.</p>
                 <?php else: ?>
-                    <table class="table align-middle">
-                        <thead><tr><th scope="col">Surface</th><th scope="col" class="text-end">Served</th></tr></thead>
-                        <tbody>
-                            <?php foreach ($signals as $row): ?>
-                                <tr>
-                                    <td><?= e($row['signal'] !== '' ? $row['signal'] : 'unnamed surface') ?></td>
-                                    <td class="text-end"><?= (int) $row['logs'] ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead><tr><th scope="col">Surface</th><th scope="col" class="text-end">Served</th></tr></thead>
+                            <tbody>
+                                <?php foreach ($signals as $row): ?>
+                                    <tr>
+                                        <td><?= e($row['signal'] !== '' ? $row['signal'] : 'unnamed surface') ?></td>
+                                        <td class="text-end"><?= (int) $row['logs'] ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 <?php endif; ?>
             </div>
         </div>

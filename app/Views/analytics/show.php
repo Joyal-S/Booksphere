@@ -65,7 +65,7 @@ $maxCompleted = max(1, ...($completedAll === [] ? [1] : $completedAll));
 $maxRated     = max(1, ...($ratedAll === [] ? [1] : $ratedAll));
 
 $older = $activity['older'] ?? [];
-$dash  = '&mdash;';
+$dash  = '—';
 
 ?>
 
@@ -189,7 +189,7 @@ $dash  = '&mdash;';
                 <?php require root_path('app/Views/components/chart-card.php'); ?>
             </div>
             <div class="col-12 col-md-6 col-xl-4">
-                <?php $chartEyebrow = 'Monthly activity'; $chartTitle = 'Finished &amp; rated'; $chartTrend = ''; $chart = $monthlyChart; $chartSummary = $monthlySummary; ?>
+                <?php $chartEyebrow = 'Monthly activity'; $chartTitle = 'Finished & rated'; $chartTrend = ''; $chart = $monthlyChart; $chartSummary = $monthlySummary; ?>
                 <?php require root_path('app/Views/components/chart-card.php'); ?>
             </div>
             <div class="col-12 col-md-6 col-xl-2">

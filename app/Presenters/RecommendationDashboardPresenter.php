@@ -514,6 +514,7 @@ final class RecommendationDashboardPresenter
         }
 
         return array_values(array_unique([
+            ...$this->repository->libraryBookIds($userId),
             ...$this->repository->wishlistBookIds($userId),
             ...$this->repository->recentlyViewedBookIds($userId, 20),
         ]));
