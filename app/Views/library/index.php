@@ -112,8 +112,8 @@ $summaryCards = [
 ?>
 <!-- 1. Header: the greeting + the streak / books / progress chips -->
 <div class="library-hero" data-animate>
-    <div>
-        <p class="eyebrow">My Library</p>
+    <div class="library-hero-main">
+        <p class="eyebrow library-hero-eyebrow"><i class="fa-solid fa-book-bookmark me-1" aria-hidden="true"></i>My Library</p>
         <h1><?= e($greeting) ?>, <?= e($firstName) ?> <span class="hero-wave" aria-hidden="true">👋</span></h1>
         <p class="lead" data-library-total>
             You keep <?= $totalBooks ?> <?= $totalBooks === 1 ? 'book' : 'books' ?> in your library.

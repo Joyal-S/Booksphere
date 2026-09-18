@@ -145,7 +145,7 @@ final class CommunityFollow
         }
 
         $stmt = $this->db->prepare("
-            SELECT u.id, u.full_name, u.created_at, f.created_at AS followed_at
+            SELECT u.id, u.full_name, u.created_at, u.avatar_path, f.created_at AS followed_at
             FROM community_follows f
             JOIN users u ON u.id = f.follower_id
             WHERE f.following_id = ?
@@ -172,7 +172,7 @@ final class CommunityFollow
         }
 
         $stmt = $this->db->prepare("
-            SELECT u.id, u.full_name, u.created_at, f.created_at AS followed_at
+            SELECT u.id, u.full_name, u.created_at, u.avatar_path, f.created_at AS followed_at
             FROM community_follows f
             JOIN users u ON u.id = f.following_id
             WHERE f.follower_id = ?

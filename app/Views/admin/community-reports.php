@@ -18,7 +18,6 @@ $currentStatus = $currentStatus ?? 'pending';
 $pendingCount  = $pendingCount  ?? 0;
 $statuses      = $statuses      ?? ['pending', 'reviewed', 'dismissed', 'resolved'];
 
-<?php
 $statusLabels = [
     'all'       => 'All Reports',
     'pending'   => 'Pending',

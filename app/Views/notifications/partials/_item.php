@@ -68,8 +68,24 @@ foreach ([
         </span>
     <?php endif; ?>
 
+    <?php
+    $rawIcon = (string) ($item['icon'] ?? '');
+    if ($rawIcon === '' || $rawIcon === 'fa-solid fa-bell' || $rawIcon === 'fa-bell') {
+        $itemType = (string) ($item['type'] ?? '');
+        $displayIcon = match (true) {
+            str_contains($itemType, 'library')        => 'fa-solid fa-book-bookmark',
+            str_contains($itemType, 'recommendation') => 'fa-solid fa-wand-magic-sparkles',
+            str_contains($itemType, 'follow')         => 'fa-solid fa-user-plus',
+            str_contains($itemType, 'review')         => 'fa-solid fa-feather-pointed',
+            str_contains($itemType, 'system')         => 'fa-solid fa-shield-halved',
+            default                                   => 'fa-solid fa-bell',
+        };
+    } else {
+        $displayIcon = $rawIcon;
+    }
+    ?>
     <span class="notif-icon notif-icon--<?= e((string) ($item['color'] ?? 'primary')) ?>" aria-hidden="true">
-        <i class="<?= e((string) ($item['icon'] ?? 'fa-solid fa-bell')) ?>"></i>
+        <i class="<?= e($displayIcon) ?>"></i>
     </span>
 
     <div class="notif-item-body">

@@ -67,7 +67,11 @@ final class MediaService
             return 'The file must not exceed ' . $this->humanBytes($this->maxBytes()) . '.';
         }
 
-        if (!is_uploaded_file($file['tmp_name'] ?? '') || !is_file($file['tmp_name'] ?? '')) {
+        if (PHP_SAPI !== 'cli' && !is_uploaded_file($file['tmp_name'] ?? '')) {
+            return 'The file could not be read.';
+        }
+
+        if (!is_file($file['tmp_name'] ?? '')) {
             return 'The file could not be read.';
         }
 
@@ -126,12 +130,14 @@ final class MediaService
 
     /**
      * Move a validated file into the media folder and return its
-     * public URL. The stored name is random, so two books can never
+     * public URL. The stored name is random, so two files can never
      * overwrite each other. Creates the folder if it is missing.
      *
+     * @param array<string, mixed> $file
+     * @param string|null $customPrefix Optional name prefix (e.g. "user_123")
      * @throws RuntimeException When the move is impossible
      */
-    public function store(array $file): string
+    public function store(array $file, ?string $customPrefix = null): string
     {
         $directory = root_path($this->directory());
 
@@ -141,9 +147,23 @@ final class MediaService
 
         $mime      = (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
         $extension = $this->mimeExtensions()[$mime];
-        $name      = $this->uniqueName($extension);
+        $name      = $this->uniqueName($extension, $customPrefix);
+        $target    = $directory . DIRECTORY_SEPARATOR . $name;
 
-        if (!move_uploaded_file($file['tmp_name'], $directory . DIRECTORY_SEPARATOR . $name)) {
+        $normalizedTmp = $this->normalizeImage((string) $file['tmp_name'], $mime);
+        $sourcePath    = $normalizedTmp ?? (string) $file['tmp_name'];
+
+        $saved = @move_uploaded_file($sourcePath, $target);
+
+        if (!$saved) {
+            $saved = @copy($sourcePath, $target) || @rename($sourcePath, $target);
+        }
+
+        if ($normalizedTmp !== null && is_file($normalizedTmp)) {
+            @unlink($normalizedTmp);
+        }
+
+        if (!$saved) {
             throw new RuntimeException('The file could not be saved.');
         }
 
@@ -161,10 +181,17 @@ final class MediaService
             return;
         }
 
-        $file = root_path('public') . str_replace('/', DIRECTORY_SEPARATOR, $url);
+        $baseDir = realpath(root_path($this->directory()));
+        if ($baseDir === false) {
+            return;
+        }
 
-        if (is_file($file)) {
-            unlink($file);
+        $cleanRel = ltrim(str_replace(['/', '\\'], DIRECTORY_SEPARATOR, (string) $url), DIRECTORY_SEPARATOR);
+        $file     = root_path('public') . DIRECTORY_SEPARATOR . $cleanRel;
+        $realFile = realpath($file);
+
+        if ($realFile !== false && str_starts_with($realFile, $baseDir) && is_file($realFile)) {
+            @unlink($realFile);
         }
     }
 
@@ -176,7 +203,91 @@ final class MediaService
      */
     public function isLocal(?string $url): bool
     {
-        return $url !== null && str_starts_with($url, $this->publicPrefix());
+        if ($url === null || trim($url) === '') {
+            return false;
+        }
+
+        if (str_contains($url, '..')) {
+            return false;
+        }
+
+        $normalizedUrl    = '/' . ltrim($url, '/');
+        $normalizedPrefix = '/' . ltrim($this->publicPrefix(), '/');
+
+        return str_starts_with($normalizedUrl, $normalizedPrefix);
+    }
+
+    /**
+     * Normalize image dimensions (max 512x512) preserving aspect ratio
+     * when PHP GD extension is available. Returns temp file path or null.
+     */
+    private function normalizeImage(string $path, string $mime): ?string
+    {
+        if (!function_exists('imagecreatetruecolor')) {
+            return null;
+        }
+
+        $maxDimension = (int) ($this->config['max_normalize_dimension'] ?? 0);
+        if ($maxDimension <= 0) {
+            return null;
+        }
+
+        try {
+            $image = match ($mime) {
+                'image/jpeg' => function_exists('imagecreatefromjpeg') ? @imagecreatefromjpeg($path) : false,
+                'image/png'  => function_exists('imagecreatefrompng') ? @imagecreatefrompng($path) : false,
+                'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($path) : false,
+                default      => false,
+            };
+
+            if ($image === false) {
+                return null;
+            }
+
+            $width  = imagesx($image);
+            $height = imagesy($image);
+
+            if ($width <= $maxDimension && $height <= $maxDimension) {
+                imagedestroy($image);
+                return null;
+            }
+
+            $ratio = $maxDimension / (float) max($width, $height);
+            $newW  = max(1, (int) round($width * $ratio));
+            $newH  = max(1, (int) round($height * $ratio));
+
+            $scaled = imagecreatetruecolor($newW, $newH);
+
+            if ($mime === 'image/png' || $mime === 'image/webp') {
+                imagealphablending($scaled, false);
+                imagesavealpha($scaled, true);
+                $transparent = imagecolorallocatealpha($scaled, 0, 0, 0, 127);
+                if ($transparent !== false) {
+                    imagefilledrectangle($scaled, 0, 0, $newW, $newH, $transparent);
+                }
+            }
+
+            imagecopyresampled($scaled, $image, 0, 0, 0, 0, $newW, $newH, $width, $height);
+            imagedestroy($image);
+
+            $tmpFile = tempnam(sys_get_temp_dir(), 'bs_norm_');
+            if ($tmpFile === false) {
+                imagedestroy($scaled);
+                return null;
+            }
+
+            $written = match ($mime) {
+                'image/png'  => @imagepng($scaled, $tmpFile, 7),
+                'image/webp' => function_exists('imagewebp') ? @imagewebp($scaled, $tmpFile, 85) : @imagepng($scaled, $tmpFile, 7),
+                default      => @imagejpeg($scaled, $tmpFile, 85),
+            };
+
+            imagedestroy($scaled);
+
+            return $written ? $tmpFile : null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /** The storage directory, relative to the project root. */
@@ -357,9 +468,9 @@ final class MediaService
      * from the media config (e.g. "book" -> book_1a2b3c4d.png), so
      * two media types never share a name space.
      */
-    private function uniqueName(string $extension): string
+    private function uniqueName(string $extension, ?string $customPrefix = null): string
     {
-        $prefix = (string) ($this->config['file_prefix'] ?? 'file');
+        $prefix = $customPrefix ?? (string) ($this->config['file_prefix'] ?? 'file');
 
         return $prefix . '_' . bin2hex(random_bytes(8)) . '.' . $extension;
     }

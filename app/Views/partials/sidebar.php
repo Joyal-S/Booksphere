@@ -122,7 +122,11 @@ $sessionUser = auth_user();
         </nav>
 
         <div class="sidebar-footer">
-            <span class="avatar avatar-brand" aria-hidden="true"><?= e(mb_strtoupper(mb_substr((string) ($sessionUser['full_name'] ?? ''), 0, 1))) ?></span>
+            <?php if (!empty($sessionUser['avatar_path'])): ?>
+                <img src="<?= e(avatar_url($sessionUser['avatar_path'])) ?>" class="avatar avatar-img" alt="<?= e($sessionUser['full_name']) ?>">
+            <?php else: ?>
+                <span class="avatar avatar-brand" aria-hidden="true"><?= e(mb_strtoupper(mb_substr((string) ($sessionUser['full_name'] ?? ''), 0, 1))) ?></span>
+            <?php endif; ?>
             <div class="sidebar-user-text">
                 <strong><?= e($sessionUser['full_name']) ?></strong>
                 <small><?= e($sessionUser['role']) ?></small>

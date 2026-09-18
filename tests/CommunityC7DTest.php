@@ -12,6 +12,9 @@ require_once __DIR__ . '/../bootstrap/constants.php';
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use BookSphere\App\Core\Database;
+use BookSphere\App\Core\Environment;
+use BookSphere\App\Core\Migrator;
+use BookSphere\App\Core\Seeder;
 use BookSphere\App\Models\Book;
 use BookSphere\App\Models\CommunityComment;
 use BookSphere\App\Models\CommunityFollow;
@@ -21,6 +24,31 @@ use BookSphere\App\Models\CommunityReport;
 use BookSphere\App\Models\CommunityReputation;
 use BookSphere\App\Models\User;
 use BookSphere\App\Services\CommunityService;
+
+(new Environment(root_path('.env')))->load();
+
+$dbPath = root_path('database/community_c7d_test.db');
+foreach ([$dbPath, $dbPath . '-wal', $dbPath . '-shm'] as $file) {
+    if (is_file($file)) {
+        @unlink($file);
+    }
+}
+
+Database::instance($dbPath);
+(new Migrator(db(), root_path('database/migrations')))->run();
+(new Seeder(db(), root_path('database/seeds')))->run();
+
+register_shutdown_function(static function () use ($dbPath): void {
+    $ref = new ReflectionClass(Database::class);
+    $prop = $ref->getProperty('instance');
+    $prop->setAccessible(true);
+    $prop->setValue(null, null);
+    foreach ([$dbPath, $dbPath . '-wal', $dbPath . '-shm'] as $file) {
+        if (is_file($file)) {
+            @unlink($file);
+        }
+    }
+});
 
 $pdo = Database::instance()->pdo();
 

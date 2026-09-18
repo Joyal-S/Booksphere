@@ -83,6 +83,7 @@ $reviewDate = format_review_date((string) $review['created_at']);
         <div class="review-card-head">
             <?php $avatarName = $name; ?>
             <?php $avatarHref = (int) $review['user_id'] > 0 ? '/reviews/user/' . (int) $review['user_id'] : ''; ?>
+            <?php $avatarPath = (string) ($review['user_avatar'] ?? $review['avatar_path'] ?? ''); ?>
             <?php require root_path('app/Views/reviews/partials/_avatar.php'); ?>
             <div class="review-card-who">
                 <h3 class="review-card-name">
@@ -115,6 +116,7 @@ $reviewDate = format_review_date((string) $review['created_at']);
         <div class="review-card-head">
             <?php $avatarName = $name; ?>
             <?php $avatarHref = (int) $review['user_id'] > 0 ? '/reviews/user/' . (int) $review['user_id'] : ''; ?>
+            <?php $avatarPath = (string) ($review['user_avatar'] ?? $review['avatar_path'] ?? ''); ?>
             <?php require root_path('app/Views/reviews/partials/_avatar.php'); ?>
 
             <div class="review-card-who">

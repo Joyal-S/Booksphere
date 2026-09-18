@@ -1,0 +1,886 @@
+/* ==========================================================================
+   community.css
+   BookSphere Reader Community (UI/UX Refinement)
+   
+   Adheres strictly to the BookSphere design tokens and light/dark theme variables.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Community Hero Section
+   -------------------------------------------------------------------------- */
+.community-hero {
+    position: relative;
+    background: linear-gradient(135deg, rgba(91, 75, 219, 0.08) 0%, rgba(238, 236, 255, 0.72) 40%, rgba(245, 243, 255, 0.45) 75%, rgba(255, 255, 255, 0.95) 100%);
+    border: 1px solid rgba(91, 75, 219, 0.14);
+    border-radius: var(--radius-lg, 16px);
+    padding: 2.25rem 2.5rem;
+    box-shadow: 0 4px 20px rgba(91, 75, 219, 0.05);
+    overflow: hidden;
+}
+
+[data-bs-theme="dark"] .community-hero {
+    background: linear-gradient(135deg, rgba(91, 75, 219, 0.22) 0%, rgba(30, 41, 59, 0.85) 55%, rgba(17, 24, 39, 0.95) 100%);
+    border-color: rgba(139, 128, 255, 0.22);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+}
+
+.community-hero-eyebrow {
+    letter-spacing: 0.08em;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--primary, #5b4bdb);
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.community-hero-title {
+    font-size: clamp(1.85rem, 3.2vw, 2.5rem);
+    font-weight: 800;
+    color: var(--text, #172033);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+}
+
+.community-hero-lead {
+    font-size: 1.0625rem;
+    color: var(--muted, #64748b);
+    line-height: 1.6;
+    max-width: 580px;
+}
+
+[data-bs-theme="dark"] .community-hero-title {
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .community-hero-lead {
+    color: #cbd5e1;
+}
+
+/* Right decorative book art */
+.community-hero-visual {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: drop-shadow(0 12px 24px rgba(91, 75, 219, 0.14));
+}
+
+.community-hero-visual svg {
+    max-width: 220px;
+    height: auto;
+    transition: transform 0.3s ease;
+}
+
+.community-hero:hover .community-hero-visual svg {
+    transform: translateY(-3px);
+}
+
+/* 3 Supporting Concept Cards */
+.community-concept-pills {
+    margin-top: 1.75rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(91, 75, 219, 0.12);
+}
+
+[data-bs-theme="dark"] .community-concept-pills {
+    border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+.community-concept-card {
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(91, 75, 219, 0.12);
+    border-radius: var(--radius, 12px);
+    padding: 0.875rem 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    transition: all 0.2s ease;
+    height: 100%;
+}
+
+[data-bs-theme="dark"] .community-concept-card {
+    background: rgba(30, 41, 59, 0.65);
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.community-concept-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary-border, #c7d2fe);
+    box-shadow: 0 4px 12px rgba(91, 75, 219, 0.08);
+}
+
+.community-concept-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--primary-soft, #eeecff);
+    color: var(--primary, #5b4bdb);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+[data-bs-theme="dark"] .community-concept-icon {
+    background: rgba(139, 128, 255, 0.2);
+    color: #b4aeff;
+}
+
+.community-concept-title {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--text, #172033);
+    margin-bottom: 0.2rem;
+}
+
+[data-bs-theme="dark"] .community-concept-title {
+    color: #f1f5f9;
+}
+
+.community-concept-desc {
+    font-size: 0.78rem;
+    color: var(--muted, #64748b);
+    line-height: 1.45;
+    margin-bottom: 0;
+}
+
+[data-bs-theme="dark"] .community-concept-desc {
+    color: #94a3b8;
+}
+
+/* --------------------------------------------------------------------------
+   2. Start a Discussion Card (Composer CTA)
+   -------------------------------------------------------------------------- */
+.community-composer {
+    background: var(--surface, #ffffff);
+    border: 1px solid var(--border, #e5e9f2);
+    border-radius: var(--radius-lg, 16px);
+    padding: 1.25rem 1.75rem;
+    box-shadow: var(--shadow-sm, 0 1px 3px rgba(15, 23, 42, 0.05));
+    transition: all 0.2s ease;
+}
+
+.community-composer:hover {
+    border-color: var(--primary-border, #c7d2fe);
+    box-shadow: 0 4px 14px rgba(91, 75, 219, 0.08);
+}
+
+.community-composer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.community-composer-content {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.community-composer-text {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.community-composer-action {
+    flex-shrink: 0;
+}
+
+.community-composer-action .btn {
+    white-space: nowrap;
+}
+
+.community-composer-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary-soft, #eeecff) 0%, #e0dcff 100%);
+    color: var(--primary, #5b4bdb);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    box-shadow: inset 0 0 0 1px rgba(91, 75, 219, 0.12);
+}
+
+[data-bs-theme="dark"] .community-composer-icon {
+    background: linear-gradient(135deg, rgba(91, 75, 219, 0.3) 0%, rgba(139, 128, 255, 0.2) 100%);
+    color: #c7d2fe;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.community-composer-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text, #172033);
+    margin-bottom: 0.2rem;
+}
+
+[data-bs-theme="dark"] .community-composer-title {
+    color: #f8fafc;
+}
+
+.community-composer-subtitle {
+    font-size: 0.85rem;
+    color: var(--muted, #64748b);
+    line-height: 1.45;
+    margin-bottom: 0;
+}
+
+/* --------------------------------------------------------------------------
+   3. Community Search Bar
+   -------------------------------------------------------------------------- */
+.community-search-box {
+    background: var(--surface, #ffffff);
+    border: 1px solid var(--border, #e5e9f2);
+    border-radius: var(--radius-lg, 16px);
+    padding: 0.75rem;
+    box-shadow: var(--shadow-sm, 0 1px 3px rgba(15, 23, 42, 0.05));
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.community-search-box:focus-within {
+    border-color: var(--primary, #5b4bdb);
+    box-shadow: 0 0 0 3px rgba(91, 75, 219, 0.14);
+}
+
+.community-search-input-group {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 0.5rem;
+}
+
+.community-search-icon {
+    color: var(--muted, #64748b);
+    padding-left: 0.85rem;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.community-search-input {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent;
+    font-size: 0.95rem;
+    color: var(--text, #172033);
+    padding: 0.4rem 0.5rem;
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.community-search-input::placeholder {
+    color: var(--muted, #64748b);
+    font-size: 0.9rem;
+}
+
+[data-bs-theme="dark"] .community-search-input {
+    color: #f1f5f9;
+}
+
+/* --------------------------------------------------------------------------
+   4. Segmented Discovery Tabs & Filters Bar
+   -------------------------------------------------------------------------- */
+.community-filter-bar {
+    background: var(--surface, #ffffff);
+    border: 1px solid var(--border, #e5e9f2);
+    border-radius: var(--radius-lg, 16px);
+    padding: 0.65rem 0.85rem;
+    box-shadow: var(--shadow-sm, 0 1px 3px rgba(15, 23, 42, 0.05));
+}
+
+.community-nav-tabs {
+    background: var(--surface-2, #f3f5fa);
+    border-radius: var(--radius, 12px);
+    padding: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+}
+
+[data-bs-theme="dark"] .community-nav-tabs {
+    background: #1e293b;
+}
+
+.community-nav-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.425rem 0.95rem;
+    border-radius: 9px;
+    font-size: 0.84rem;
+    font-weight: 500;
+    color: var(--muted, #64748b);
+    text-decoration: none;
+    transition: all 0.16s ease;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+
+.community-nav-tab:hover {
+    color: var(--text, #172033);
+    background: rgba(255, 255, 255, 0.8);
+}
+
+[data-bs-theme="dark"] .community-nav-tab:hover {
+    color: #f1f5f9;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.community-nav-tab.active {
+    background: var(--primary, #5b4bdb) !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(91, 75, 219, 0.32);
+    border-color: transparent;
+}
+
+.community-select-pill {
+    background: var(--surface-2, #f3f5fa);
+    border: 1px solid var(--border, #e5e9f2);
+    border-radius: 9px;
+    padding: 0.425rem 0.85rem;
+    min-height: 35.6px;
+    height: 35.6px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.84rem;
+    transition: border-color 0.15s ease;
+}
+
+[data-bs-theme="dark"] .community-select-pill {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+.community-select-pill:focus-within {
+    border-color: var(--primary, #5b4bdb);
+}
+
+.community-select-pill select {
+    background: transparent;
+    border: none;
+    font-size: 0.84rem;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--text, #172033);
+    outline: none;
+    cursor: pointer;
+    padding: 0 0.5rem 0 0;
+    margin: 0;
+    vertical-align: middle;
+}
+
+[data-bs-theme="dark"] .community-select-pill select {
+    color: #f1f5f9;
+}
+
+.community-select-pill select option {
+    background: var(--surface, #ffffff);
+    color: var(--text, #172033);
+}
+
+[data-bs-theme="dark"] .community-select-pill select option {
+    background: #1e293b;
+    color: #f1f5f9;
+}
+
+/* --------------------------------------------------------------------------
+   5. Feed Header & Badges
+   -------------------------------------------------------------------------- */
+.community-feed-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid var(--border, #e5e9f2);
+    margin-bottom: 1.25rem;
+}
+
+.community-feed-heading {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted, #64748b);
+    margin-bottom: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.community-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    text-decoration: none;
+    transition: opacity 0.15s ease;
+}
+
+.community-filter-chip:hover {
+    opacity: 0.85;
+}
+
+/* --------------------------------------------------------------------------
+   6. Discussion Cards
+   -------------------------------------------------------------------------- */
+.community-card {
+    background: var(--surface, #ffffff);
+    border: 1px solid var(--border, #e5e9f2);
+    border-radius: var(--radius-lg, 16px);
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.2s ease;
+    position: relative;
+}
+
+.community-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(91, 75, 219, 0.08);
+    border-color: rgba(91, 75, 219, 0.32);
+}
+
+.community-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-soft, #eeecff) 0%, #e0dcff 100%);
+    color: var(--primary, #5b4bdb);
+    font-weight: 700;
+    font-size: 1.05rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: inset 0 0 0 1px rgba(91, 75, 219, 0.15);
+    transition: transform 0.2s ease;
+}
+
+img.community-avatar {
+    object-fit: cover;
+    display: block;
+}
+
+[data-bs-theme="dark"] .community-avatar {
+    background: linear-gradient(135deg, rgba(91, 75, 219, 0.35) 0%, rgba(139, 128, 255, 0.2) 100%);
+    color: #c7d2fe;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.community-card:hover .community-avatar {
+    transform: scale(1.05);
+}
+
+.community-author-name {
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: var(--text, #172033);
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.community-author-name:hover {
+    color: var(--primary, #5b4bdb);
+}
+
+[data-bs-theme="dark"] .community-author-name {
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .community-author-name:hover {
+    color: #b4aeff;
+}
+
+.community-post-time {
+    font-size: 0.8125rem;
+    color: var(--muted, #64748b);
+}
+
+.community-post-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.4;
+    margin-top: 0.4rem;
+    margin-bottom: 0.6rem;
+}
+
+.community-post-title a {
+    color: var(--text, #172033);
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.community-post-title a:hover {
+    color: var(--primary, #5b4bdb);
+}
+
+[data-bs-theme="dark"] .community-post-title a {
+    color: #f8fafc;
+}
+
+[data-bs-theme="dark"] .community-post-title a:hover {
+    color: #b4aeff;
+}
+
+.community-post-body {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: #334155;
+    margin-bottom: 0.85rem;
+}
+
+[data-bs-theme="dark"] .community-post-body {
+    color: #cbd5e1;
+}
+
+/* Book Tag Attachment */
+.community-book-attachment {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-sm, 8px);
+    background: var(--surface-2, #f3f5fa);
+    border: 1px solid var(--border, #e5e9f2);
+    text-decoration: none;
+    color: var(--text, #172033);
+    font-size: 0.825rem;
+    font-weight: 500;
+    margin-bottom: 0.85rem;
+    transition: all 0.15s ease;
+    max-width: 100%;
+}
+
+[data-bs-theme="dark"] .community-book-attachment {
+    background: #1e293b;
+    border-color: #334155;
+    color: #f1f5f9;
+}
+
+.community-book-attachment:hover {
+    border-color: var(--primary, #5b4bdb);
+    color: var(--primary, #5b4bdb);
+    background: var(--primary-soft, #eeecff);
+}
+
+[data-bs-theme="dark"] .community-book-attachment:hover {
+    background: rgba(91, 75, 219, 0.2);
+    color: #c7d2fe;
+}
+
+/* Post Interaction Stats Footer */
+.community-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border, #e5e9f2);
+    margin-top: 0.25rem;
+}
+
+.community-interactions {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.community-stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.825rem;
+    font-weight: 500;
+    color: var(--muted, #64748b);
+    transition: color 0.15s ease;
+}
+
+.community-card:hover .community-stat-pill {
+    color: var(--text, #172033);
+}
+
+[data-bs-theme="dark"] .community-card:hover .community-stat-pill {
+    color: #cbd5e1;
+}
+
+.community-read-more {
+    font-size: 0.825rem;
+    font-weight: 600;
+    color: var(--primary, #5b4bdb);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: gap 0.15s ease;
+}
+
+.community-card:hover .community-read-more {
+    gap: 0.55rem;
+}
+
+/* --------------------------------------------------------------------------
+   7. Right Sidebar (Desktop Rail)
+   -------------------------------------------------------------------------- */
+.community-sidebar {
+    position: sticky;
+    top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.community-sidebar-card {
+    background: var(--surface, #ffffff);
+    border: 1px solid var(--border, #e5e9f2);
+    border-radius: var(--radius-lg, 16px);
+    padding: 1.35rem;
+    box-shadow: var(--shadow-sm, 0 1px 3px rgba(15, 23, 42, 0.05));
+}
+
+.community-sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid var(--border, #e5e9f2);
+}
+
+.community-sidebar-title {
+    font-size: 0.925rem;
+    font-weight: 700;
+    color: var(--text, #172033);
+    margin-bottom: 0;
+}
+
+[data-bs-theme="dark"] .community-sidebar-title {
+    color: #f8fafc;
+}
+
+/* Metrics in Glance card */
+.community-metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.community-metric-box {
+    background: var(--surface-2, #f3f5fa);
+    border-radius: var(--radius, 12px);
+    padding: 0.85rem 0.75rem;
+    text-align: center;
+    border: 1px solid transparent;
+    transition: border-color 0.15s ease;
+}
+
+[data-bs-theme="dark"] .community-metric-box {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+.community-metric-box:hover {
+    border-color: var(--primary-border, #c7d2fe);
+}
+
+.community-metric-value {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--primary, #5b4bdb);
+    line-height: 1.2;
+    margin-bottom: 0.2rem;
+}
+
+[data-bs-theme="dark"] .community-metric-value {
+    color: #b4aeff;
+}
+
+.community-metric-label {
+    font-size: 0.725rem;
+    font-weight: 600;
+    color: var(--muted, #64748b);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0;
+}
+
+/* Guidelines list */
+.community-guideline-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    font-size: 0.825rem;
+    color: var(--text, #172033);
+    margin-bottom: 0.7rem;
+    line-height: 1.45;
+}
+
+[data-bs-theme="dark"] .community-guideline-item {
+    color: #cbd5e1;
+}
+
+.community-guideline-item:last-child {
+    margin-bottom: 0;
+}
+
+.community-guideline-icon {
+    color: var(--primary, #5b4bdb);
+    font-size: 0.85rem;
+    margin-top: 0.15rem;
+    flex-shrink: 0;
+}
+
+[data-bs-theme="dark"] .community-guideline-icon {
+    color: #b4aeff;
+}
+
+/* Book chips in sidebar */
+.community-sidebar-book-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.45rem 0.65rem;
+    border-radius: var(--radius-sm, 8px);
+    color: var(--text, #172033);
+    text-decoration: none;
+    font-size: 0.825rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+}
+
+.community-sidebar-book-item:hover {
+    background: var(--surface-2, #f3f5fa);
+    color: var(--primary, #5b4bdb);
+}
+
+[data-bs-theme="dark"] .community-sidebar-book-item:hover {
+    background: #1e293b;
+    color: #b4aeff;
+}
+
+/* --------------------------------------------------------------------------
+   8. Responsive Refinements
+   -------------------------------------------------------------------------- */
+@media (max-width: 991.98px) {
+    .community-hero {
+        padding: 1.75rem 1.5rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .community-hero-visual {
+        display: none !important;
+    }
+    
+    .community-hero {
+        padding: 1.5rem 1.25rem;
+    }
+
+    .community-card {
+        padding: 1.25rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .community-nav-tabs {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding: 3px;
+    }
+    
+    .community-nav-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .community-filter-bar {
+        padding: 0.65rem;
+    }
+
+    .community-composer {
+        padding: 1rem 1.15rem;
+    }
+
+    .community-composer-inner {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1.15rem;
+    }
+
+    .community-composer-content {
+        gap: 1rem;
+    }
+
+    .community-composer-action,
+    .community-composer-action .btn {
+        width: 100%;
+    }
+
+    .community-composer-title {
+        font-size: 1rem;
+    }
+
+    .community-search-box {
+        padding: 0.5rem;
+    }
+
+    .community-search-input {
+        font-size: 0.875rem;
+    }
+
+    .community-card {
+        padding: 1rem;
+    }
+
+    .community-avatar {
+        width: 38px;
+        height: 38px;
+        font-size: 0.95rem;
+    }
+
+    .community-post-title {
+        font-size: 1.05rem;
+    }
+}
+
+/* Small mobile (320px - 390px) */
+@media (max-width: 390px) {
+    .community-hero-title {
+        font-size: 1.5rem;
+    }
+
+    .community-card {
+        padding: 0.875rem;
+    }
+
+    .community-search-box .btn {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+
+    .community-select-pill select {
+        max-width: 130px;
+    }
+}

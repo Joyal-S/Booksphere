@@ -40,4 +40,20 @@ return [
         'max_width'      => 8000,
         'max_height'     => 8000,
     ],
+    'profiles' => [
+        'directory'       => 'public/uploads/profiles',
+        'public_prefix'   => '/uploads/profiles/',
+        'file_prefix'     => 'user',
+        'max_bytes'       => 5 * 1024 * 1024,
+        'mime_extensions' => [
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/webp' => 'webp',
+        ],
+        'min_width'               => 16,
+        'min_height'              => 16,
+        'max_width'               => 5000,
+        'max_height'              => 5000,
+        'max_normalize_dimension' => 512,
+    ],
 ];

@@ -18,41 +18,56 @@ declare(strict_types=1);
         <?php $alert = ['type' => 'danger', 'message' => $error]; ?>
         <?php require root_path('app/Views/components/alert.php'); ?>
     </div>
-<?php elseif ($result === null): ?>
-    <div class="card-base p-4">
-        <?php $empty = [
-            'icon'    => 'fa-magnifying-glass',
-            'title'   => 'Search BookSphere',
-            'message' => 'Find books, authors, categories, publishers and community reviews from one place.',
-            'class'   => 'empty-state--search',
-        ]; ?>
-        <?php require root_path('app/Views/components/empty-state.php'); ?>
+<?php elseif ($result === null || !$result->hasQuery()): ?>
+    <div class="card-base search-empty-state-card p-4 p-md-5 text-center">
+        <div class="search-empty-icon-wrap mb-3 mx-auto">
+            <i class="fa-solid fa-magnifying-glass search-empty-icon" aria-hidden="true"></i>
+        </div>
+        <h2 class="h4 fw-bold mb-2">Search BookSphere</h2>
+        <p class="text-muted mx-auto mb-4" style="max-width: 520px;">
+            Find books, authors, categories, publishers and community reviews from one place.
+        </p>
+        <div class="search-empty-features">
+            <div class="search-feature-card">
+                <span class="search-feature-icon"><i class="fa-solid fa-book" aria-hidden="true"></i></span>
+                <div class="search-feature-text">
+                    <strong>Books</strong>
+                    <span>Titles, ISBNs, descriptions, &amp; genres</span>
+                </div>
+            </div>
+            <div class="search-feature-card">
+                <span class="search-feature-icon"><i class="fa-solid fa-user-pen" aria-hidden="true"></i></span>
+                <div class="search-feature-text">
+                    <strong>Authors &amp; Publishers</strong>
+                    <span>Literary creators and publishing imprints</span>
+                </div>
+            </div>
+            <div class="search-feature-card">
+                <span class="search-feature-icon"><i class="fa-solid fa-star" aria-hidden="true"></i></span>
+                <div class="search-feature-text">
+                    <strong>Real Reviews</strong>
+                    <span>Community ratings, thoughts, &amp; feedback</span>
+                </div>
+            </div>
+        </div>
     </div>
 <?php elseif ($result->error !== ''): ?>
     <div class="card-base p-4">
         <?php $alert = ['type' => 'danger', 'message' => $result->error]; ?>
         <?php require root_path('app/Views/components/alert.php'); ?>
     </div>
-<?php elseif (!$result->hasQuery()): ?>
-    <div class="card-base p-4">
-        <?php $empty = [
-            'icon'    => 'fa-magnifying-glass',
-            'title'   => 'Search BookSphere',
-            'message' => 'Find books, authors, categories, publishers and community reviews from one place.',
-            'class'   => 'empty-state--search',
-        ]; ?>
-        <?php require root_path('app/Views/components/empty-state.php'); ?>
-    </div>
 <?php elseif ($result->total === 0): ?>
-    <div class="card-base p-4">
-        <?php $empty = [
-            'icon'    => 'fa-circle-question',
-            'title'   => 'No results found',
-            'message' => 'We couldn\'t find anything matching your search.',
-            'action'  => ['label' => 'Clear search', 'href' => '/search'],
-            'class'   => 'empty-state--search',
-        ]; ?>
-        <?php require root_path('app/Views/components/empty-state.php'); ?>
+    <div class="card-base search-empty-state-card p-4 p-md-5 text-center">
+        <div class="search-empty-icon-wrap search-empty-icon-wrap--muted mb-3 mx-auto">
+            <i class="fa-solid fa-circle-question search-empty-icon" aria-hidden="true"></i>
+        </div>
+        <h2 class="h4 fw-bold mb-2">No results found</h2>
+        <p class="text-muted mx-auto mb-3" style="max-width: 480px;">
+            We couldn't find anything matching your search. Try checking your spelling or searching with different keywords.
+        </p>
+        <a class="btn btn-outline-secondary btn-sm" href="/search">
+            <i class="fa-solid fa-rotate-left me-1" aria-hidden="true"></i>Clear search
+        </a>
     </div>
 <?php else: ?>
 

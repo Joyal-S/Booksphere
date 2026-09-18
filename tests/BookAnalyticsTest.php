@@ -205,7 +205,10 @@ $check = static function (string $label, bool $ok, string $detail = '') use (&$c
     $failures += $ok ? 0 : 1;
 };
 
-$build   = static fn (): array => $service->build()->toArray();
+$build   = static function () use ($service): array {
+    $service->clearCache();
+    return $service->build()->toArray();
+};
 $capture = static function (callable $fn): string {
     ob_start();
     $fn();

@@ -27,10 +27,21 @@ $breakdown  = $breakdown ?? [];
 $toolbar    = $toolbar ?? null;
 $pagination = $pagination ?? null;
 ?>
-<div class="page-intro">
-    <p class="eyebrow">Reviews &middot; <?= (int) ($stats['total'] ?? 0) ?> written</p>
-    <h1>My Reviews</h1>
-    <p class="lead">The books you rated and reviewed, sorted, filtered and searched your way.</p>
+<div class="reviews-hero card-base mb-4" data-animate>
+    <div class="reviews-hero-copy">
+        <p class="eyebrow reviews-hero-eyebrow">
+            <i class="fa-solid fa-feather-pointed me-1" aria-hidden="true"></i>
+            Reviews &middot; <?= (int) ($stats['total'] ?? 0) ?> written
+        </p>
+        <h1 class="reviews-hero-title">Your Reading Voice</h1>
+        <p class="lead reviews-hero-lead">The books you rated and reviewed, sorted, filtered and searched your way.</p>
+        <span class="visually-hidden">My Reviews</span>
+    </div>
+    <div class="reviews-hero-action">
+        <a class="btn btn-outline-primary btn-sm" href="/books">
+            <i class="fa-solid fa-compass me-1" aria-hidden="true"></i>Browse books
+        </a>
+    </div>
 </div>
 
 <?php if ((int) ($stats['total'] ?? 0) > 0): ?>

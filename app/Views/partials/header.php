@@ -111,7 +111,11 @@ if ($sessionUser !== null) {
 
             <div class="dropdown">
                 <button class="user-chip" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                    <span class="avatar avatar-brand" aria-hidden="true"><?= e($initials) ?></span>
+                    <?php if (!empty($sessionUser['avatar_path'])): ?>
+                        <img src="<?= e(avatar_url($sessionUser['avatar_path'])) ?>" class="avatar avatar-img" alt="<?= e($sessionUser['full_name']) ?>">
+                    <?php else: ?>
+                        <span class="avatar avatar-brand" aria-hidden="true"><?= e($initials) ?></span>
+                    <?php endif; ?>
                     <span class="user-chip-text d-none d-xl-block">
                         <strong><?= e($sessionUser['full_name']) ?></strong>
                         <small><?= e($sessionUser['email']) ?></small>
@@ -120,7 +124,11 @@ if ($sessionUser !== null) {
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end user-menu">
                     <li class="user-menu-head">
-                        <span class="avatar avatar-brand" aria-hidden="true"><?= e($initials) ?></span>
+                        <?php if (!empty($sessionUser['avatar_path'])): ?>
+                            <img src="<?= e(avatar_url($sessionUser['avatar_path'])) ?>" class="avatar avatar-img" alt="<?= e($sessionUser['full_name']) ?>">
+                        <?php else: ?>
+                            <span class="avatar avatar-brand" aria-hidden="true"><?= e($initials) ?></span>
+                        <?php endif; ?>
                         <span>
                             <strong><?= e($sessionUser['full_name']) ?></strong>
                             <small><?= e($sessionUser['role']) ?></small>

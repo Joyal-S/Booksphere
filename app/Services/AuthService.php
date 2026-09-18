@@ -357,10 +357,11 @@ final class AuthService
     private function publicUser(array $user): array
     {
         return [
-            'id'        => (int) $user['id'],
-            'full_name' => (string) $user['full_name'],
-            'email'     => (string) $user['email'],
-            'role'      => (string) $user['role'],
+            'id'          => (int) $user['id'],
+            'full_name'   => (string) $user['full_name'],
+            'email'       => (string) $user['email'],
+            'role'        => (string) $user['role'],
+            'avatar_path' => isset($user['avatar_path']) && is_string($user['avatar_path']) ? $user['avatar_path'] : null,
         ];
     }
 }

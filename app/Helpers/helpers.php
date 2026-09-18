@@ -80,14 +80,38 @@ function e(string|int|float|null $value): string
 }
 
 /**
- * Build a URL for a file inside public/assets/.
+ * Build a URL for a file inside public/assets/ or public/uploads/.
  *
  * Example: asset('css/app.css') -> "/assets/css/app.css"
+ *          asset('/uploads/profiles/user_1.webp') -> "/uploads/profiles/user_1.webp"
  */
 function asset(string $path): string
 {
+    if (str_starts_with($path, '/uploads/') || str_starts_with($path, 'uploads/')) {
+        return '/' . ltrim($path, '/');
+    }
+
     return '/assets/' . ltrim($path, '/');
 }
+
+/**
+ * Build a safe public URL for an avatar image, or null when none exists.
+ *
+ * Example: avatar_url('/uploads/profiles/user_1.webp') -> "/uploads/profiles/user_1.webp"
+ */
+function avatar_url(?string $path): ?string
+{
+    if ($path === null || trim($path) === '') {
+        return null;
+    }
+
+    if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://')) {
+        return $path;
+    }
+
+    return '/' . ltrim($path, '/');
+}
+
 
 /**
  * Return the shared database connection.

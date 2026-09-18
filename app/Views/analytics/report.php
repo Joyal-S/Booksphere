@@ -40,33 +40,55 @@ $shelfLabels = [
 $dash = '—';
 ?>
 
-<div class="page-intro report-sheet">
-    <p class="eyebrow">Reading Report &middot; personal</p>
-    <h1>My Reading Report</h1>
-    <p class="report-meta mb-1">Prepared <?= e($generatedAt) ?> &middot; every number derives from my own shelves, finishes and approved reviews.</p>
-    <p class="print-hidden"><a class="btn btn-outline-secondary btn-sm" href="/analytics" target="_blank"><i class="fa-solid fa-chart-pie me-1" aria-hidden="true"></i> Full analytics page</a></p>
+<div class="report-hero card-base report-sheet mb-4" data-animate>
+    <div class="report-hero-copy">
+        <p class="eyebrow report-hero-eyebrow">
+            <i class="fa-solid fa-chart-line me-1" aria-hidden="true"></i>
+            Reading Report &middot; personal
+        </p>
+        <h1 class="report-hero-title">Your Reading Journey</h1>
+        <span class="visually-hidden">My Reading Report</span>
+        <p class="report-meta mb-0">Prepared <?= e($generatedAt) ?> &middot; every number derives from your actual reading activity, shelves, finishes and approved reviews.</p>
+    </div>
+    <div class="report-hero-actions print-hidden">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window.print()">
+            <i class="fa-solid fa-print me-1" aria-hidden="true"></i>Print Report
+        </button>
+        <a class="btn btn-primary btn-sm" href="/analytics">
+            <i class="fa-solid fa-chart-pie me-1" aria-hidden="true"></i>Full Analytics
+        </a>
+    </div>
 </div>
 
-<section class="dash-section report-sheet">
-    <p class="eyebrow mb-1">Summary</p>
-    <h2 class="h4 mb-3">Numbers in one line</h2>
+<section class="dash-section report-sheet mb-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+            <p class="eyebrow mb-1">Summary</p>
+            <h2 class="h4 mb-0">Your Reading Milestones</h2>
+        </div>
+    </div>
     <div class="row row-cols-2 row-cols-md-4 g-3">
         <?php
         $rows = [
-            ['label' => 'Books shelved',     'value' => (int) ($summary['shelved'] ?? 0)],
-            ['label' => 'Books finished',    'value' => (int) ($summary['completed'] ?? 0)],
-            ['label' => 'Reviews written',   'value' => (int) ($summary['reviews'] ?? 0)],
-            ['label' => 'Average rating',    'value' => $summary['averageRating'] === null ? $dash : format_rating($summary['averageRating'])],
-            ['label' => 'Completion rate',   'value' => number_format((float) ($summary['completionRate'] ?? 0), 1) . '%'],
-            ['label' => 'Active reading days','value' => (int) ($summary['activeDays'] ?? 0)],
-            ['label' => 'Currently reading', 'value' => (int) ($summary['reading'] ?? 0)],
-            ['label' => 'Wishlist',          'value' => (int) ($summary['wishlist'] ?? 0)],
+            ['label' => 'Books Shelved',     'value' => (int) ($summary['shelved'] ?? 0), 'icon' => 'fa-bookmark', 'tone' => 'primary'],
+            ['label' => 'Books Finished',    'value' => (int) ($summary['completed'] ?? 0), 'icon' => 'fa-circle-check', 'tone' => 'success'],
+            ['label' => 'Reviews Written',   'value' => (int) ($summary['reviews'] ?? 0), 'icon' => 'fa-feather-pointed', 'tone' => 'warning'],
+            ['label' => 'Average Rating',    'value' => $summary['averageRating'] === null ? $dash : format_rating($summary['averageRating']), 'icon' => 'fa-star', 'tone' => 'danger'],
+            ['label' => 'Completion Rate',   'value' => number_format((float) ($summary['completionRate'] ?? 0), 1) . '%', 'icon' => 'fa-chart-pie', 'tone' => 'info'],
+            ['label' => 'Active Reading Days','value' => (int) ($summary['activeDays'] ?? 0), 'icon' => 'fa-calendar-check', 'tone' => 'success'],
+            ['label' => 'Currently Reading', 'value' => (int) ($summary['reading'] ?? 0), 'icon' => 'fa-book-open-reader', 'tone' => 'primary'],
+            ['label' => 'Wishlist',          'value' => (int) ($summary['wishlist'] ?? 0), 'icon' => 'fa-heart', 'tone' => 'danger'],
         ];
         foreach ($rows as $row): ?>
             <div class="col">
-                <div class="card-base h-100 p-3">
-                    <span class="analytics-tile-value d-block"><?= $row['value'] ?></span>
-                    <span class="analytics-tile-label"><?= e($row['label']) ?></span>
+                <div class="report-kpi-card card-base h-100 p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="report-kpi-label"><?= e($row['label']) ?></span>
+                        <span class="report-kpi-icon report-kpi-icon--<?= e($row['tone']) ?>" aria-hidden="true">
+                            <i class="fa-solid <?= e($row['icon']) ?>"></i>
+                        </span>
+                    </div>
+                    <span class="report-kpi-value d-block"><?= $row['value'] ?></span>
                 </div>
             </div>
         <?php endforeach; ?>

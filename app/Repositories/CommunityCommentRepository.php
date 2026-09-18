@@ -15,7 +15,8 @@ final class CommunityCommentRepository
     /** Base projection: comment row + author display name. */
     private const SELECT =
         'c.*,
-         u.full_name AS author_name';
+         u.full_name   AS author_name,
+         u.avatar_path AS author_avatar';
 
     // ------------------------------------------------------------------ //
     // Writes                                                               //
@@ -140,8 +141,9 @@ final class CommunityCommentRepository
     {
         return db()->query(
             "SELECT c.*,
-                    u.full_name AS author_name,
-                    p.title     AS post_title,
+                    u.full_name   AS author_name,
+                    u.avatar_path AS author_avatar,
+                    p.title       AS post_title,
                     p.book_id   AS book_id,
                     b.title     AS book_title
              FROM community_comments c

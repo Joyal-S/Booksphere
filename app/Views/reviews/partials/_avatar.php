@@ -29,6 +29,8 @@ $avatarName  = (string) ($avatarName ?? '');
 $avatarHref  = (string) ($avatarHref ?? '');
 $avatarTitle = (string) ($avatarTitle ?? 'All reviews by ' . $avatarName);
 
+$avatarPath  = (string) ($avatarPath ?? $avatarImage ?? '');
+
 $tone     = 'avatar-' . ((crc32($avatarName) % 6) + 1);
 $initials = implode('', array_map(
     static fn (string $word): string => mb_strtoupper(mb_substr($word, 0, 1)),
@@ -36,7 +38,16 @@ $initials = implode('', array_map(
 ));
 $initials = $initials !== '' ? $initials : '?';
 ?>
-<?php if ($avatarHref !== ''): ?>
+<?php if ($avatarPath !== ''): ?>
+    <?php if ($avatarHref !== ''): ?>
+        <a class="avatar-link" href="<?= e($avatarHref) ?>"
+           title="<?= e($avatarTitle) ?>" aria-label="<?= e($avatarTitle) ?>">
+            <img class="avatar avatar-img" src="<?= e(avatar_url($avatarPath)) ?>" alt="<?= e($avatarName) ?>">
+        </a>
+    <?php else: ?>
+        <img class="avatar avatar-img" src="<?= e(avatar_url($avatarPath)) ?>" alt="<?= e($avatarName) ?>">
+    <?php endif; ?>
+<?php elseif ($avatarHref !== ''): ?>
     <a class="avatar <?= e($tone) ?>" href="<?= e($avatarHref) ?>"
        title="<?= e($avatarTitle) ?>" aria-label="<?= e($avatarTitle) ?>">
         <?= e($initials) ?>

@@ -48,10 +48,14 @@ $fullName = (string) ($profileUser['full_name'] ?? 'Member');
                 ?>
                 <div class="list-group-item d-flex align-items-center justify-content-between py-3 px-0 border-subtle">
                     <div class="d-flex align-items-center gap-3">
-                        <div class="d-flex align-items-center justify-content-center rounded-circle bg-primary-subtle text-primary fw-bold flex-shrink-0"
-                             style="width: 44px; height: 44px; font-size: 1.1rem;">
-                            <?= e($initial) ?>
-                        </div>
+                        <?php if (!empty($target['avatar_path'])): ?>
+                            <img src="<?= e(avatar_url($target['avatar_path'])) ?>" alt="<?= e($tName) ?>" class="avatar avatar-img rounded-circle flex-shrink-0 shadow-sm" style="width: 44px; height: 44px; object-fit: cover;">
+                        <?php else: ?>
+                            <div class="d-flex align-items-center justify-content-center rounded-circle bg-primary-subtle text-primary fw-bold flex-shrink-0"
+                                 style="width: 44px; height: 44px; font-size: 1.1rem;">
+                                <?= e($initial) ?>
+                            </div>
+                        <?php endif; ?>
                         <div>
                             <a href="/community/user/<?= $tId ?>" class="fw-bold text-body text-decoration-none hover-primary">
                                 <?= e($tName) ?>

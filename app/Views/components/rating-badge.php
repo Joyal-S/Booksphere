@@ -46,7 +46,9 @@ $label = $badge['label'] !== null
         'compact'  => true,
     ]; ?>
     <?php require root_path('app/Views/components/star-rating.php'); ?>
-    <span class="rating-badge-value"><?= e((string) $label) ?></span>
+    <?php if ($badge['label'] !== null && (string) $badge['label'] !== format_rating($badge['rating'])): ?>
+        <span class="rating-badge-value"><?= e((string) $label) ?></span>
+    <?php endif; ?>
     <?php if ($badge['suffix'] !== ''): ?>
         <span class="rating-badge-suffix text-muted small"><?= e($badge['suffix']) ?></span>
     <?php endif; ?>

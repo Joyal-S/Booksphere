@@ -26,8 +26,9 @@ final class CommunityPostRepository
     /** Base projection for every feed/list read. */
     private const SELECT_FEED =
         'p.*,
-         u.full_name AS author_name,
-         b.title     AS book_title,
+         u.full_name   AS author_name,
+         u.avatar_path AS author_avatar,
+         b.title       AS book_title,
          (SELECT COUNT(*) FROM community_comments c
           WHERE c.post_id = p.id AND c.status = \'active\') AS comment_count,
          (SELECT COUNT(*) FROM community_likes   l

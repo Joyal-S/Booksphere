@@ -353,6 +353,7 @@ final class CommunityService
                 'id'           => (int) $user['id'],
                 'full_name'    => (string) $user['full_name'],
                 'initial'      => mb_strtoupper(mb_substr((string) $user['full_name'], 0, 1)),
+                'avatar_path'  => $user['avatar_path'] ?? null,
                 'created_at'   => $createdAt,
                 'member_since' => $memberSince,
             ],

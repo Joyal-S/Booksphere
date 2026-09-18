@@ -83,150 +83,218 @@ if ($libraryCounts !== []) {
 
 ?>
 <div class="dash-hero" data-animate>
-    <div>
+    <div class="dash-hero-content">
         <p class="eyebrow">Welcome back</p>
         <h1><?= e($greeting) ?>, <?= e($firstName) ?> <span class="hero-wave" aria-hidden="true">👋</span></h1>
         <p class="lead">Here is what is happening in your library today.</p>
     </div>
-    <div class="dash-date-chip">
-        <i class="fa-regular fa-calendar" aria-hidden="true"></i>
-        <?= e(date('l, F j, Y')) ?>
+    <div class="dash-hero-right">
+        <div class="dash-hero-art" aria-hidden="true">
+            <svg viewBox="0 0 48 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M4 8.5C11.5 5.5 19 6.5 24 9.5C29 6.5 36.5 5.5 44 8.5V33C36.5 30 29 31 24 34C19 31 11.5 30 4 33V8.5Z" fill="url(#heroBookBg)" stroke="var(--primary)" stroke-width="2" stroke-linejoin="round"/>
+                <path d="M24 9.5V34" stroke="var(--primary)" stroke-width="2" stroke-linecap="round"/>
+                <path d="M10 15C14.5 13.5 19 14 21 15" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" opacity="0.55"/>
+                <path d="M10 20C14.5 18.5 19 19 21 20" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" opacity="0.55"/>
+                <path d="M10 25C14.5 23.5 19 24 21 25" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" opacity="0.55"/>
+                <path d="M27 15C29 14 33.5 13.5 38 15" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" opacity="0.55"/>
+                <path d="M27 20C29 19 33.5 18.5 38 20" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" opacity="0.55"/>
+                <path d="M27 25C29 24 33.5 23.5 38 25" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" opacity="0.55"/>
+                <path d="M24 6V11" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round"/>
+                <defs>
+                    <linearGradient id="heroBookBg" x1="4" y1="6" x2="44" y2="34" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#ffffff"/>
+                        <stop offset="1" stop-color="#f5f3ff"/>
+                    </linearGradient>
+                </defs>
+            </svg>
+        </div>
+        <div class="dash-date-chip">
+            <i class="fa-regular fa-calendar" aria-hidden="true"></i>
+            <?= e(date('l, F j, Y')) ?>
+        </div>
     </div>
 </div>
 
-<!-- Section 1: Continue Reading (Phase 8.2: REAL - the books the
-     signed-in user is currently reading, newest activity first, with
-     the progress bar and a Resume button. Read through the SAME
-     shared LibraryService the /library page uses - the two surfaces
-     can never disagree) -->
-<section class="dash-section" data-animate>
-    <?php $section = ['eyebrow' => 'Pick up where you left off', 'title' => 'Continue Reading', 'icon' => 'fa-book-open-reader', 'link' => ['label' => 'Open my library', 'href' => '/library']]; ?>
-    <?php require root_path('app/Views/components/section-header.php'); ?>
-    <?php $continueReading = $continueReading ?? []; ?>
-    <?php if ($continueReading === []): ?>
-        <div class="card-base p-4 text-center text-muted">
-            <i class="fa-solid fa-book-open fa-lg me-2" aria-hidden="true"></i>
-            You are not reading anything right now.
-            <a class="btn btn-sm btn-primary ms-2" href="/books">Browse books</a>
-        </div>
-    <?php else: ?>
-        <div class="row g-3 g-xl-4 row-cols-1 row-cols-sm-2 row-cols-xl-3 row-cols-xxl-4">
-            <?php foreach ($continueReading as $record): ?>
-                <div class="col"><?php require root_path('app/Views/library/partials/_continue-card.php'); ?></div>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
-</section>
-
-<!-- Section 1b: Recently Added (Phase 8.4: REAL - the user's own
-     newest library additions, read through the shared LibraryService) -->
-<section class="dash-section" data-animate>
-    <?php $section = ['eyebrow' => 'Newest in your library', 'title' => 'Recently Added', 'icon' => 'fa-clock-rotate-left', 'link' => ['label' => 'Open my library', 'href' => '/library']]; ?>
-    <?php require root_path('app/Views/components/section-header.php'); ?>
-    <?php $recentlyAdded = $recentlyAdded ?? []; ?>
-    <?php if ($recentlyAdded === []): ?>
-        <div class="card-base p-4 text-center text-muted">
-            <i class="fa-solid fa-plus fa-lg me-2" aria-hidden="true"></i>
-            Your library is empty - add your first book.
-            <a class="btn btn-sm btn-primary ms-2" href="/books">Browse books</a>
-        </div>
-    <?php else: ?>
-        <div class="row g-3 g-xl-4 row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4">
-            <?php foreach ($recentlyAdded as $record): ?>
-                <div class="col">
-                    <div class="card h-100 card-hover">
-                        <a href="/books/<?= (int) $record['book_id'] ?>" class="text-decoration-none">
-                            <?php $cover = [
-                                'src'   => (string) ($record['book_cover'] ?? ''),
-                                'alt'   => 'Cover of ' . (string) ($record['book_title'] ?? ''),
-                                'class' => 'card-img-top book-cover',
-                            ]; ?>
-                            <?php require root_path('app/Views/books/components/book-cover.php'); ?>
-                        </a>
-                        <div class="card-body p-3">
-                            <span class="status-badge status-<?= e((string) ($record['library_status'] ?? 'want_to_read')) ?> mb-2">
-                                <?= e((string) ($statusLabels[$record['library_status'] ?? 'want_to_read'] ?? $record['library_status'] ?? 'want_to_read')) ?>
-                            </span>
-                            <h3 class="book-card-title">
-                                <a href="/books/<?= (int) $record['book_id'] ?>" class="text-decoration-none stretched-link">
-                                    <?= e((string) ($record['book_title'] ?? '')) ?>
-                                </a>
-                            </h3>
-                            <?php $starRating = [
-                                'rating' => (float) ($record['book_average_rating'] ?? 0),
-                                'count'  => (int) ($record['book_ratings_count'] ?? 0) > 0 ? (int) $record['book_ratings_count'] : null,
-                                'size'   => 'sm',
-                                'tooltip'=> false,
-                            ]; ?>
-                            <?php require root_path('app/Views/components/star-rating.php'); ?>
+<!-- Quick Access Shelf: 3 Compact Cards (Continue Reading, Recently Added, My Favourite Books) -->
+<div class="dash-quick-access" data-animate>
+    <div class="row g-3 g-xl-4 row-cols-1 row-cols-lg-3">
+        <!-- Card 1: Continue Reading -->
+        <div class="col">
+            <div class="card h-100 dash-quick-card">
+                <div class="dash-quick-header">
+                    <div class="dash-quick-title-group">
+                        <span class="dash-quick-icon dash-quick-icon--reading">
+                            <i class="fa-solid fa-book-open-reader" aria-hidden="true"></i>
+                        </span>
+                        <div>
+                            <span class="dash-quick-eyebrow">Pick up where you left off</span>
+                            <h2 class="dash-quick-title">Continue Reading</h2>
                         </div>
                     </div>
+                    <a class="dash-quick-link" href="/library">
+                        <span>Open my library</span>
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
                 </div>
-            <?php endforeach; ?>
+                <div class="dash-quick-body">
+                    <?php $continueReading = $continueReading ?? []; ?>
+                    <?php if ($continueReading === []): ?>
+                        <div class="dash-quick-empty">
+                            <div class="dash-quick-empty-icon"><i class="fa-solid fa-book-open" aria-hidden="true"></i></div>
+                            <p class="dash-quick-empty-text">You are not reading anything right now.</p>
+                            <a class="btn btn-sm btn-primary" href="/books">Browse books</a>
+                        </div>
+                    <?php else: ?>
+                        <div class="dash-quick-items">
+                            <?php foreach ($continueReading as $record): ?>
+                                <?php require root_path('app/Views/library/partials/_continue-card.php'); ?>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
-    <?php endif; ?>
-</section>
 
-<!-- Section 1c: My Favourite Books (Phase 8.4: REAL - the user's own
-     starred books, read through the shared LibraryService) -->
-<section class="dash-section" data-animate>
-    <?php $section = ['eyebrow' => 'Your picks', 'title' => 'My Favourite Books', 'icon' => 'fa-heart', 'link' => ['label' => 'Favourites shelf', 'href' => '/library?status=favorites']]; ?>
-    <?php require root_path('app/Views/components/section-header.php'); ?>
-    <?php $favouriteBooks = $favouriteBooks ?? []; ?>
-    <?php if ($favouriteBooks === []): ?>
-        <div class="card-base p-4 text-center text-muted">
-            <i class="fa-regular fa-heart fa-lg me-2" aria-hidden="true"></i>
-            Star the books you love from your library page.
-            <a class="btn btn-sm btn-primary ms-2" href="/library">Open my library</a>
-        </div>
-    <?php else: ?>
-        <div class="row g-3 g-xl-4 row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-xl-4">
-            <?php foreach ($favouriteBooks as $record): ?>
-                <div class="col">
-                    <div class="card h-100 card-hover">
-                        <a href="/books/<?= (int) $record['book_id'] ?>" class="text-decoration-none">
-                            <?php $cover = [
-                                'src'   => (string) ($record['book_cover'] ?? ''),
-                                'alt'   => 'Cover of ' . (string) ($record['book_title'] ?? ''),
-                                'class' => 'card-img-top book-cover',
-                            ]; ?>
-                            <?php require root_path('app/Views/books/components/book-cover.php'); ?>
-                        </a>
-                        <div class="card-body p-3">
-                            <span class="status-badge status-<?= e((string) ($record['library_status'] ?? 'want_to_read')) ?> mb-2">
-                                <?= e((string) ($statusLabels[$record['library_status'] ?? 'want_to_read'] ?? $record['library_status'] ?? 'want_to_read')) ?>
-                            </span>
-                            <h3 class="book-card-title">
-                                <a href="/books/<?= (int) $record['book_id'] ?>" class="text-decoration-none stretched-link">
-                                    <?= e((string) ($record['book_title'] ?? '')) ?>
-                                </a>
-                            </h3>
-                            <?php $starRating = [
-                                'rating' => (float) ($record['book_average_rating'] ?? 0),
-                                'count'  => (int) ($record['book_ratings_count'] ?? 0) > 0 ? (int) $record['book_ratings_count'] : null,
-                                'size'   => 'sm',
-                                'tooltip'=> false,
-                            ]; ?>
-                            <?php require root_path('app/Views/components/star-rating.php'); ?>
+        <!-- Card 2: Recently Added -->
+        <div class="col">
+            <div class="card h-100 dash-quick-card">
+                <div class="dash-quick-header">
+                    <div class="dash-quick-title-group">
+                        <span class="dash-quick-icon dash-quick-icon--recent">
+                            <i class="fa-solid fa-clock-rotate-left" aria-hidden="true"></i>
+                        </span>
+                        <div>
+                            <span class="dash-quick-eyebrow">Newest in your library</span>
+                            <h2 class="dash-quick-title">Recently Added</h2>
                         </div>
                     </div>
+                    <a class="dash-quick-link" href="/library">
+                        <span>Open my library</span>
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
                 </div>
-            <?php endforeach; ?>
+                <div class="dash-quick-body">
+                    <?php $recentlyAdded = $recentlyAdded ?? []; ?>
+                    <?php if ($recentlyAdded === []): ?>
+                        <div class="dash-quick-empty">
+                            <div class="dash-quick-empty-icon"><i class="fa-solid fa-plus" aria-hidden="true"></i></div>
+                            <p class="dash-quick-empty-text">Your library is empty - add your first book.</p>
+                            <a class="btn btn-sm btn-primary" href="/books">Browse books</a>
+                        </div>
+                    <?php else: ?>
+                        <div class="dash-quick-items dash-quick-book-list">
+                            <?php foreach ($recentlyAdded as $record): ?>
+                                <div class="dash-quick-book-item">
+                                    <a href="/books/<?= (int) $record['book_id'] ?>" class="dash-quick-book-cover">
+                                        <?php $cover = [
+                                            'src'   => (string) ($record['book_cover'] ?? ''),
+                                            'alt'   => 'Cover of ' . (string) ($record['book_title'] ?? ''),
+                                            'class' => 'book-cover',
+                                        ]; ?>
+                                        <?php require root_path('app/Views/books/components/book-cover.php'); ?>
+                                    </a>
+                                    <div class="dash-quick-book-info">
+                                        <span class="status-badge status-<?= e((string) ($record['library_status'] ?? 'want_to_read')) ?> mb-1">
+                                            <?= e((string) ($statusLabels[$record['library_status'] ?? 'want_to_read'] ?? $record['library_status'] ?? 'want_to_read')) ?>
+                                        </span>
+                                        <h3 class="dash-quick-book-title">
+                                            <a href="/books/<?= (int) $record['book_id'] ?>">
+                                                <?= e((string) ($record['book_title'] ?? '')) ?>
+                                            </a>
+                                        </h3>
+                                        <?php $starRating = [
+                                            'rating' => (float) ($record['book_average_rating'] ?? 0),
+                                            'count'  => (int) ($record['book_ratings_count'] ?? 0) > 0 ? (int) $record['book_ratings_count'] : null,
+                                            'size'   => 'sm',
+                                            'tooltip'=> false,
+                                        ]; ?>
+                                        <?php require root_path('app/Views/components/star-rating.php'); ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
-    <?php endif; ?>
-</section>
+
+        <!-- Card 3: My Favourite Books -->
+        <div class="col">
+            <div class="card h-100 dash-quick-card">
+                <div class="dash-quick-header">
+                    <div class="dash-quick-title-group">
+                        <span class="dash-quick-icon dash-quick-icon--favourites">
+                            <i class="fa-solid fa-heart" aria-hidden="true"></i>
+                        </span>
+                        <div>
+                            <span class="dash-quick-eyebrow">Your personal picks</span>
+                            <h2 class="dash-quick-title">My Favourite Books</h2>
+                        </div>
+                    </div>
+                    <a class="dash-quick-link" href="/library?status=favorites">
+                        <span>Favourites shelf</span>
+                        <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+                    </a>
+                </div>
+                <div class="dash-quick-body">
+                    <?php $favouriteBooks = $favouriteBooks ?? []; ?>
+                    <?php if ($favouriteBooks === []): ?>
+                        <div class="dash-quick-empty">
+                            <div class="dash-quick-empty-icon"><i class="fa-regular fa-heart" aria-hidden="true"></i></div>
+                            <p class="dash-quick-empty-text">Star the books you love from your library page.</p>
+                            <a class="btn btn-sm btn-primary" href="/library">Open my library</a>
+                        </div>
+                    <?php else: ?>
+                        <div class="dash-quick-items dash-quick-book-list">
+                            <?php foreach ($favouriteBooks as $record): ?>
+                                <div class="dash-quick-book-item">
+                                    <a href="/books/<?= (int) $record['book_id'] ?>" class="dash-quick-book-cover">
+                                        <?php $cover = [
+                                            'src'   => (string) ($record['book_cover'] ?? ''),
+                                            'alt'   => 'Cover of ' . (string) ($record['book_title'] ?? ''),
+                                            'class' => 'book-cover',
+                                        ]; ?>
+                                        <?php require root_path('app/Views/books/components/book-cover.php'); ?>
+                                    </a>
+                                    <div class="dash-quick-book-info">
+                                        <span class="status-badge status-<?= e((string) ($record['library_status'] ?? 'want_to_read')) ?> mb-1">
+                                            <?= e((string) ($statusLabels[$record['library_status'] ?? 'want_to_read'] ?? $record['library_status'] ?? 'want_to_read')) ?>
+                                        </span>
+                                        <h3 class="dash-quick-book-title">
+                                            <a href="/books/<?= (int) $record['book_id'] ?>">
+                                                <?= e((string) ($record['book_title'] ?? '')) ?>
+                                            </a>
+                                        </h3>
+                                        <?php $starRating = [
+                                            'rating' => (float) ($record['book_average_rating'] ?? 0),
+                                            'count'  => (int) ($record['book_ratings_count'] ?? 0) > 0 ? (int) $record['book_ratings_count'] : null,
+                                            'size'   => 'sm',
+                                            'tooltip'=> false,
+                                        ]; ?>
+                                        <?php require root_path('app/Views/components/star-rating.php'); ?>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Section 2: Recommended For You (Phase 8.5: REAL - the personal
      hybrid shelf of the engine, with every card's score and
      explainable reason, replacing the Phase 6.0 placeholder books) -->
 <?php $shelf = [
-    'eyebrow' => 'Curated for you',
-    'title'   => 'Recommended for You',
-    'icon'    => 'fa-wand-magic-sparkles',
-    'link'    => ['label' => 'View all', 'href' => '/recommendations'],
-    'items'   => $recommendedForYou ?? [],
-    'empty'   => 'Rate a few books or save some to your library to get personal recommendations.',
-    'columns' => 'row-cols-2 row-cols-md-3 row-cols-xl-5',
+    'eyebrow'         => 'Curated for you',
+    'title'           => 'Recommended for You',
+    'icon'            => 'fa-wand-magic-sparkles',
+    'link'            => ['label' => 'View all', 'href' => '/recommendations'],
+    'items'           => $recommendedForYou ?? [],
+    'empty'           => 'Rate a few books or save some to your library to get personal recommendations.',
+    'columns'         => 'row-cols-2 row-cols-md-3 row-cols-xl-5',
+    'container_class' => 'dash-shelf-container dash-shelf-curated',
 ]; ?>
 <?php require root_path('app/Views/recommendations/components/shelf-strip.php'); ?>
 
@@ -234,13 +302,14 @@ if ($libraryCounts !== []) {
      shelf: similar to the books you finished, weighted and explained
      by the engine from your reading history) -->
 <?php $shelf = [
-    'eyebrow' => 'From your reading history',
-    'title'   => 'Because You Read',
-    'icon'    => 'fa-book-open-reader',
-    'link'    => ['label' => 'Open my library', 'href' => '/library'],
-    'items'   => $becauseYouRead ?? [],
-    'empty'   => 'Finish a book in your library and we will recommend what to read next.',
-    'columns' => 'row-cols-2 row-cols-md-3 row-cols-xl-5',
+    'eyebrow'         => 'From your reading history',
+    'title'           => 'Because You Read',
+    'icon'            => 'fa-book-open-reader',
+    'link'            => ['label' => 'Open my library', 'href' => '/library'],
+    'items'           => $becauseYouRead ?? [],
+    'empty'           => 'Finish a book in your library and we will recommend what to read next.',
+    'columns'         => 'row-cols-2 row-cols-md-3 row-cols-xl-5',
+    'container_class' => 'dash-shelf-container dash-shelf-history',
 ]; ?>
 <?php require root_path('app/Views/recommendations/components/shelf-strip.php'); ?>
 

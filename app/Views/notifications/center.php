@@ -50,9 +50,12 @@ $firstName = ucfirst((string) (explode(' ', (string) auth_user()['full_name'])[0
 
 ?>
 <!-- 1. Intro -->
-<section class="notif-intro" data-animate>
+<section class="notif-intro card-base" data-animate>
     <div class="notif-intro-text">
-        <p class="eyebrow">Notifications</p>
+        <p class="eyebrow notif-intro-eyebrow">
+            <i class="fa-solid fa-bell me-1" aria-hidden="true"></i>
+            Notifications
+        </p>
         <h1>Your inbox</h1>
         <p class="lead" data-notif-lead>
             <?php if ($unread > 0): ?>

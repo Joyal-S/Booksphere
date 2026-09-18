@@ -44,10 +44,14 @@ $isFollowing    = (bool) ($stats['is_following'] ?? false);
 <section class="card-base p-4 p-md-5 mb-4">
     <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-3">
         <div class="d-flex align-items-center gap-3">
-            <div class="d-flex align-items-center justify-content-center rounded-circle bg-primary-subtle text-primary fw-bold flex-shrink-0"
-                 style="width: 64px; height: 64px; font-size: 1.5rem;">
-                <?= e($initial) ?>
-            </div>
+            <?php if (!empty($profileUser['avatar_path'])): ?>
+                <img src="<?= e(avatar_url($profileUser['avatar_path'])) ?>" alt="<?= e($fullName) ?>" class="avatar avatar-img rounded-circle flex-shrink-0 shadow-sm" style="width: 64px; height: 64px; object-fit: cover;">
+            <?php else: ?>
+                <div class="d-flex align-items-center justify-content-center rounded-circle bg-primary-subtle text-primary fw-bold flex-shrink-0"
+                     style="width: 64px; height: 64px; font-size: 1.5rem;">
+                    <?= e($initial) ?>
+                </div>
+            <?php endif; ?>
             <div>
                 <div class="d-flex align-items-center gap-2 flex-wrap">
                     <h1 class="h4 mb-0 fw-bold text-body"><?= e($fullName) ?></h1>

@@ -104,10 +104,68 @@ if (($filters['status'] ?? '') !== '') {
 $selected = fn (string $name, string|int|float|null $value): string => (string) ($filters[$name] ?? '') === (string) $value ? ' selected' : '';
 
 ?>
-<div class="page-intro">
-    <p class="eyebrow">Library</p>
-    <h1>Browse Books</h1>
-    <p class="lead">Search, filter and sort through <?= $total ?> <?= $total === 1 ? 'book' : 'books' ?> in the catalogue.</p>
+<div class="browse-hero" data-animate>
+    <div class="browse-hero-main">
+        <div class="browse-hero-content">
+            <p class="eyebrow">Library</p>
+            <h1>Browse Books</h1>
+            <p class="lead">Search, filter and sort through <?= $total ?> <?= $total === 1 ? 'book' : 'books' ?> in the catalogue.</p>
+        </div>
+        <div class="browse-hero-art" aria-hidden="true">
+            <svg viewBox="0 0 64 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="12" y="38" width="40" height="8" rx="2" fill="url(#browseHeroGrad1)" stroke="var(--primary)" stroke-width="1.5"/>
+                <rect x="8" y="28" width="44" height="8" rx="2" fill="url(#browseHeroGrad2)" stroke="var(--primary)" stroke-width="1.5"/>
+                <path d="M16 12C23 9 30 10 32 13C34 10 41 9 48 12V26C41 23 34 24 32 27C30 24 23 23 16 26V12Z" fill="url(#browseHeroGrad3)" stroke="var(--primary)" stroke-width="1.5" stroke-linejoin="round"/>
+                <path d="M32 13V27" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round"/>
+                <circle cx="48" cy="8" r="2.5" fill="#f59e0b"/>
+                <path d="M52 14L54 12M55 17L57 18" stroke="#8b5cf6" stroke-width="1.5" stroke-linecap="round"/>
+                <defs>
+                    <linearGradient id="browseHeroGrad1" x1="12" y1="38" x2="52" y2="46" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#ffffff"/>
+                        <stop offset="1" stop-color="#ede9fe"/>
+                    </linearGradient>
+                    <linearGradient id="browseHeroGrad2" x1="8" y1="28" x2="52" y2="36" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#ede9fe"/>
+                        <stop offset="1" stop-color="#ddd6fe"/>
+                    </linearGradient>
+                    <linearGradient id="browseHeroGrad3" x1="16" y1="10" x2="48" y2="27" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#ffffff"/>
+                        <stop offset="1" stop-color="#f5f3ff"/>
+                    </linearGradient>
+                </defs>
+            </svg>
+        </div>
+    </div>
+    <div class="browse-hero-cues">
+        <div class="browse-cue">
+            <span class="browse-cue-icon"><i class="fa-solid fa-compass" aria-hidden="true"></i></span>
+            <div class="browse-cue-text">
+                <strong>Explore</strong>
+                <span>Discover new titles</span>
+            </div>
+        </div>
+        <div class="browse-cue">
+            <span class="browse-cue-icon"><i class="fa-solid fa-feather-pointed" aria-hidden="true"></i></span>
+            <div class="browse-cue-text">
+                <strong>Authors</strong>
+                <span>Find your favourite writers</span>
+            </div>
+        </div>
+        <div class="browse-cue">
+            <span class="browse-cue-icon"><i class="fa-solid fa-layer-group" aria-hidden="true"></i></span>
+            <div class="browse-cue-text">
+                <strong>Categories</strong>
+                <span>Browse by genre</span>
+            </div>
+        </div>
+        <div class="browse-cue">
+            <span class="browse-cue-icon"><i class="fa-solid fa-globe" aria-hidden="true"></i></span>
+            <div class="browse-cue-text">
+                <strong>Languages</strong>
+                <span>Books from around the world</span>
+            </div>
+        </div>
+    </div>
 </div>
 
 <form class="card-base book-browse-toolbar mb-3" method="get" action="/books" role="search"
@@ -123,10 +181,10 @@ $selected = fn (string $name, string|int|float|null $value): string => (string) 
                    value="<?= e($filters['q'] ?? '') ?>" autocomplete="off">
             <span class="book-browse-search-kbd" aria-hidden="true">Ctrl&nbsp;K</span>
         </div>
-        <button class="btn btn-primary" type="submit">
+        <button class="btn btn-primary btn-browse-search" type="submit">
             <i class="fa-solid fa-magnifying-glass me-1" aria-hidden="true"></i>Search
         </button>
-        <a class="btn btn-outline-secondary" href="/books" title="Reset search and filters">
+        <a class="btn btn-outline-secondary btn-browse-reset" href="/books" title="Reset search and filters">
             <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
             <span class="visually-hidden">Reset search and filters</span>
         </a>
@@ -135,6 +193,18 @@ $selected = fn (string $name, string|int|float|null $value): string => (string) 
     <!-- 2. Filter grid ------------------------------------------------- -->
     <fieldset class="book-browse-filters">
         <legend class="visually-hidden">Catalogue filters</legend>
+        <div class="browse-filters-header">
+            <div class="browse-filters-header-title">
+                <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+                <div>
+                    <span class="browse-filters-heading">Filters</span>
+                    <span class="browse-filters-subheading">Narrow down your search results</span>
+                </div>
+            </div>
+            <a class="browse-filters-clear" href="/books" title="Clear all filters">
+                <i class="fa-solid fa-rotate-left me-1" aria-hidden="true"></i>Clear all filters
+            </a>
+        </div>
         <div class="book-browse-filter-grid">
             <div class="browse-field">
                 <label class="form-label" for="browse-category">Category</label>
@@ -227,6 +297,7 @@ $selected = fn (string $name, string|int|float|null $value): string => (string) 
     <!-- 3. Toolbar row: chips + sort + view + page size ----------------- -->
     <div class="book-browse-toolbar-row">
         <div class="book-browse-chips" aria-label="Active filters">
+            <span class="book-browse-chips-icon" aria-hidden="true"><i class="fa-solid fa-book-bookmark"></i></span>
             <?php if ($chips === []): ?>
                 <span class="book-browse-chips-empty">All books shown &mdash; use the filters above to narrow the list.</span>
             <?php else: ?>
@@ -246,7 +317,7 @@ $selected = fn (string $name, string|int|float|null $value): string => (string) 
 
         <div class="book-browse-controls">
             <?php if ($isAdmin): ?>
-                <a class="btn btn-primary" href="/books/create">
+                <a class="btn btn-primary btn-add-book" href="/books/create">
                     <i class="fa-solid fa-plus me-1" aria-hidden="true"></i>Add Book
                 </a>
             <?php endif; ?>

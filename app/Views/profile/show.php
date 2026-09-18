@@ -18,15 +18,22 @@ declare(strict_types=1);
 </div>
 
 <div class="card-base" style="max-width: 640px;">
-    <div class="d-flex align-items-start justify-content-between gap-3">
+    <div class="d-flex align-items-center justify-content-between gap-3">
         <div class="d-flex align-items-center gap-3">
-            <span class="icon-button" aria-hidden="true" style="font-size: 1.25rem;">
-                <i class="fa-solid fa-user"></i>
-            </span>
+            <?php if (!empty($user['avatar_path'])): ?>
+                <img src="<?= e(avatar_url($user['avatar_path'])) ?>" alt="<?= e($user['full_name']) ?>" class="avatar avatar-img shadow-sm" style="width: 56px; height: 56px;">
+            <?php else: ?>
+                <span class="avatar avatar-brand" aria-hidden="true" style="width: 56px; height: 56px; font-size: 1.35rem;"><?= e(mb_strtoupper(mb_substr((string) ($user['full_name'] ?? ''), 0, 1))) ?></span>
+            <?php endif; ?>
             <div>
                 <h2 class="mb-0"><?= e($user['full_name']) ?></h2>
                 <span class="badge text-bg-<?= $user['role'] === 'admin' ? 'danger' : 'secondary' ?>"><?= e($user['role']) ?></span>
             </div>
+        </div>
+        <div>
+            <a href="/profile/edit" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1">
+                <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> Edit profile
+            </a>
         </div>
     </div>
 

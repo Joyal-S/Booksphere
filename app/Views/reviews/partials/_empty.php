@@ -52,7 +52,7 @@ if ($searching || $filtering) {
     ];
 } else {
     $empty = [
-        'icon'    => 'fa-comment-slash',
+        'icon'    => 'fa-feather-pointed',
         'title'   => $emptyBase['title'],
         'message' => $emptyBase['message'],
         'action'  => $emptyBase['action'],
@@ -61,3 +61,30 @@ if ($searching || $filtering) {
 }
 
 require root_path('app/Views/components/empty-state.php');
+?>
+
+<?php if (!$searching && !$filtering): ?>
+    <div class="review-empty-context-grid mt-4" data-animate>
+        <div class="review-empty-context-card">
+            <span class="review-context-icon review-context-icon--perspective" aria-hidden="true">
+                <i class="fa-solid fa-feather-pointed"></i>
+            </span>
+            <h3 class="review-context-title">Share your perspective</h3>
+            <p class="review-context-desc">Express what made each book resonate with you and guide fellow readers.</p>
+        </div>
+        <div class="review-empty-context-card">
+            <span class="review-context-icon review-context-icon--profile" aria-hidden="true">
+                <i class="fa-solid fa-fingerprint"></i>
+            </span>
+            <h3 class="review-context-title">Build your reading profile</h3>
+            <p class="review-context-desc">Your ratings and critiques sharpen your personal recommendations.</p>
+        </div>
+        <div class="review-empty-context-card">
+            <span class="review-context-icon review-context-icon--impact" aria-hidden="true">
+                <i class="fa-solid fa-comments"></i>
+            </span>
+            <h3 class="review-context-title">Make an impact</h3>
+            <p class="review-context-desc">Join thoughtful discussions and shape BookSphere's community ratings.</p>
+        </div>
+    </div>
+<?php endif; ?>

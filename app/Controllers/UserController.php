@@ -13,6 +13,7 @@ use BookSphere\App\Policies\FollowPolicy;
 use BookSphere\App\Services\AuthService;
 use BookSphere\App\Services\FollowService;
 use BookSphere\App\Services\LibraryService;
+use BookSphere\App\Services\MediaService;
 use BookSphere\App\Services\RecommendationService;
 use BookSphere\App\Services\ReviewService;
 
@@ -50,6 +51,7 @@ final class UserController extends Controller
         // owner-or-admin gate through FollowPolicy.
         private readonly ?FollowService $follows = null,
         private readonly ?FollowPolicy $followPolicy = null,
+        private readonly ?MediaService $media = null,
     ) {}
 
     public function show(Request $request, array $params = []): void
@@ -157,7 +159,8 @@ final class UserController extends Controller
             'id'        => $user['id'],
             'full_name' => $data['full_name'],
             'email'     => $email,
-            'role'      => $user['role'],
+            'role'        => $user['role'],
+            'avatar_path' => $user['avatar_path'] ?? null,
         ]);
 
         session()->flash('success', 'Your profile has been updated.');
@@ -263,5 +266,198 @@ final class UserController extends Controller
                 'pagerLabel' => 'Following pages',
             ],
         ]);
+    }
+
+    /**
+     * POST /profile/avatar — Upload or replace profile avatar image.
+     */
+    public function uploadAvatar(Request $request): void
+    {
+        $userId = (int) $this->auth->id();
+        $user   = $this->users->findById($userId);
+
+        if ($user === null) {
+            Response::error(404, 'Profile not found.');
+            return;
+        }
+
+        $file = $request->file('avatar');
+
+        if ($file === null) {
+            $this->avatarFailure($request, 'Please select an image to upload.');
+            return;
+        }
+
+        // Upload error validation
+        if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+            if (in_array($file['error'], [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) {
+                $this->avatarFailure($request, 'Image must be 5 MB or smaller.');
+                return;
+            }
+            $this->avatarFailure($request, 'The file could not be uploaded.');
+            return;
+        }
+
+        // Size limit: 5 MB
+        if ((int) ($file['size'] ?? 0) > 5 * 1024 * 1024) {
+            $this->avatarFailure($request, 'Image must be 5 MB or smaller.');
+            return;
+        }
+
+        $tmpPath = (string) ($file['tmp_name'] ?? '');
+        if ($tmpPath === '' || !is_file($tmpPath)) {
+            $this->avatarFailure($request, 'The file could not be read.');
+            return;
+        }
+
+        // Sniff MIME type strictly from content
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mime  = (string) $finfo->file($tmpPath);
+        $allowedMimes = [
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/webp' => 'webp',
+        ];
+
+        if (!isset($allowedMimes[$mime])) {
+            $this->avatarFailure($request, 'Please upload a JPG, PNG, or WebP image.');
+            return;
+        }
+
+        // Verify client extension matches allowed formats
+        $clientName = (string) ($file['name'] ?? '');
+        $clientExt  = strtolower(pathinfo($clientName, PATHINFO_EXTENSION));
+        $allowedExts = ['jpg', 'jpeg', 'png', 'webp'];
+        if (!in_array($clientExt, $allowedExts, true)) {
+            $this->avatarFailure($request, 'Please upload a JPG, PNG, or WebP image.');
+            return;
+        }
+
+        // Validate image decodability & dimensions
+        $imageInfo = @getimagesize($tmpPath);
+        if ($imageInfo === false) {
+            $this->avatarFailure($request, 'That file is not a valid image.');
+            return;
+        }
+
+        // Validate structural integrity of container
+        $structuralError = $this->mediaService()->validateFile($tmpPath);
+        if ($structuralError !== null) {
+            $this->avatarFailure($request, 'That file is not a valid image.');
+            return;
+        }
+
+        // Store file with safe unique filename: user_<id>_<token>.<ext>
+        try {
+            $storedPath = $this->mediaService()->store($file, 'user_' . $userId);
+        } catch (\Throwable $e) {
+            $this->avatarFailure($request, 'The file could not be saved.');
+            return;
+        }
+
+        // Update database (relative path only)
+        try {
+            $updated = $this->users->updateAvatar($userId, $storedPath);
+        } catch (\Throwable $e) {
+            // Failure-safe: clean up newly written file if database update failed
+            $this->mediaService()->delete($storedPath);
+            $this->avatarFailure($request, 'Could not update profile picture.');
+            return;
+        }
+
+        if (!$updated) {
+            // Failure-safe: clean up newly written file if database update failed
+            $this->mediaService()->delete($storedPath);
+            $this->avatarFailure($request, 'Could not update profile picture.');
+            return;
+        }
+
+        // Clean up previous image if it was local and different
+        $oldAvatar = $user['avatar_path'] ?? null;
+        if ($oldAvatar !== null && $oldAvatar !== $storedPath) {
+            try {
+                $this->mediaService()->delete($oldAvatar);
+            } catch (\Throwable) {
+                // Non-fatal: deleting old image failure must not corrupt profile
+            }
+        }
+
+        // Update auth session so UI updates immediately
+        $user['avatar_path'] = $storedPath;
+        $this->auth->updateUser($user);
+
+        if ($request->header('X-Requested-With') === 'fetch') {
+            Response::json([
+                'ok'          => true,
+                'avatar_path' => $storedPath,
+                'message'     => 'Profile picture updated.',
+            ]);
+            return;
+        }
+
+        session()->flash('success', 'Profile picture updated.');
+        Response::redirect('/profile/edit');
+    }
+
+    /**
+     * POST /profile/avatar/remove — Remove current profile avatar image.
+     */
+    public function removeAvatar(Request $request): void
+    {
+        $userId = (int) $this->auth->id();
+        $user   = $this->users->findById($userId);
+
+        if ($user === null) {
+            Response::error(404, 'Profile not found.');
+            return;
+        }
+
+        $oldAvatar = $user['avatar_path'] ?? null;
+
+        if ($oldAvatar !== null) {
+            try {
+                $this->users->updateAvatar($userId, null);
+            } catch (\Throwable $e) {
+                $this->avatarFailure($request, 'Could not remove profile picture.');
+                return;
+            }
+
+            // Delete old file safely if it belongs to this user in the uploads directory
+            try {
+                $this->mediaService()->delete($oldAvatar);
+            } catch (\Throwable) {
+                // Non-fatal: database already cleared, file removal failure does not corrupt record
+            }
+
+            $user['avatar_path'] = null;
+            $this->auth->updateUser($user);
+        }
+
+        if ($request->header('X-Requested-With') === 'fetch') {
+            Response::json([
+                'ok'      => true,
+                'message' => 'Profile picture removed.',
+            ]);
+            return;
+        }
+
+        session()->flash('success', 'Profile picture removed.');
+        Response::redirect('/profile/edit');
+    }
+
+    private function mediaService(): MediaService
+    {
+        return $this->media ?? new MediaService((array) (config('media.profiles') ?? []));
+    }
+
+    private function avatarFailure(Request $request, string $message): void
+    {
+        if ($request->header('X-Requested-With') === 'fetch') {
+            Response::json(['error' => $message], 422);
+            return;
+        }
+
+        session()->flash('error', $message);
+        Response::redirect('/profile/edit');
     }
 }

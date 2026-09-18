@@ -187,6 +187,22 @@
             });
         });
 
+        // Search type shortcuts in hero: click switches scope and focuses input
+        document.querySelectorAll('[data-shortcut-scope]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const targetScope = btn.dataset.shortcutScope;
+                const radio = form.querySelector(`[data-scope-radio][value="${targetScope}"]`);
+                if (radio) {
+                    radio.checked = true;
+                    updateScopeUI();
+                    pageField.value = '1';
+                    window.clearTimeout(debounceTimer);
+                    fetchResults();
+                    searchInput?.focus();
+                }
+            });
+        });
+
         // Filter selects search immediately on change - the Phase 11.3
         // bar, the same [data-auto-submit] idiom the browse toolbar uses.
         // A filter change is a fresh page of results, never a deep scroll.

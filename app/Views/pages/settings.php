@@ -67,6 +67,35 @@ $toggles = [
     <p class="lead">Choose how BookSphere talks to you — in the app and in your inbox.</p>
 </section>
 
+<!-- Profile & Avatar Summary -->
+<section class="card-base mb-4" data-animate style="max-width: 720px;">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <?php
+            $currentUser = auth()->user();
+            $avatarUrl = $currentUser['avatar_path'] ?? null;
+            $fullName = $currentUser['full_name'] ?? 'User';
+            $initial = strtoupper(substr($fullName, 0, 1));
+            ?>
+            <?php if (!empty($avatarUrl)): ?>
+                <img src="<?= e($avatarUrl) ?>" alt="<?= e($fullName) ?>" class="avatar-img shadow-sm" style="width: 56px; height: 56px; object-fit: cover; border-radius: 50%; border: 2px solid var(--border);">
+            <?php else: ?>
+                <div class="shadow-sm" style="width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--brand-primary, #6366f1), #8b5cf6); color: #fff; font-size: 1.5rem; font-weight: 700; display: flex; align-items: center; justify-content: center; border: 2px solid var(--border);">
+                    <?= e($initial) ?>
+                </div>
+            <?php endif; ?>
+            <div>
+                <h2 class="h6 mb-1"><?= e($fullName) ?></h2>
+                <p class="text-muted small mb-0"><?= e($currentUser['email'] ?? '') ?></p>
+            </div>
+        </div>
+        <a href="/profile/edit" class="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-2">
+            <i class="fa-solid fa-camera" aria-hidden="true"></i>
+            <span>Change photo</span>
+        </a>
+    </div>
+</section>
+
 <!-- 2. Email notifications -->
 <section class="card-base" data-animate style="max-width: 720px;">
     <div class="d-flex align-items-start gap-3 mb-2">

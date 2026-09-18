@@ -108,10 +108,20 @@ $emptyNote = static fn (string $why): string =>
     '<p class="muted small mb-0">' . $why . ' &mdash; the ranking fills once real activity arrives.</p>';
 ?>
 
-<div class="page-intro">
-    <p class="eyebrow">Catalogue Analytics &middot; real numbers</p>
-    <h1>Book Analytics</h1>
-    <p class="lead">What the whole catalogue says today: shelves, ratings, rankings, metadata and activity over time.</p>
+<div class="analytics-hero card-base mb-4" data-animate>
+    <div class="analytics-hero-copy">
+        <p class="eyebrow analytics-hero-eyebrow">
+            <i class="fa-solid fa-chart-pie me-1" aria-hidden="true"></i>
+            Catalogue Analytics &middot; real numbers
+        </p>
+        <h1 class="analytics-hero-title">Book Analytics</h1>
+        <p class="lead analytics-hero-lead">What the whole catalogue says today: shelves, ratings, rankings, metadata and activity over time.</p>
+    </div>
+    <div class="analytics-hero-badge-wrap">
+        <span class="badge rounded-pill text-bg-primary px-3 py-2">
+            <i class="fa-solid fa-satellite-dish me-1" aria-hidden="true"></i>Catalogue Intelligence
+        </span>
+    </div>
 </div>
 
 <?php if (!empty($analytics['empty'])): ?>

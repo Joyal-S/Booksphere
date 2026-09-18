@@ -30,31 +30,50 @@ declare(strict_types=1);
  */
 
 $book = array_merge([
-    'id'             => 0,
-    'title'          => '',
-    'authors_list'   => '',
-    'cover_image'    => null,
-    'average_rating' => 0.0,
-    'ratings_count'  => 0,
-    'status'         => 'published',
+    'id'              => 0,
+    'title'           => '',
+    'subtitle'        => null,
+    'authors_list'    => '',
+    'categories_list' => '',
+    'cover_image'     => null,
+    'average_rating'  => 0.0,
+    'ratings_count'   => 0,
+    'status'          => 'published',
 ], $book ?? []);
 
+$bookId     = (int) $book['id'];
+$authors    = trim((string) ($book['authors_list'] ?? ''));
+$categories = array_values(array_filter(array_map('trim', explode(',', (string) ($book['categories_list'] ?? '')))));
+$category   = $categories[0] ?? '';
+
 ?>
-<a class="book-card-module" href="/books/<?= (int) $book['id'] ?>" title="View <?= e($book['title']) ?>">
-    <span class="book-card-module-cover">
+<article class="book-card-module" aria-labelledby="book-title-<?= $bookId ?>">
+    <a class="book-card-module-cover" href="/books/<?= $bookId ?>" tabindex="-1" aria-hidden="true">
         <?php $cover = [
-            'src' => $book['cover_image'] ?? '',
-            'alt' => 'Cover of ' . ($book['title'] ?? ''),
+            'src'   => $book['cover_image'] ?? '',
+            'alt'   => 'Cover of ' . ($book['title'] ?? ''),
+            'class' => 'book-cover',
         ]; ?>
         <?php require root_path('app/Views/books/components/book-cover.php'); ?>
-    </span>
-    <span class="book-card-module-body">
-        <span class="book-card-module-title"><?= e($book['title']) ?></span>
-        <span class="book-card-module-meta">
+    </a>
+    <div class="book-card-module-body">
+        <h3 class="book-card-module-title" id="book-title-<?= $bookId ?>">
+            <a href="/books/<?= $bookId ?>"><?= e($book['title']) ?></a>
+        </h3>
+        <?php if ($authors !== ''): ?>
+            <p class="book-card-module-author"><?= e($authors) ?></p>
+        <?php endif; ?>
+        <?php if ($category !== ''): ?>
+            <div class="book-card-module-categories">
+                <span class="category-badge"><?= e($category) ?></span>
+            </div>
+        <?php endif; ?>
+        <div class="book-card-module-meta">
             <?php $starRating = [
                 'rating' => (float) $book['average_rating'],
                 'count'  => (int) $book['ratings_count'] > 0 ? (int) $book['ratings_count'] : null,
                 'size'   => 'sm',
+                'tooltip'=> false,
             ]; ?>
             <?php require root_path('app/Views/components/star-rating.php'); ?>
             <?php if (!empty($book['status'])): ?>
@@ -62,6 +81,20 @@ $book = array_merge([
                     <?= e(ucfirst($book['status'])) ?>
                 </span>
             <?php endif; ?>
-        </span>
-    </span>
-</a>
+        </div>
+        <div class="book-card-module-actions">
+            <form method="post" action="/wishlist/toggle" data-wishlist-form>
+                <input type="hidden" name="_token" value="<?= e(csrf_token()) ?>">
+                <input type="hidden" name="book_id" value="<?= $bookId ?>">
+                <button class="btn-book-wishlist" type="submit" title="Add to wishlist">
+                    <i class="fa-regular fa-heart" aria-hidden="true"></i>
+                    <span>Wishlist</span>
+                </button>
+            </form>
+            <a class="btn-book-details" href="/books/<?= $bookId ?>">
+                <span>Details</span>
+                <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
+            </a>
+        </div>
+    </div>
+</article>

@@ -36,6 +36,104 @@
 
 /* Report sheet ------------------------------------------------------ */
 
+.report-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    padding: clamp(1.5rem, 3vw, 2.25rem);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg, 18px);
+    background:
+        radial-gradient(640px 240px at 100% 0%, rgba(91, 75, 219, 0.09), transparent 65%),
+        radial-gradient(480px 220px at 0% 100%, rgba(139, 92, 246, 0.05), transparent 60%),
+        var(--surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.report-hero-copy {
+    max-width: 680px;
+}
+
+.report-hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    background: var(--primary-soft);
+    color: var(--primary-strong);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+
+.report-hero-title {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: clamp(1.75rem, 3.2vw, 2.4rem);
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text);
+    letter-spacing: -0.01em;
+}
+
+.report-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.report-kpi-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md, 14px);
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.report-kpi-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-md);
+}
+
+.report-kpi-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.report-kpi-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--text);
+    letter-spacing: -0.02em;
+}
+
+.report-kpi-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm, 8px);
+    font-size: 0.875rem;
+}
+
+.report-kpi-icon--primary { background: var(--primary-soft); color: var(--primary); }
+.report-kpi-icon--success { background: var(--success-soft); color: var(--success); }
+.report-kpi-icon--warning { background: var(--warning-soft); color: var(--warning); }
+.report-kpi-icon--danger  { background: var(--danger-soft);  color: var(--danger); }
+.report-kpi-icon--info    { background: var(--info-soft);    color: var(--info); }
+
 .report-sheet .report-meta {
     color: var(--muted);
     font-size: 0.875rem;

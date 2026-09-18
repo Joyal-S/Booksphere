@@ -149,24 +149,51 @@
 
 .notif-intro {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: space-between;
     gap: 20px;
     flex-wrap: wrap;
+    padding: clamp(1.5rem, 3vw, 2.25rem);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg, 18px);
+    background:
+        radial-gradient(640px 240px at 100% 0%, rgba(91, 75, 219, 0.09), transparent 65%),
+        radial-gradient(480px 220px at 0% 100%, rgba(139, 92, 246, 0.05), transparent 60%),
+        var(--surface);
+    box-shadow: var(--shadow-sm);
     margin-bottom: 24px;
 }
 
-.notif-intro h1 {
-    margin: 0 0 4px;
-    font-size: clamp(1.6rem, 3vw, 2rem);
+.notif-intro-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    background: var(--primary-soft);
+    color: var(--primary-strong);
+    font-size: 0.75rem;
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+
+.notif-intro h1 {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: clamp(1.75rem, 3.2vw, 2.4rem);
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text);
+    letter-spacing: -0.01em;
 }
 
 .notif-intro .lead {
-    margin: 0;
+    margin: 0.65rem 0 0;
     color: var(--muted);
     font-size: 0.95rem;
+    line-height: 1.6;
 }
 
 .notif-intro-actions {
@@ -280,9 +307,9 @@
     display: flex;
     gap: 14px;
     align-items: flex-start;
-    padding: 14px 16px;
+    padding: 16px 18px;
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-md, 14px);
     background: var(--surface);
     transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
@@ -290,11 +317,22 @@
 .notif-item:hover {
     border-color: var(--border-strong);
     box-shadow: var(--shadow-sm);
+    transform: translateY(-1px);
 }
 
 .notif-item.is-unread {
-    border-color: var(--primary);
-    background: linear-gradient(90deg, var(--primary-soft), var(--surface) 42%);
+    border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+    border-left: 3px solid var(--primary);
+    background: linear-gradient(90deg, rgba(91, 75, 219, 0.05) 0%, var(--surface) 40%);
+    box-shadow: var(--shadow-sm);
+}
+
+.notif-item:not(.is-unread) {
+    opacity: 0.9;
+}
+
+.notif-item:not(.is-unread):hover {
+    opacity: 1;
 }
 
 .notif-item-check {

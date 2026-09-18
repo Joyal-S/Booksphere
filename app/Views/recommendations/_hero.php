@@ -55,7 +55,10 @@ $qualityScore = $hero['quality']['score'] === null ? null : (int) round((float) 
 <section class="rec-hero" data-animate>
     <div class="card-base rec-hero-panel">
         <div class="rec-hero-copy">
-            <p class="eyebrow"><?= e($hero['eyebrow']) ?></p>
+            <p class="eyebrow rec-hero-badge">
+                <i class="fa-solid fa-dna" aria-hidden="true"></i>
+                <?= e($hero['eyebrow']) ?>
+            </p>
             <h1 class="rec-hero-title"><?= e($hero['title']) ?></h1>
             <p class="rec-hero-lead"><?= e($hero['lead']) ?></p>
 

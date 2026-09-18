@@ -30,17 +30,18 @@ declare(strict_types=1);
  */
 
 $shelf = array_merge([
-    'eyebrow' => '',
-    'title'   => '',
-    'icon'    => 'fa-wand-magic-sparkles',
-    'link'    => null,
-    'items'   => [],
-    'empty'   => 'Nothing here yet.',
-    'columns' => 'row-cols-2 row-cols-md-3 row-cols-xl-4',
+    'eyebrow'         => '',
+    'title'           => '',
+    'icon'            => 'fa-wand-magic-sparkles',
+    'link'            => null,
+    'items'           => [],
+    'empty'           => 'Nothing here yet.',
+    'columns'         => 'row-cols-2 row-cols-md-3 row-cols-xl-4',
+    'container_class' => '',
 ], $shelf ?? []);
 
 ?>
-<section class="dash-section" data-animate>
+<section class="dash-section <?= e($shelf['container_class'] ?? '') ?>" data-animate>
     <?php if ($shelf['title'] !== ''): ?>
         <?php $section = [
             'eyebrow' => $shelf['eyebrow'],

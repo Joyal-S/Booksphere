@@ -65,9 +65,13 @@ $reportReasons = [
     <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
         <div class="d-flex align-items-center gap-3">
             <a href="/community/user/<?= (int) ($post['user_id'] ?? 0) ?>" class="text-decoration-none" title="View posts by <?= e($authorName) ?>">
-                <div class="d-flex align-items-center justify-content-center rounded-circle bg-primary-subtle text-primary fw-bold" style="width: 48px; height: 48px; font-size: 1.125rem;">
-                    <?= e($initial) ?>
-                </div>
+                <?php if (!empty($post['author_avatar'])): ?>
+                    <img src="<?= e($post['author_avatar']) ?>" alt="<?= e($authorName) ?>" class="avatar avatar-img rounded-circle" style="width: 48px; height: 48px; object-fit: cover;">
+                <?php else: ?>
+                    <div class="d-flex align-items-center justify-content-center rounded-circle bg-primary-subtle text-primary fw-bold" style="width: 48px; height: 48px; font-size: 1.125rem;">
+                        <?= e($initial) ?>
+                    </div>
+                <?php endif; ?>
             </a>
             <div>
                 <?php $authorRep = (new \BookSphere\App\Models\CommunityReputation())->getUserReputation((int) ($post['user_id'] ?? 0)); ?>
@@ -227,9 +231,13 @@ $reportReasons = [
                 <div class="p-3 rounded bg-body-tertiary border border-subtle">
                     <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                         <div class="d-flex align-items-center gap-2">
-                            <div class="d-flex align-items-center justify-content-center rounded-circle bg-secondary-subtle text-secondary fw-bold small" style="width: 32px; height: 32px; font-size: 0.8125rem;">
-                                <?= e($commentInit) ?>
-                            </div>
+                            <?php if (!empty($comment['author_avatar'])): ?>
+                                <img src="<?= e($comment['author_avatar']) ?>" alt="<?= e($commentAuthor) ?>" class="avatar avatar-img rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">
+                            <?php else: ?>
+                                <div class="d-flex align-items-center justify-content-center rounded-circle bg-secondary-subtle text-secondary fw-bold small" style="width: 32px; height: 32px; font-size: 0.8125rem;">
+                                    <?= e($commentInit) ?>
+                                </div>
+                            <?php endif; ?>
                             <div>
                                 <span class="fw-semibold small text-body d-block leading-none"><?= e($commentAuthor) ?></span>
                                 <span class="text-muted small" style="font-size: 0.71875rem;"><?= e($commentTime) ?></span>

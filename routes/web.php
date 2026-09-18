@@ -524,6 +524,8 @@ $router->post('/logout', [$authController, 'logout'], [$secure, new CsrfMiddlewa
 $router->get('/profile', [$userController, 'show'], [$secure, new AuthMiddleware($auth)]);
 $router->get('/profile/edit', [$userController, 'showEdit'], [$secure, new AuthMiddleware($auth)]);
 $router->post('/profile/edit', [$userController, 'edit'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/profile/avatar', [$userController, 'uploadAvatar'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
+$router->post('/profile/avatar/remove', [$userController, 'removeAvatar'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
 $router->get('/change-password', [$userController, 'showChangePassword'], [$secure, new AuthMiddleware($auth)]);
 $router->post('/change-password', [$userController, 'changePassword'], [$secure, new AuthMiddleware($auth), new CsrfMiddleware($csrf)]);
 

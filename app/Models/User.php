@@ -27,7 +27,7 @@ final class User
     public function findById(int $id): ?array
     {
         $rows = db()->query(
-            'SELECT id, full_name, email, role, remember_token, created_at, updated_at
+            'SELECT id, full_name, email, role, remember_token, avatar_path, created_at, updated_at
              FROM users
              WHERE id = ?',
             [$id],
@@ -82,6 +82,19 @@ final class User
              SET full_name = ?, email = ?, updated_at = ?
              WHERE id = ?',
             [$fullName, strtolower(trim($email)), $this->now(), $id],
+        ) > 0;
+    }
+
+    /**
+     * Update the profile avatar path of a user (or clear it with NULL).
+     */
+    public function updateAvatar(int $id, ?string $avatarPath): bool
+    {
+        return db()->execute(
+            'UPDATE users
+             SET avatar_path = ?, updated_at = ?
+             WHERE id = ?',
+            [$avatarPath, $this->now(), $id],
         ) > 0;
     }
 
