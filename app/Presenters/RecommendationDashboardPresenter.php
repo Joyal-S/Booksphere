@@ -109,9 +109,9 @@ final class RecommendationDashboardPresenter
         $profile   = $userId > 0 ? $this->service->profileFor($userId) : null;
 
         // Books the user already owns the signal for are never shown
-        // again on any shelf (wishlist saves and recent views), so a
-        // recommendation always feels new.
-        $excluded = $this->excludedIds($userId);
+        // again on any shelf (wishlist saves, recent views, library books,
+        // and rated/reviewed books), so a recommendation always feels new.
+        $excluded = $this->excludedIds($userId, $profile);
 
         // Phase 6.5: the sections are deduplicated AGAINST EACH OTHER
         // (not only inside themselves) - a book the engine already
@@ -134,7 +134,8 @@ final class RecommendationDashboardPresenter
             'hasSignals'  => $profile !== null
                 && ($profile->favouriteCategories !== [] || $profile->favouriteAuthors !== []
                     || $profile->wishlistBookIds !== [] || $profile->highlyRatedBookIds !== []
-                    || $profile->reviewedBookIds !== [] || $profile->recentlyViewedBookIds !== []),
+                    || $profile->reviewedBookIds !== [] || $profile->recentlyViewedBookIds !== []
+                    || $profile->followedAuthorIds !== []),
             'quality'     => $this->quality($personal),
             'updatedAgo'  => $this->ago($personal->generatedAt),
             'wishlistIds' => array_map('intval', $this->repository->wishlistBookIds($userId)),
@@ -263,15 +264,18 @@ final class RecommendationDashboardPresenter
      */
     private function follow(?PersonalizationProfile $profile, array $excluded): array
     {
-        if ($profile === null || $profile->favouriteAuthors === []) {
+        if ($profile === null || $profile->followedAuthorIds === []) {
             return [];
         }
 
         $shelf = [];
 
-        foreach (array_slice($profile->favouriteAuthors, 0, self::FOLLOW_AUTHORS, true) as $authorId => $meta) {
+        foreach (array_slice($profile->followedAuthorIds, 0, self::FOLLOW_AUTHORS) as $authorId) {
+            $authorId = (int) $authorId;
+            $meta     = $profile->favouriteAuthors[$authorId] ?? null;
+
             try {
-                $result = $this->service->getBooksByAuthor((int) $authorId, self::FOLLOW_BOOKS_PER_AUTHOR + 2);
+                $result = $this->service->getBooksByAuthor($authorId, self::FOLLOW_BOOKS_PER_AUTHOR + 2);
             } catch (RecommendationException) {
                 continue;
             }
@@ -500,23 +504,31 @@ final class RecommendationDashboardPresenter
     // -----------------------------------------------------------------
 
     /**
-     * The ids never recommended again: the user's wishlist saves and
-     * the recently viewed books (the engine already excludes them
-     * from the personal shelf; this keeps the OTHER sections honest
+     * The ids never recommended again: the user's library, wishlist saves,
+     * recently viewed books, and rated/reviewed books (the engine already
+     * excludes them from the personal shelf; this keeps the OTHER sections honest
      * too).
      *
      * @return array<int, int>
      */
-    private function excludedIds(int $userId): array
+    private function excludedIds(int $userId, ?PersonalizationProfile $profile = null): array
     {
         if ($userId < 1) {
             return [];
         }
 
+        $rated = $profile !== null
+            ? $profile->ratedBookIds
+            : array_values(array_unique([
+                ...array_map('intval', array_keys($this->repository->ratedBooks($userId))),
+                ...array_map('intval', $this->repository->reviewedBookIds($userId)),
+            ]));
+
         return array_values(array_unique([
             ...$this->repository->libraryBookIds($userId),
             ...$this->repository->wishlistBookIds($userId),
             ...$this->repository->recentlyViewedBookIds($userId, 20),
+            ...$rated,
         ]));
     }
 

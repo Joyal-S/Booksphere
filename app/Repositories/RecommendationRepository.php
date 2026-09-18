@@ -595,6 +595,51 @@ final class RecommendationRepository
     }
 
     /**
+     * The authors followed by one user.
+     *
+     * Input:  a user id
+     * Output: array of ['id' => author_id, 'name' => author_name]
+     *
+     * Business responsibility: Phase R2 - connect author follows
+     * to the personalization profile. Backed by idx_author_follows_user.
+     *
+     * @return array<int, array{id: int, name: string}>
+     */
+    public function followedAuthors(int $userId): array
+    {
+        return db()->query(
+            'SELECT f.author_id AS id, a.name
+             FROM author_follows f
+             JOIN authors a ON a.id = f.author_id
+             WHERE f.user_id = ?
+             ORDER BY f.created_at DESC, f.id DESC',
+            [$userId],
+        );
+    }
+
+    /**
+     * The author ids one user follows.
+     *
+     * Input:  a user id
+     * Output: author ids the user follows
+     *
+     * @return array<int, int>
+     */
+    public function followedAuthorIds(int $userId): array
+    {
+        return array_map(
+            fn (array $row): int => (int) $row['author_id'],
+            db()->query(
+                'SELECT author_id
+                 FROM author_follows
+                 WHERE user_id = ?
+                 ORDER BY created_at DESC, id DESC',
+                [$userId],
+            ),
+        );
+    }
+
+    /**
      * Remember that a user viewed a book (upsert).
      *
      * Input:  the user id and the book id

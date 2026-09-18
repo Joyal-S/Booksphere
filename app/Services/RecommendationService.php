@@ -401,11 +401,16 @@ final class RecommendationService
         );
 
         // Exclusion rules: library books (want_to_read, currently_reading, finished),
-        // wishlist books, the exact recently-viewed books ("do not recommend
-        // the same book"), duplicates and junk ids.
+        // wishlist books, recently-viewed books, already rated/reviewed books,
+        // duplicates and junk ids.
         $items = $this->filterRecommendations(
             $items,
-            [...$profile->libraryBookIds, ...$profile->wishlistBookIds, ...$profile->recentlyViewedBookIds],
+            [
+                ...$profile->libraryBookIds,
+                ...$profile->wishlistBookIds,
+                ...$profile->recentlyViewedBookIds,
+                ...$profile->ratedBookIds,
+            ],
         );
         $items = $this->sortRecommendations($items);
         $items = $this->limitRecommendations($items, $limit);
@@ -472,26 +477,64 @@ final class RecommendationService
      * @param array<int, string>            $matched
      * @param array<string, int|float>      $signals
      */
-    public function getRecommendationReason(array $matched, PersonalizationProfile $profile, array $signals = []): string
-    {
+    public function getRecommendationReason(
+        array $matched,
+        PersonalizationProfile $profile,
+        array $signals = [],
+        array $candidateAuthorIds = [],
+        array $candidateCategoryIds = [],
+    ): string {
         $parts = [];
 
         if (in_array('category', $matched, true)) {
-            $names = array_slice(
-                array_map(fn (array $favourite): string => $favourite['name'], $profile->favouriteCategories),
-                0,
-                2,
-            );
-            $parts[] = 'You enjoy ' . implode(' and ', $names) . ' books.';
+            $catNameMap = [];
+            foreach ($profile->favouriteCategories as $favourite) {
+                if (isset($favourite['id'], $favourite['name'])) {
+                    $catNameMap[(int) $favourite['id']] = (string) $favourite['name'];
+                }
+            }
+
+            if ($candidateCategoryIds !== []) {
+                $matchedCatIds = array_values(array_intersect($candidateCategoryIds, $profile->favouriteCategoryIds()));
+                $names = [];
+                foreach ($matchedCatIds as $cid) {
+                    if (isset($catNameMap[$cid])) {
+                        $names[] = $catNameMap[$cid];
+                    }
+                }
+            } else {
+                $names = [];
+            }
+
+            if ($names === []) {
+                $names = array_map(fn (array $favourite): string => (string) $favourite['name'], $profile->favouriteCategories);
+            }
+
+            $names = array_slice($names, 0, 2);
+            if ($names !== []) {
+                $parts[] = 'You enjoy ' . implode(' and ', $names) . ' books.';
+            }
         }
 
         if (in_array('author', $matched, true)) {
-            $names = array_slice(
-                array_map(fn (array $favourite): string => $favourite['name'], $profile->favouriteAuthors),
-                0,
-                2,
-            );
-            $parts[] = 'Because you follow ' . implode(' and ', $names) . '.';
+            // Only name authors the user explicitly follows
+            if ($candidateAuthorIds !== []) {
+                $matchedFollowedIds = array_values(array_intersect($candidateAuthorIds, $profile->followedAuthorIds));
+            } else {
+                $matchedFollowedIds = $profile->followedAuthorIds;
+            }
+
+            $names = [];
+            foreach ($matchedFollowedIds as $authorId) {
+                if (isset($profile->favouriteAuthors[$authorId]['name'])) {
+                    $names[] = (string) $profile->favouriteAuthors[$authorId]['name'];
+                }
+            }
+
+            $names = array_slice($names, 0, 2);
+            if ($names !== []) {
+                $parts[] = 'Because you follow ' . implode(' and ', $names) . '.';
+            }
         }
 
         if (in_array('wishlist', $matched, true)) {
@@ -508,7 +551,7 @@ final class RecommendationService
         }
 
         if (in_array('rating', $matched, true)) {
-            $parts[] = 'Popular among readers of your highly rated books.';
+            $parts[] = 'Shares categories with books you rated highly.';
         }
 
         if (in_array('review_score', $matched, true)) {
@@ -709,7 +752,8 @@ final class RecommendationService
             || $profile->wishlistBookIds !== []
             || $profile->highlyRatedBookIds !== []
             || $profile->reviewedBookIds !== []
-            || $profile->recentlyViewedBookIds !== [];
+            || $profile->recentlyViewedBookIds !== []
+            || $profile->followedAuthorIds !== [];
     }
 
     /**
@@ -789,8 +833,24 @@ final class RecommendationService
             $authorLimit,
         );
 
+        $followed = $this->repository->followedAuthors($userId);
+        $followedAuthorIds = array_map(fn (array $row): int => (int) $row['id'], $followed);
+
+        $followedMap = [];
+        foreach ($followed as $row) {
+            $followedMap[(int) $row['id']] = [
+                'name'   => (string) $row['name'],
+                'weight' => 0,
+            ];
+        }
+        $favouriteAuthors = $followedMap + $favouriteAuthors;
+
         $viewCap = (int) (config('recommendations.candidates.signal_book_cap', 20));
         $libraryIds = $this->repository->libraryBookIds($userId, self::LIBRARY_EXCLUSION_LIMIT);
+        $ratedIds = array_values(array_unique([
+            ...array_map('intval', array_keys($ratings)),
+            ...array_map('intval', $reviewedIds),
+        ]));
 
         return new PersonalizationProfile(
             userId:                $userId,
@@ -802,6 +862,8 @@ final class RecommendationService
             recentlyViewedBookIds: $this->repository->recentlyViewedBookIds($userId, $viewCap),
             builtAt:               gmdate('Y-m-d\TH:i:s\Z'),
             libraryBookIds:        array_values(array_unique($libraryIds)),
+            ratedBookIds:          $ratedIds,
+            followedAuthorIds:     array_values(array_unique($followedAuthorIds)),
         );
     }
 
@@ -935,7 +997,7 @@ final class RecommendationService
 
             $signals = [
                 'category'     => count(array_intersect($categoryIds[$id] ?? [], $profile->favouriteCategoryIds())),
-                'author'       => count(array_intersect($authorIds[$id] ?? [], $profile->favouriteAuthorIds())),
+                'author'       => count(array_intersect($authorIds[$id] ?? [], $profile->followedAuthorIds)),
                 'wishlist'     => $wishlistOverlap + $viewedOverlap,
                 'viewed'       => $viewedOverlap,
                 'rating'       => count(array_intersect($categoryIds[$id] ?? [], $ratingCategoryIds)),
@@ -956,7 +1018,13 @@ final class RecommendationService
             $items[] = new PersonalizedRecommendationItem(
                 book:       $row,
                 score:      $score,
-                reason:     $this->getRecommendationReason($matched, $profile, $signals),
+                reason:     $this->getRecommendationReason(
+                    $matched,
+                    $profile,
+                    $signals,
+                    $authorIds[$id] ?? [],
+                    $categoryIds[$id] ?? [],
+                ),
                 confidence: $this->confidenceFor($score, $matched),
                 matched:    $matched,
             );

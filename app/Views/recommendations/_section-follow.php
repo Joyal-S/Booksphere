@@ -37,7 +37,7 @@ $wishlistIds = $wishlistIds ?? [];
             <?php $empty = [
                 'icon'    => 'fa-user-pen',
                 'title'   => 'No authors to follow yet',
-                'message' => 'Read and rate a few books and this shelf starts surfacing new releases from the authors you clearly enjoy.',
+                'message' => 'Follow authors you love and this shelf starts surfacing their newest releases.',
                 'action'  => ['label' => 'Browse the library', 'href' => '/books', 'icon' => 'fa-book-open'],
             ]; ?>
             <?php require root_path('app/Views/components/empty-state.php'); ?>

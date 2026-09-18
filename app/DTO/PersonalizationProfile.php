@@ -45,6 +45,8 @@ final readonly class PersonalizationProfile
      * @param array<int, int> $reviewedBookIds
      * @param array<int, int> $recentlyViewedBookIds
      * @param array<int, int> $libraryBookIds
+     * @param array<int, int> $ratedBookIds
+     * @param array<int, int> $followedAuthorIds
      */
     public function __construct(
         public readonly int $userId,
@@ -56,6 +58,8 @@ final readonly class PersonalizationProfile
         public readonly array $recentlyViewedBookIds,
         public readonly string $builtAt,
         public readonly array $libraryBookIds = [],
+        public readonly array $ratedBookIds = [],
+        public readonly array $followedAuthorIds = [],
     ) {}
 
     /**
@@ -69,12 +73,15 @@ final readonly class PersonalizationProfile
     }
 
     /**
-     * The ids of the favourite authors (the keys of the array).
+     * The ids of the favourite and followed authors.
      *
      * @return array<int, int>
      */
     public function favouriteAuthorIds(): array
     {
-        return array_keys($this->favouriteAuthors);
+        return array_values(array_unique([
+            ...array_keys($this->favouriteAuthors),
+            ...$this->followedAuthorIds,
+        ]));
     }
 }
