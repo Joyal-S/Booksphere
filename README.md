@@ -275,11 +275,23 @@ The following catalogue attributes were audited in Phase 8 and are **intentional
 
 ## 13. Documentation Index
 
-Detailed architectural specifications, schema references, and operations manuals:
-- 🏛️ **[System Architecture](docs/ARCHITECTURE.md)** — In-depth MVC lifecycle, recommendation algorithms, and subsystem designs.
-- 🗄️ **[Database Architecture](docs/DATABASE.md)** — Complete 31-table schema, Mermaid ERD, indexing strategies, and SQLite pragmas.
-- 📋 **[Feature Inventory](docs/FEATURES.md)** — Exhaustive matrix of 15 functional modules with route and controller mappings.
-- 🚀 **[Deployment Runbook](docs/DEPLOYMENT.md)** — Detailed instructions for Windows local deployment and Linux production hosting.
+Detailed academic and technical documentation packages:
+- 🎓 **[Academic Project Report Package](docs/academic/README.md)** — Complete university-compliant academic report (Preliminary Pages, Chapters 1–10, Appendix, Glossary, Diagram Specifications, Screenshot Checklist).
+- 🛠️ **[Technical Developer Documentation](docs/technical/)** — Modular technical specifications:
+  - [Architecture](docs/technical/ARCHITECTURE.md)
+  - [Database Schema (31 Tables)](docs/technical/DATABASE.md)
+  - [Feature Inventory](docs/technical/FEATURES.md)
+  - [Recommendation Engine V2](docs/technical/RECOMMENDATION_ENGINE.md)
+  - [Security Architecture](docs/technical/SECURITY.md)
+  - [Testing Guide](docs/technical/TESTING.md)
+  - [Performance Benchmarks](docs/technical/PERFORMANCE.md)
+  - [Administration Manual](docs/technical/ADMIN.md)
+  - [Configuration Guide](docs/technical/CONFIGURATION.md)
+  - [File Structure](docs/technical/FILE_STRUCTURE.md)
+  - [API & Integrations](docs/technical/API_AND_INTEGRATIONS.md)
+  - [Production Deployment](docs/technical/DEPLOYMENT.md)
+  - [Troubleshooting Guide](docs/technical/TROUBLESHOOTING.md)
+  - [System Limitations](docs/technical/LIMITATIONS.md)
 
 ---
 
